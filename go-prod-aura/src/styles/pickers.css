@@ -1,0 +1,215 @@
+.clock-circle {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-hover) 100%);
+  border: 2px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clock-number {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+  color: var(--text-primary);
+}
+
+.clock-number:hover {
+  background: rgba(113, 61, 255, 0.2);
+  transform: scale(1.15);
+}
+
+.clock-number.selected {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 15px rgba(113, 61, 255, 0.6);
+}
+
+.clock-center {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 10px rgba(113, 61, 255, 0.8);
+}
+
+.calendar-day {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+  color: var(--text-primary);
+}
+
+.calendar-day:hover:not(.disabled) {
+  background: rgba(113, 61, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.calendar-day.selected {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(113, 61, 255, 0.5);
+}
+
+.calendar-day.in-range {
+  background: rgba(113, 61, 255, 0.2);
+}
+
+.calendar-day.disabled {
+  color: var(--text-disabled);
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Version compacte pour popups */
+.calendar-day-compact {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  color: var(--text-primary);
+}
+
+.calendar-day-compact:hover:not(.disabled) {
+  background: rgba(113, 61, 255, 0.15);
+  transform: scale(1.08);
+}
+
+.calendar-day-compact.selected {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(113, 61, 255, 0.4);
+  font-weight: 600;
+}
+
+.calendar-day-compact.in-range {
+  background: rgba(113, 61, 255, 0.2);
+}
+
+.calendar-day-compact.disabled {
+  color: var(--text-disabled);
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Pastilles rondes pour DatePicker (plus petites et compactes) */
+.calendar-day-round {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: none;
+}
+
+.calendar-day-round:hover:not(.disabled) {
+  background: var(--color-primary-light);
+  transform: scale(1.05);
+}
+
+.calendar-day-round.selected {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 50%, transparent);
+  font-weight: 600;
+  transform: scale(1.08);
+}
+
+.calendar-day-round.disabled {
+  color: var(--text-disabled);
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ===== TIME PICKER COMPACT ===== */
+
+.clock-circle-compact {
+  position: relative;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-hover) 100%);
+  border: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clock-center-compact {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 70%, transparent);
+  z-index: 10;
+}
+
+.clock-number-compact {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  color: var(--color-text-primary);
+  transform: translate(-50%, -50%);
+  background: transparent;
+}
+
+.clock-number-compact.inner {
+  font-size: 11px;
+  width: 32px;
+  height: 32px;
+}
+
+.clock-number-compact:hover {
+  background: var(--color-primary-light);
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+.clock-number-compact.selected {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 60%, transparent);
+  font-weight: 600;
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+
+
+

@@ -1,0 +1,200 @@
+/* typographies utilitaires */
+.h1{ font-family:Manrope,Inter,sans-serif; font-weight:800; font-size:2rem; letter-spacing:-0.01em }
+.h2{ font-family:Manrope,Inter,sans-serif; font-weight:700; font-size:1.25rem; letter-spacing:-0.01em }
+.muted{ color:var(--color-text-muted) }
+
+/* boutons */
+.btn{ display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+  height:44px; padding:0 1rem; border-radius:14px; font-weight:600; border:1px solid transparent;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  cursor: pointer;
+}
+.btn-primary{ background:var(--color-primary); color:var(--color-text-inverse); box-shadow:var(--shadow-sm) }
+.btn-primary:hover{ background:var(--color-primary-hover); transform:translateY(-1px); box-shadow:var(--shadow-md) }
+.btn-secondary{ background:var(--color-bg-surface); color:var(--color-text-primary); border-color:var(--color-border) }
+.btn-secondary:hover{ background:var(--color-bg-elevated); border-color:var(--color-border) }
+.btn-ghost{ background:transparent; color:var(--color-text-primary); border:none }
+.btn-ghost:hover{ background:color-mix(in oklab, var(--color-primary) 10%, transparent) }
+.btn-sm{ height:32px; padding:0 0.5rem; font-size:0.875rem }
+
+/* inputs */
+.input{ 
+  height:44px; 
+  background:var(--color-bg-surface); 
+  color:var(--color-text-primary);
+  border:1px solid var(--color-border); 
+  border-radius:14px; 
+  padding:0 .75rem;
+  transition: all 0.2s ease;
+}
+.input:focus{ 
+  outline:none; 
+  box-shadow:0 0 0 2px color-mix(in oklab, var(--color-primary) 55%, transparent);
+  border-color: var(--color-primary);
+}
+.input::placeholder { 
+  color: var(--color-text-muted); 
+  opacity: 0.7;
+}
+
+/* Meilleur contraste input en mode sombre */
+.dark .input {
+  background: color-mix(in oklab, var(--color-bg-primary) 90%, white 8%);
+  border-color: color-mix(in oklab, var(--color-border) 140%, white 10%);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.03);
+}
+
+/* Input compact pour formulaires */
+.input-sm{ 
+  height:36px; 
+  background:var(--color-bg-surface); 
+  color:var(--color-text-primary);
+  border:1px solid var(--color-border); 
+  border-radius:10px; 
+  padding:0 .65rem;
+  transition: all 0.2s ease; 
+  font-size: 0.875rem;
+}
+.input-sm:focus{ 
+  outline:none; 
+  box-shadow:0 0 0 2px color-mix(in oklab, var(--color-primary) 55%, transparent);
+  border-color: var(--color-primary);
+}
+.input-sm::placeholder { 
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+/* Meilleur contraste input-sm en mode sombre */
+.dark .input-sm {
+  background: color-mix(in oklab, var(--color-bg-primary) 90%, white 8%);
+  border-color: color-mix(in oklab, var(--color-border) 140%, white 10%);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.03);
+}
+
+/* selects */
+.select{ 
+  height:44px; 
+  background:var(--color-bg-surface); 
+  color:var(--color-text-primary);
+  border:1px solid var(--color-border); 
+  border-radius:14px; 
+  padding:0 .75rem;
+  transition: all 0.2s ease; 
+  cursor: pointer;
+}
+.select:focus{ 
+  outline:none; 
+  box-shadow:0 0 0 2px color-mix(in oklab, var(--color-primary) 55%, transparent);
+  border-color: var(--color-primary);
+}
+
+/* Meilleur contraste select en mode sombre */
+.dark .select {
+  background: color-mix(in oklab, var(--color-bg-primary) 90%, white 8%);
+  border-color: color-mix(in oklab, var(--color-border) 140%, white 10%);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.03);
+}
+
+/* Options du select en mode sombre */
+.dark .select option {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+}
+
+/* Select compact pour formulaires */
+.select-sm{ 
+  height:36px; 
+  background:var(--color-bg-surface); 
+  color:var(--color-text-primary);
+  border:1px solid var(--color-border); 
+  border-radius:10px; 
+  padding:0 .65rem;
+  transition: all 0.2s ease; 
+  font-size: 0.875rem; 
+  cursor: pointer;
+}
+.select-sm:focus{ 
+  outline:none; 
+  box-shadow:0 0 0 2px color-mix(in oklab, var(--color-primary) 55%, transparent);
+  border-color: var(--color-primary);
+}
+
+/* Meilleur contraste select-sm en mode sombre */
+.dark .select-sm {
+  background: color-mix(in oklab, var(--color-bg-primary) 90%, white 8%);
+  border-color: color-mix(in oklab, var(--color-border) 140%, white 10%);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.03);
+}
+
+/* Options du select-sm en mode sombre */
+.dark .select-sm option {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+}
+
+/* cards */
+.card-surface{ 
+  background:var(--color-bg-elevated); 
+  border:1px solid color-mix(in oklab, var(--color-border) 80%, transparent);
+  border-radius:18px; 
+  box-shadow:var(--shadow-md); 
+  transition: all 0.2s ease;
+}
+.card-hover:hover{ 
+  transform:translateY(-1px); 
+  box-shadow:var(--shadow-lg);
+}
+
+/* Meilleur contraste cards en mode sombre */
+.dark .card-surface {
+  background: var(--color-bg-elevated);
+  border: 1px solid color-mix(in oklab, var(--color-border) 110%, white 3%);
+  box-shadow: 0 8px 20px rgba(0,0,0,.55), 0 0 0 1px color-mix(in oklab, var(--color-border) 80%, transparent);
+}
+
+/* table */
+.table{ width:100%; border-collapse:separate; border-spacing:0 }
+.table th{ text-align:left; font-size:.75rem; letter-spacing:.03em; text-transform:uppercase;
+  padding:.75rem 1rem; color:var(--color-text-muted); background:var(--color-bg-surface);
+  position:sticky; top:0; z-index:1; border-bottom:1px solid var(--color-border)
+}
+.table td{ padding:.875rem 1rem; border-bottom:1px solid var(--color-border); color:var(--color-text-primary); transition: background 0.15s ease }
+.table tr:hover td{ background:var(--color-hover-row) }
+
+/* kpi */
+.kpi{ display:grid; grid-template-columns:56px 1fr auto; gap:16px; align-items:center;
+  padding:20px; border-radius:18px; background:var(--color-bg-elevated);
+  border:1px solid color-mix(in oklab, var(--color-border) 80%, transparent);
+  transition: all 0.2s ease;
+}
+.kpi .value{ font-size:28px; font-weight:700 }
+.badge{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; font-size:12px; border-radius:999px; border:1px solid var(--color-border) }
+.badge.success{ color:#22c55e; background:color-mix(in oklab, var(--color-success) 15%, transparent); border-color:color-mix(in oklab, var(--color-success) 35%, transparent) }
+
+/* sidebar/topbar */
+.sidebar{ 
+  width:280px; 
+  background:var(--color-bg-surface); 
+  border-right:1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+.dark .sidebar {
+  background:linear-gradient(180deg, #0E1428 0%, #0B1020 100%);
+}
+
+.sidebar-item{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; color:var(--color-text-primary); transition: all 0.2s ease }
+.sidebar-item:hover{ background:color-mix(in oklab, var(--color-primary) 12%, var(--color-bg-surface)) }
+.sidebar-item.active{ background:color-mix(in oklab, var(--color-primary) 20%, var(--color-bg-surface)); box-shadow:0 0 0 2px color-mix(in oklab, var(--color-primary) 28%, transparent) }
+
+.topbar{ height:64px; padding:0 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--color-border);
+  background:color-mix(in oklab, var(--color-bg-primary) 70%, transparent); backdrop-filter:blur(8px)
+}
+
+/* pickers (placeholders visuels) */
+.clock-circle{ width:280px; height:280px; border-radius:9999px; position:relative; background:radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--color-primary) 10%, transparent), transparent) }
+.clock-number{ position:absolute; width:36px; height:36px; border-radius:9999px; display:grid; place-items:center; cursor:pointer; transition:transform .15s }
+.clock-number:hover{ transform:scale(1.15) }
+.clock-number.selected{ background:var(--color-primary); color:var(--color-text-inverse); box-shadow:0 0 0 2px color-mix(in oklab, var(--color-primary) 40%, transparent) }
+.clock-center{ position:absolute; left:50%; top:50%; width:12px; height:12px; transform:translate(-50%, -50%); border-radius:9999px; background:var(--color-primary) }
+  

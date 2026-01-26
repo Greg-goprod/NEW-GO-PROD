@@ -1,0 +1,9 @@
+id,name,event_date,venue,city,country,status,company_id,created_at
+30000000-0000-0000-0000-000000000001,Montreux Jazz Festival 2024,2024-07-15,Montreux Music & Convention Centre,Montreux,Switzerland,completed,00000000-0000-0000-0000-000000000001,2024-01-01 00:00:00
+30000000-0000-0000-0000-000000000002,Paléo Festival 2024,2024-07-23,Plaine de l'Asse,Nyon,Switzerland,completed,00000000-0000-0000-0000-000000000001,2024-01-02 00:00:00
+30000000-0000-0000-0000-000000000003,Geneva Electronic Festival 2025,2025-06-20,Parc des Eaux-Vives,Geneva,Switzerland,confirmed,00000000-0000-0000-0000-000000000001,2024-01-03 00:00:00
+30000000-0000-0000-0000-000000000004,Lausanne Lights 2025,2025-08-10,Esplanade de Montbenon,Lausanne,Switzerland,planned,00000000-0000-0000-0000-000000000001,2024-01-04 00:00:00
+
+
+
+

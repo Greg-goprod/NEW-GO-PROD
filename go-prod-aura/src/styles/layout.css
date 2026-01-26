@@ -1,0 +1,44 @@
+.z-backdrop{ z-index:var(--z-modal-backdrop) }
+.z-modal{ z-index:var(--z-modal) }
+.z-popover{ z-index:var(--z-popover) }
+.z-toast{ z-index:var(--z-toast) }
+
+/* Backdrop avec meilleur contraste en mode sombre */
+.modal-backdrop{ 
+  position:fixed; 
+  inset:0; 
+  background:rgba(0,0,0,.45); 
+  backdrop-filter:blur(6px);
+}
+
+.dark .modal-backdrop{ 
+  background:rgba(0,0,0,.70); 
+  backdrop-filter:blur(8px);
+}
+
+/* Modal avec fond et bordures contrastés */
+.modal{ 
+  position:fixed; 
+  inset:auto; 
+  left:50%; 
+  top:50%; 
+  transform:translate(-50%,-50%); 
+  background:var(--color-bg-elevated);
+  border:1px solid var(--color-border);
+  border-radius:18px; 
+  box-shadow:var(--shadow-xl);
+}
+
+/* Meilleur contraste pour le modal en mode sombre */
+.dark .modal {
+  background: var(--color-bg-elevated);
+  border: 1px solid color-mix(in oklab, var(--color-border) 120%, white 5%);
+  box-shadow: 0 28px 60px rgba(0,0,0,.85), 0 0 0 1px color-mix(in oklab, var(--color-border) 80%, transparent);
+}
+
+/* Modal sizes */
+.modal-xxs{ width:200px }
+.modal-sm{ width:400px }
+.modal-md{ width:600px }
+.modal-lg{ width:800px }
+.modal-xl{ width:1000px }

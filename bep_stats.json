@@ -1,0 +1,277 @@
+﻿{
+    "result":  "success",
+    "message":  "Data Retrieved.",
+    "stats":  [
+                  {
+                      "source":  "spotify",
+                      "data":  {
+                                   "monthly_listeners_current":  52366889,
+                                   "followers_total":  9731847,
+                                   "popularity_current":  83,
+                                   "streams_total":  19640079432,
+                                   "playlists_current":  71167,
+                                   "playlists_total":  89884,
+                                   "playlists_editorial_current":  202,
+                                   "playlists_editorial_total":  1025,
+                                   "playlist_reach_current":  341710055,
+                                   "playlist_reach_total":  1069968132,
+                                   "charts_current":  5,
+                                   "charts_total":  255,
+                                   "charted_tracks_current":  2,
+                                   "charted_tracks_total":  35,
+                                   "charted_cities_total":  106,
+                                   "charted_countries_total":  74
+                               }
+                  },
+                  {
+                      "source":  "apple_music",
+                      "data":  {
+                                   "playlists_current":  727,
+                                   "playlists_total":  1247,
+                                   "playlists_editorial_current":  321,
+                                   "playlists_editorial_total":  569,
+                                   "charts_current":  363,
+                                   "charts_total":  1359,
+                                   "charted_tracks_current":  31,
+                                   "charted_tracks_total":  236,
+                                   "charted_countries_total":  167
+                               }
+                  },
+                  {
+                      "source":  "amazon",
+                      "data":  {
+                                   "followers_total":  1131165,
+                                   "playlists_current":  882,
+                                   "playlists_total":  1574,
+                                   "playlists_editorial_current":  813,
+                                   "playlists_editorial_total":  1437,
+                                   "charts_current":  65,
+                                   "charts_total":  150,
+                                   "charted_tracks_current":  11,
+                                   "charted_tracks_total":  41
+                               }
+                  },
+                  {
+                      "source":  "deezer",
+                      "data":  {
+                                   "followers_total":  6019012,
+                                   "popularity_current":  90,
+                                   "playlists_current":  3915,
+                                   "playlists_total":  5002,
+                                   "playlists_editorial_current":  99,
+                                   "playlists_editorial_total":  338,
+                                   "playlist_reach_current":  13818804,
+                                   "playlist_reach_total":  104134774,
+                                   "charts_current":  43,
+                                   "charts_total":  189,
+                                   "charted_tracks_current":  9,
+                                   "charted_tracks_total":  118
+                               }
+                  },
+                  {
+                      "source":  "instagram",
+                      "data":  {
+                                   "views_total":  1151364158,
+                                   "likes_total":  43863003,
+                                   "comments_total":  939322,
+                                   "creator_reach_total":  2075555744,
+                                   "followers_total":  1486048,
+                                   "videos_total":  1015801,
+                                   "engagement_rate_total":  3.9
+                               }
+                  },
+                  {
+                      "source":  "tiktok",
+                      "data":  {
+                                   "videos_total":  1878518,
+                                   "views_total":  8378531676,
+                                   "likes_total":  779129520,
+                                   "shares_total":  36507930,
+                                   "comments_total":  7823687,
+                                   "followers_total":  1724231,
+                                   "profile_likes_total":  10435854,
+                                   "profile_videos_total":  415,
+                                   "creator_reach_total":  12672106708,
+                                   "playlists_current":  0,
+                                   "playlists_total":  0,
+                                   "charts_current":  0,
+                                   "charts_total":  31,
+                                   "charted_tracks_current":  0,
+                                   "charted_tracks_total":  7,
+                                   "engagement_rate_total":  9.8
+                               }
+                  },
+                  {
+                      "source":  "youtube",
+                      "data":  {
+                                   "videos_total":  1663,
+                                   "video_views_total":  10655647520,
+                                   "video_likes_total":  62867506,
+                                   "video_comments_total":  1819691,
+                                   "shorts_total":  93365378,
+                                   "creator_reach_total":  4136520081,
+                                   "subscribers_total":  17556400,
+                                   "channel_views_total":  13846958559,
+                                   "monthly_audience_current":  298000000,
+                                   "short_views_total":  8264573987,
+                                   "short_likes_total":  242007949,
+                                   "short_comments_total":  3690725,
+                                   "playlists_current":  133,
+                                   "playlists_total":  311,
+                                   "playlists_editorial_current":  95,
+                                   "playlists_editorial_total":  259,
+                                   "charts_current":  0,
+                                   "charts_total":  164,
+                                   "charted_tracks_current":  0,
+                                   "charted_tracks_total":  12,
+                                   "engagement_rate_total":  0.6
+                               }
+                  },
+                  {
+                      "source":  "shazam",
+                      "data":  {
+                                   "shazams_total":  160240919,
+                                   "charts_current":  68,
+                                   "charts_total":  1785,
+                                   "charted_tracks_current":  13,
+                                   "charted_tracks_total":  90,
+                                   "charted_cities_total":  1598,
+                                   "charted_countries_total":  72
+                               }
+                  },
+                  {
+                      "source":  "tracklist",
+                      "data":  {
+                                   "total_support_total":  4137,
+                                   "unique_support_total":  1791,
+                                   "tracklist_views_total":  4495843,
+                                   "charts_current":  0,
+                                   "charts_total":  4,
+                                   "charted_tracks_current":  0,
+                                   "charted_tracks_total":  6
+                               }
+                  },
+                  {
+                      "source":  "beatport",
+                      "data":  {
+                                   "dj_charts_total":  66,
+                                   "charts_current":  2,
+                                   "charts_total":  7,
+                                   "charted_tracks_current":  7,
+                                   "charted_tracks_total":  30,
+                                   "overall_top_100_charted_tracks_total":  1
+                               }
+                  },
+                  {
+                      "source":  "traxsource",
+                      "data":  {
+                                   "dj_charts_total":  0,
+                                   "charts_current":  0,
+                                   "charts_total":  0,
+                                   "charted_tracks_current":  0,
+                                   "charted_tracks_total":  0,
+                                   "overall_top_100_charted_tracks_total":  0
+                               }
+                  },
+                  {
+                      "source":  "itunes",
+                      "data":  {
+                                   "charts_current":  72,
+                                   "charts_total":  723,
+                                   "charted_tracks_current":  23,
+                                   "charted_tracks_total":  217,
+                                   "charted_countries_total":  114
+                               }
+                  },
+                  {
+                      "source":  "tidal",
+                      "data":  {
+                                   "popularity_current":  85,
+                                   "playlists_current":  101,
+                                   "playlists_total":  137,
+                                   "playlists_editorial_current":  71,
+                                   "playlists_editorial_total":  105,
+                                   "charts_current":  2,
+                                   "charts_total":  9,
+                                   "charted_tracks_current":  1,
+                                   "charted_tracks_total":  10
+                               }
+                  },
+                  {
+                      "source":  "soundcloud",
+                      "data":  {
+                                   "streams_total":  93552563,
+                                   "favorites_total":  1853937,
+                                   "comments_total":  71384,
+                                   "reposts_total":  137567,
+                                   "followers_total":  101100,
+                                   "charts_current":  13,
+                                   "charts_total":  31,
+                                   "charted_tracks_current":  3,
+                                   "charted_tracks_total":  9,
+                                   "engagement_rate_total":  2.2
+                               }
+                  },
+                  {
+                      "source":  "facebook",
+                      "data":  {
+                                   "followers_total":  37991381,
+                                   "talking_about_current":  16656
+                               }
+                  },
+                  {
+                      "source":  "twitter",
+                      "data":  {
+                                   "followers_total":  3323532
+                               }
+                  },
+                  {
+                      "source":  "songkick",
+                      "data":  {
+                                   "followers_total":  3717122
+                               }
+                  },
+                  {
+                      "source":  "bandsintown",
+                      "data":  {
+                                   "followers_total":  4394820
+                               }
+                  },
+                  {
+                      "source":  "radio",
+                      "data":  {
+                                   "radio_plays_total":  14020439,
+                                   "radio_stations_total":  36741,
+                                   "sxm_plays_total":  53470,
+                                   "sxm_royalties_total":  1033238
+                               }
+                  }
+              ],
+    "artist_info":  {
+                        "songstats_artist_id":  "peakfzc1",
+                        "avatar":  "https://i.scdn.co/image/ab67616100005174b3037310c07b99cbefbd2c6d",
+                        "site_url":  "https://songstats.com/artist/peakfzc1/black-eyed-peas",
+                        "name":  "Black Eyed Peas"
+                    },
+    "source_ids":  [
+                       "spotify",
+                       "apple_music",
+                       "amazon",
+                       "deezer",
+                       "instagram",
+                       "tiktok",
+                       "youtube",
+                       "shazam",
+                       "tracklist",
+                       "beatport",
+                       "traxsource",
+                       "itunes",
+                       "tidal",
+                       "soundcloud",
+                       "facebook",
+                       "twitter",
+                       "songkick",
+                       "bandsintown",
+                       "radio"
+                   ]
+}

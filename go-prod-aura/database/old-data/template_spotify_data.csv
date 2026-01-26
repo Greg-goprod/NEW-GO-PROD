@@ -1,0 +1,10 @@
+id,artist_id,image_url,followers,popularity,external_url,genres,created_at
+10000000-0000-0000-0000-000000000001,00000000-0000-0000-0000-000000000001,https://i.scdn.co/image/ab6761610000e5eb8f7f9f9f9f9f9f9f9f9f9f9f,850000,72,https://open.spotify.com/artist/xxx,"[""hip hop"",""trip hop"",""electronic""]",2024-01-01 00:00:00
+10000000-0000-0000-0000-000000000002,00000000-0000-0000-0000-000000000002,https://i.scdn.co/image/ab6761610000e5eb1234567890abcdef12345678,45000,45,https://open.spotify.com/artist/yyy,"[""indie"",""folk"",""acoustic""]",2024-01-02 00:00:00
+10000000-0000-0000-0000-000000000003,00000000-0000-0000-0000-000000000003,https://i.scdn.co/image/ab6761610000e5ebfedcba0987654321fedcba09,1200000,81,https://open.spotify.com/artist/zzz,"[""synthwave"",""electronic"",""retro""]",2024-01-03 00:00:00
+10000000-0000-0000-0000-000000000004,00000000-0000-0000-0000-000000000004,https://i.scdn.co/image/ab6761610000e5ebabcdefabcdefabcdefabcdef,2500000,88,https://open.spotify.com/artist/aaa,"[""downtempo"",""electronic"",""trip hop""]",2024-01-04 00:00:00
+10000000-0000-0000-0000-000000000005,00000000-0000-0000-0000-000000000005,https://i.scdn.co/image/ab6761610000e5eb111111111111111111111111,600000,75,https://open.spotify.com/artist/bbb,"[""techno"",""electronic""]",2024-01-05 00:00:00
+
+
+
+

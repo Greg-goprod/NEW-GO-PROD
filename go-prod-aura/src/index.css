@@ -1,0 +1,133 @@
+@import './styles/tokens.css';
+@import './styles/utilities.css';
+@import './styles/layout.css';
+@import './styles/pickers.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base page */
+:root, html, body, #root { height:100% }
+
+html {
+  font-size: 14px; /* Base font size reduced by 4px (from 18px to 14px) */
+}
+
+body{
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode background gradient */
+.dark body {
+  background: radial-gradient(1200px 800px at -10% -20%, color-mix(in oklab, var(--color-primary) 8%, transparent) 0%, transparent 60%),
+              linear-gradient(135deg, var(--color-bg-primary), color-mix(in oklab, var(--color-bg-surface) 60%, black));
+}
+
+/* Light mode background gradient */
+html:not(.dark) body {
+  background: radial-gradient(1200px 800px at 100% 0%, color-mix(in oklab, var(--color-primary) 5%, transparent) 0%, transparent 50%),
+              linear-gradient(135deg, #F5F7FB 0%, #FFFFFF 100%);
+}
+
+/* Override Tailwind classes pour utiliser les variables AURA en mode sombre */
+.dark {
+  /* Textes */
+  --tw-text-gray-900: var(--color-text-primary);
+  --tw-text-gray-800: var(--color-text-primary);
+  --tw-text-gray-700: var(--color-text-primary);
+  --tw-text-gray-600: var(--color-text-muted);
+  --tw-text-gray-500: var(--color-text-muted);
+  --tw-text-gray-400: var(--color-text-muted);
+  --tw-text-gray-300: var(--color-text-primary);
+  --tw-text-gray-200: var(--color-text-primary);
+  --tw-text-gray-100: var(--color-text-primary);
+}
+
+/* Forcer les couleurs AURA sur les classes Tailwind dark: en mode sombre */
+.dark .dark\:bg-gray-900 {
+  background-color: var(--color-bg-elevated) !important;
+}
+
+.dark .dark\:bg-gray-800 {
+  background-color: var(--color-bg-surface) !important;
+}
+
+.dark .dark\:bg-gray-700 {
+  background-color: var(--color-bg-surface) !important;
+}
+
+.dark .dark\:border-gray-800,
+.dark .dark\:border-gray-700,
+.dark .dark\:border-gray-600 {
+  border-color: var(--color-border) !important;
+}
+
+.dark .dark\:text-gray-100,
+.dark .dark\:text-gray-200,
+.dark .dark\:text-gray-300 {
+  color: var(--color-text-primary) !important;
+}
+
+.dark .dark\:text-gray-400,
+.dark .dark\:text-gray-500 {
+  color: var(--color-text-muted) !important;
+}
+
+/* Améliorer le contraste des inputs/selects/textareas en mode sombre */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark select,
+.dark textarea {
+  background-color: color-mix(in oklab, var(--color-bg-primary) 90%, white 8%) !important;
+  border-color: color-mix(in oklab, var(--color-border) 140%, white 10%) !important;
+  color: var(--color-text-primary) !important;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.03) !important;
+}
+
+.dark input:not([type="checkbox"]):not([type="radio"]):focus,
+.dark select:focus,
+.dark textarea:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-primary) 55%, transparent), 
+              inset 0 1px 3px rgba(0,0,0,.25) !important;
+  border-color: var(--color-primary) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--color-text-muted) !important;
+  opacity: 0.65 !important;
+}
+
+/* Textareas spécifiquement */
+.dark textarea {
+  min-height: 80px;
+}
+
+/* Labels de formulaires plus contrastés */
+.dark label {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.dark label span {
+  color: var(--color-text-primary);
+}
+
+/* Options des select plus visibles */
+.dark select option {
+  background: var(--color-bg-elevated) !important;
+  color: var(--color-text-primary) !important;
+  padding: 8px;
+}
+
+/* Hover sur les inputs/selects/textareas */
+.dark input:not([type="checkbox"]):not([type="radio"]):hover:not(:focus),
+.dark select:hover:not(:focus),
+.dark textarea:hover:not(:focus) {
+  border-color: color-mix(in oklab, var(--color-border) 160%, white 15%) !important;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.05) !important;
+}
