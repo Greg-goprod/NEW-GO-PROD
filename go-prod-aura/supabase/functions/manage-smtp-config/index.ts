@@ -1,12 +1,10 @@
 // deno-lint-ignore-file no-explicit-any
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { crypto } from "https://deno.land/std@0.208.0/crypto/mod.ts";
-import { encodeHex } from "https://deno.land/std@0.208.0/encoding/hex.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ENCRYPTION_KEY = Deno.env.get("SMTP_ENCRYPTION_KEY") || "default-32-char-key-change-this!";
+const ENCRYPTION_KEY = Deno.env.get("SMTP_ENCRYPTION_KEY") || "GoProdEncrypt32CharKeyChange!!";
 
 // Configuration du relais SMTP (Railway)
 const SMTP_RELAY_URL = Deno.env.get("SMTP_RELAY_URL");
@@ -14,7 +12,7 @@ const SMTP_RELAY_API_KEY = Deno.env.get("SMTP_RELAY_API_KEY");
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
-console.log("[manage-smtp-config] v3 SMTP Relay initialized");
+console.log("[manage-smtp-config] v4 - Simple encryption");
 
 // =============================================================================
 // CORS Headers
@@ -26,46 +24,31 @@ const corsHeaders = {
 };
 
 // =============================================================================
-// Chiffrement AES-256
+// Chiffrement XOR simple (compatible avec Railway)
 // =============================================================================
-async function encryptPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  
-  // Générer un IV aléatoire
-  const iv = crypto.getRandomValues(new Uint8Array(16));
-  
-  // Dériver la clé
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(ENCRYPTION_KEY),
-    { name: "PBKDF2" },
-    false,
-    ["deriveBits", "deriveKey"]
-  );
-  
-  const key = await crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: encoder.encode("go-prod-smtp-salt"),
-      iterations: 100000,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    { name: "AES-CBC", length: 256 },
-    false,
-    ["encrypt"]
-  );
-  
-  // Chiffrer
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-CBC", iv },
-    key,
-    data
-  );
-  
-  // Retourner iv:encrypted en hex
-  return `${encodeHex(iv)}:${encodeHex(new Uint8Array(encrypted))}`;
+function encryptPassword(password: string): string {
+  let result = "";
+  for (let i = 0; i < password.length; i++) {
+    result += String.fromCharCode(
+      password.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length)
+    );
+  }
+  return btoa(result);
+}
+
+function decryptPassword(encrypted: string): string {
+  try {
+    const data = atob(encrypted);
+    let result = "";
+    for (let i = 0; i < data.length; i++) {
+      result += String.fromCharCode(
+        data.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length)
+      );
+    }
+    return result;
+  } catch {
+    return encrypted;
+  }
 }
 
 // =============================================================================
@@ -140,7 +123,7 @@ async function handleCreate(req: CreateConfigRequest) {
   const { companyId, name, host, port, secure, username, password, fromEmail, fromName, replyTo, isDefault } = req;
 
   // Chiffrer le mot de passe
-  const passwordEncrypted = await encryptPassword(password);
+  const passwordEncrypted = encryptPassword(password);
 
   const { data, error } = await supabase
     .from("smtp_configs")
@@ -187,7 +170,7 @@ async function handleUpdate(req: UpdateConfigRequest) {
   if (updates.isDefault !== undefined) updateData.is_default = updates.isDefault;
   
   if (password) {
-    updateData.password_encrypted = await encryptPassword(password);
+    updateData.password_encrypted = encryptPassword(password);
   }
 
   const { data, error } = await supabase
@@ -226,10 +209,12 @@ async function handleTest(req: TestConfigRequest) {
   const { testEmail, configId } = req;
 
   if (!SMTP_RELAY_URL || !SMTP_RELAY_API_KEY) {
+    console.error("[manage-smtp-config] SMTP_RELAY_URL:", SMTP_RELAY_URL);
+    console.error("[manage-smtp-config] SMTP_RELAY_API_KEY:", SMTP_RELAY_API_KEY ? "SET" : "NOT SET");
     throw new Error("Service d'envoi non configuré. Contactez l'administrateur.");
   }
 
-  let host: string, port: number, username: string, passwordEncrypted: string, fromEmail: string, fromName: string;
+  let host: string, port: number, username: string, password: string, fromEmail: string, fromName: string;
 
   if (configId) {
     // Tester une config existante
@@ -246,7 +231,8 @@ async function handleTest(req: TestConfigRequest) {
     host = data.host;
     port = data.port;
     username = data.username;
-    passwordEncrypted = data.password_encrypted;
+    // Déchiffrer le mot de passe pour l'envoyer à Railway
+    password = decryptPassword(data.password_encrypted);
     fromEmail = data.from_email;
     fromName = data.from_name;
   } else {
@@ -257,12 +243,12 @@ async function handleTest(req: TestConfigRequest) {
     host = req.host;
     port = req.port || 587;
     username = req.username;
-    passwordEncrypted = await encryptPassword(req.password);
+    password = req.password; // Mot de passe en clair pour le test direct
     fromEmail = req.fromEmail;
     fromName = req.fromName || "Test SMTP";
   }
 
-  // Envoyer l'email de test via le relais
+  // Envoyer l'email de test via le relais Railway
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px;">
       <h2 style="color: #667eea;">✅ Configuration SMTP validée !</h2>
@@ -278,7 +264,11 @@ async function handleTest(req: TestConfigRequest) {
   `;
 
   try {
-    const response = await fetch(`${SMTP_RELAY_URL}/send`, {
+    const fullUrl = `${SMTP_RELAY_URL}/send`;
+    console.log("[manage-smtp-config] Envoi test vers Railway:", fullUrl);
+    console.log("[manage-smtp-config] SMTP Host:", host, "Port:", port, "Username:", username);
+    
+    const response = await fetch(fullUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -289,7 +279,7 @@ async function handleTest(req: TestConfigRequest) {
           host,
           port,
           username,
-          password: passwordEncrypted,
+          password, // Mot de passe en clair pour Railway
         },
         email: {
           from: fromEmail,
@@ -301,10 +291,19 @@ async function handleTest(req: TestConfigRequest) {
       }),
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    console.log("[manage-smtp-config] Réponse Railway brute:", responseText);
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      throw new Error(`Réponse Railway invalide: ${responseText.substring(0, 200)}`);
+    }
 
     if (!response.ok) {
-      throw new Error(data.error || "Erreur lors du test");
+      console.error("[manage-smtp-config] Railway error status:", response.status);
+      throw new Error(data.error || `Erreur Railway: ${response.status}`);
     }
 
     // Mettre à jour last_tested_at

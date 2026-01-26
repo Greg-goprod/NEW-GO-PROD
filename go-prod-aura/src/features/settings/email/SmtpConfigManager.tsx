@@ -10,6 +10,7 @@ import { Button } from '@/components/aura/Button';
 import { Input } from '@/components/aura/Input';
 import { Badge } from '@/components/aura/Badge';
 import { Modal } from '@/components/aura/Modal';
+import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
 import { useToast } from '@/components/aura/ToastProvider';
 import {
   fetchSmtpConfigs,
@@ -50,6 +51,8 @@ export function SmtpConfigManager({ companyId }: SmtpConfigManagerProps) {
   const [testingConfig, setTestingConfig] = useState<SmtpConfig | null>(null);
   const [testEmail, setTestEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingConfig, setDeletingConfig] = useState<SmtpConfig | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -194,18 +197,24 @@ export function SmtpConfigManager({ companyId }: SmtpConfigManagerProps) {
     }
   };
 
-  // Supprimer
-  const handleDelete = async (config: SmtpConfig) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer "${config.name}" ?`)) {
-      return;
-    }
+  // Ouvrir le modal de confirmation de suppression
+  const handleOpenDeleteConfirm = (config: SmtpConfig) => {
+    setDeletingConfig(config);
+    setShowDeleteConfirm(true);
+  };
+
+  // Supprimer (appelé après confirmation)
+  const handleConfirmDelete = async () => {
+    if (!deletingConfig) return;
 
     try {
-      await deleteSmtpConfig(config.id);
+      await deleteSmtpConfig(deletingConfig.id);
       toastSuccess('Configuration supprimée');
       loadConfigs();
     } catch (err: any) {
       toastError(err.message || 'Erreur lors de la suppression');
+    } finally {
+      setDeletingConfig(null);
     }
   };
 
@@ -360,7 +369,7 @@ export function SmtpConfigManager({ companyId }: SmtpConfigManagerProps) {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => handleDelete(config)}
+                    onClick={() => handleOpenDeleteConfirm(config)}
                     title="Supprimer"
                   >
                     <Trash2 className="w-4 h-4 text-red-500" />
@@ -402,6 +411,14 @@ export function SmtpConfigManager({ companyId }: SmtpConfigManagerProps) {
               ))}
             </div>
           </div>
+
+          {/* Nom de la configuration */}
+          <Input
+            label="Nom de la configuration *"
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="Ex: Email principal, Support, Marketing..."
+          />
 
           <hr style={{ borderColor: 'var(--color-border)' }} />
 
@@ -534,6 +551,21 @@ export function SmtpConfigManager({ companyId }: SmtpConfigManagerProps) {
           </div>
         </div>
       </Modal>
+
+      {/* Modal de confirmation de suppression */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingConfig(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Supprimer la configuration"
+        message={`Êtes-vous sûr de vouloir supprimer la configuration "${deletingConfig?.name}" ?\n\nCette action est irréversible.`}
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        variant="danger"
+      />
     </Card>
   );
 }

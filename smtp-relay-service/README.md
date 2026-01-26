@@ -1,69 +1,79 @@
 # SMTP Relay Service - Go-Prod
 
-Service sécurisé d'envoi d'emails via SMTP pour Go-Prod.
+Microservice sécurisé pour relayer les emails SMTP. Permet aux utilisateurs de Go-Prod d'envoyer des emails via leur propre serveur SMTP.
 
-## Déploiement sur Railway
+## Déploiement sur Fly.io (Recommandé)
 
-### 1. Créer un compte Railway
-- Aller sur https://railway.app
-- Se connecter avec GitHub
+Fly.io autorise les connexions SMTP sortantes sur le port 587.
 
-### 2. Nouveau projet
-- Cliquer sur "New Project"
-- Choisir "Deploy from GitHub repo"
-- Sélectionner ce repository (ou "Empty Project" puis upload)
+### Prérequis
+- Compte Fly.io (https://fly.io)
+- Fly CLI installé (`curl -L https://fly.io/install.sh | sh`)
 
-### 3. Variables d'environnement
-Dans les settings du service, ajouter :
+### Étapes
 
-```
-API_SECRET_KEY=votre-cle-secrete-tres-longue-et-complexe
-ENCRYPTION_KEY=une-autre-cle-de-32-caracteres!
-ALLOWED_ORIGIN=https://alhoefdrjbwdzijizrxc.supabase.co
-```
+1. **Se connecter à Fly.io**
+   ```bash
+   fly auth login
+   ```
 
-### 4. Récupérer l'URL
-Une fois déployé, Railway fournit une URL du type :
-`https://smtp-relay-service-production-xxxx.up.railway.app`
+2. **Créer l'application** (depuis le dossier smtp-relay-service)
+   ```bash
+   fly launch --no-deploy --name go-prod-smtp-relay --region cdg
+   ```
 
-### 5. Configurer Supabase
-Ajouter cette URL et l'API_SECRET_KEY dans les secrets Supabase Edge Functions.
+3. **Configurer les secrets**
+   ```bash
+   fly secrets set API_SECRET_KEY="GoProd2026SmtpRelaySecureKey847"
+   fly secrets set ENCRYPTION_KEY="GoProdEncrypt32CharKeyChange!!"
+   ```
 
-## Sécurité
+4. **Déployer**
+   ```bash
+   fly deploy
+   ```
 
-- **API Key** : Chaque requête doit inclure `X-API-Key` header
-- **Rate Limiting** : Max 100 requêtes/minute par IP
-- **CORS** : Seules les origines autorisées peuvent appeler
-- **Helmet** : Headers de sécurité HTTP
-- **TLS 1.2+** : Connexions SMTP chiffrées
-- **Validation** : Toutes les entrées sont validées
+5. **Vérifier**
+   ```bash
+   curl https://go-prod-smtp-relay.fly.dev/health
+   ```
+
+### URL du service
+Après déploiement : `https://go-prod-smtp-relay.fly.dev`
+
+## Déploiement sur Railway (Ports SMTP bloqués sauf Pro)
+
+⚠️ Railway bloque les ports SMTP (25, 465, 587) sur les plans gratuits et Hobby.
+
+## Variables d'environnement
+
+| Variable | Description | Exemple |
+|----------|-------------|---------|
+| `API_SECRET_KEY` | Clé API pour authentification | `GoProd2026SmtpRelaySecureKey847` |
+| `ENCRYPTION_KEY` | Clé pour déchiffrer les mots de passe | `GoProdEncrypt32CharKeyChange!!` |
+| `PORT` | Port d'écoute (défaut: 8080) | `8080` |
 
 ## Endpoints
 
-### POST /send
-Envoie un email via SMTP.
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `GET` | `/health` | Vérification de l'état du service |
+| `POST` | `/send` | Envoyer un email via SMTP |
+| `POST` | `/test-connection` | Tester la connexion SMTP |
 
-```json
-{
-  "smtp": {
-    "host": "mail.example.com",
-    "port": 587,
-    "username": "user@example.com",
-    "password": "encrypted-or-plain-password"
-  },
-  "email": {
-    "from": "sender@example.com",
-    "fromName": "Sender Name",
-    "to": "recipient@example.com",
-    "subject": "Subject",
-    "html": "<p>HTML content</p>",
-    "replyTo": "reply@example.com"
-  }
-}
+## Sécurité
+
+- Authentification par clé API (header `X-API-Key`)
+- Rate limiting (100 req/min)
+- Headers de sécurité (Helmet)
+- CORS restrictif
+- Chiffrement des mots de passe SMTP
+
+## Mise à jour Supabase
+
+Après déploiement sur Fly.io, mettez à jour les secrets Supabase :
+
+```bash
+npx supabase secrets set SMTP_RELAY_URL="https://go-prod-smtp-relay.fly.dev"
+npx supabase secrets set SMTP_RELAY_API_KEY="GoProd2026SmtpRelaySecureKey847"
 ```
-
-### POST /test-connection
-Teste la connexion SMTP sans envoyer d'email.
-
-### GET /health
-Vérifie l'état du service.

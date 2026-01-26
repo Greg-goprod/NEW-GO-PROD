@@ -78,6 +78,18 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailRespo
       };
     }
 
+    // Log des paramètres envoyés (sans le contenu des pièces jointes pour éviter les logs trop longs)
+    const logParams = {
+      ...params,
+      companyId,
+      attachments: params.attachments?.map(a => ({ 
+        filename: a.filename, 
+        contentType: a.contentType,
+        contentLength: a.content?.length || 0 
+      })),
+    };
+    console.log("[emailService] Envoi email avec params:", logParams);
+
     const { data, error } = await supabase.functions.invoke("send-email", {
       body: {
         ...params,
@@ -85,27 +97,34 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailRespo
       },
     });
 
+    console.log("[emailService] Réponse Edge Function:", { data, error });
+
     if (error) {
       console.error("[emailService] Erreur Edge Function:", error);
+      // Essayer de récupérer plus d'infos sur l'erreur
+      const errorDetails = (error as any)?.context?.body || (error as any)?.message || error;
+      console.error("[emailService] Détails erreur:", errorDetails);
       return {
         success: false,
-        error: error.message || "Erreur lors de l'appel à la fonction d'envoi",
+        error: typeof errorDetails === 'string' ? errorDetails : (error.message || "Erreur lors de l'appel à la fonction d'envoi"),
       };
     }
 
     if (!data?.success) {
+      console.error("[emailService] Échec retourné par Edge Function:", data);
       return {
         success: false,
         error: data?.error || "Erreur inconnue lors de l'envoi",
       };
     }
 
+    console.log("[emailService] Email envoyé avec succès, messageId:", data.messageId);
     return {
       success: true,
       messageId: data.messageId,
     };
   } catch (err: any) {
-    console.error("[emailService] Erreur:", err);
+    console.error("[emailService] Erreur inattendue:", err);
     return {
       success: false,
       error: err.message || "Erreur inattendue",
@@ -194,41 +213,60 @@ export async function getDefaultSender(companyId: string): Promise<Sender> {
 // =============================================================================
 
 /**
- * Envoie un email d'offre artiste
+ * Envoie un email d'offre artiste avec PDF en pièce jointe
  */
 export async function sendOfferEmail(params: {
   toEmail: string;
   toName?: string;
   ccEmails?: string[];
-  sender: Sender;
+  bccEmails?: string[];
   subject: string;
-  htmlContent: string;
-  pdfUrl: string;
-  pdfFileName: string;
+  htmlContent?: string;
+  pdfBase64?: string; // PDF encodé en base64
+  pdfFileName?: string;
   artistName?: string;
   eventName?: string;
   validityDate?: string;
   customMessage?: string;
+  companyId?: string; // ID de l'entreprise pour la config SMTP
+  additionalAttachments?: Array<{ filename: string; content: string; contentType: string }>; // Annexes additionnelles
 }): Promise<SendEmailResponse> {
   // Construire le HTML de l'email
-  const html = buildOfferEmailHtml({
+  const html = params.htmlContent || buildOfferEmailHtml({
     recipientName: params.toName,
     artistName: params.artistName,
     eventName: params.eventName,
     validityDate: params.validityDate,
     customMessage: params.customMessage,
-    pdfUrl: params.pdfUrl,
-    senderName: params.sender.name,
+    pdfUrl: "", // Pas de lien, le PDF est en pièce jointe
+    senderName: params.eventName || "L'équipe",
   });
+
+  // Préparer les pièces jointes
+  const attachments: Array<{ filename: string; content: string; contentType?: string }> = [];
+  
+  // Ajouter le PDF de l'offre
+  if (params.pdfBase64 && params.pdfFileName) {
+    attachments.push({
+      filename: params.pdfFileName,
+      content: params.pdfBase64,
+      contentType: "application/pdf",
+    });
+  }
+
+  // Ajouter les annexes additionnelles
+  if (params.additionalAttachments && params.additionalAttachments.length > 0) {
+    attachments.push(...params.additionalAttachments);
+  }
 
   return sendEmail({
     to: params.toEmail,
     cc: params.ccEmails,
-    fromName: params.sender.name,
-    from: params.sender.email,
-    replyTo: params.sender.replyTo || params.sender.email,
+    bcc: params.bccEmails,
     subject: params.subject,
-    html: params.htmlContent || html,
+    html,
+    attachments: attachments.length > 0 ? attachments : undefined,
+    companyId: params.companyId,
     metadata: {
       type: "offer",
       artistName: params.artistName,
@@ -314,9 +352,22 @@ function buildOfferEmailHtml(params: {
   eventName?: string;
   validityDate?: string;
   customMessage?: string;
-  pdfUrl: string;
+  pdfUrl?: string;
   senderName: string;
 }): string {
+  // Si un lien PDF est fourni, afficher le bouton de téléchargement
+  const pdfButton = params.pdfUrl ? `
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${params.pdfUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 15px 30px; border-radius: 5px; font-weight: bold;">
+        📄 Télécharger l'offre PDF
+      </a>
+    </div>
+  ` : `
+    <div style="background: #f0f7ff; padding: 15px; border-radius: 5px; border-left: 4px solid #667eea; margin: 20px 0;">
+      📎 <strong>L'offre PDF est jointe à cet email.</strong>
+    </div>
+  `;
+
   return `
 <!DOCTYPE html>
 <html>
@@ -339,11 +390,7 @@ function buildOfferEmailHtml(params: {
     
     ${params.validityDate ? `<p style="background: #f5f5f5; padding: 15px; border-radius: 5px; border-left: 4px solid #667eea;"><strong>Date de validité :</strong> ${params.validityDate}</p>` : ''}
     
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="${params.pdfUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 15px 30px; border-radius: 5px; font-weight: bold;">
-        📄 Télécharger l'offre PDF
-      </a>
-    </div>
+    ${pdfButton}
     
     <p>N'hésitez pas à nous contacter pour toute question.</p>
     

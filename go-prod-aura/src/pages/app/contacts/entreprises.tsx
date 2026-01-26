@@ -600,36 +600,40 @@ export default function EntreprisesPage() {
                       />
                     </div>
 
-                    {/* Ligne 4 : Pays, TVA */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col">
-                        <label className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                          Pays
-                        </label>
-                        <select
-                          value={formData.country || ''}
-                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                          className="h-[42px] px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                        >
-                          <option value="">Sélectionner un pays</option>
-                          {COUNTRIES.map((country) => (
-                            <option 
-                              key={country.value} 
-                              value={country.value}
-                              disabled={country.disabled}
-                            >
-                              {country.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <Input
-                        label="Numéro TVA"
-                        value={formData.tax_id || ''}
-                        onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
-                        placeholder="CHE-123.456.789"
-                      />
+                    {/* Ligne 4 : Pays */}
+                    <div className="flex flex-col">
+                      <label className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                        Pays
+                      </label>
+                      <select
+                        value={formData.country || ''}
+                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                        className="h-[42px] px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      >
+                        <option value="">Sélectionner un pays</option>
+                        {COUNTRIES.map((country) => (
+                          <option 
+                            key={country.value} 
+                            value={country.value}
+                            disabled={country.disabled}
+                          >
+                            {country.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+
+                    {/* Champs fiscaux spécifiques au pays (UID, SIRET, etc.) */}
+                    {formData.country && (
+                      <CountrySpecificFields
+                        country={COUNTRY_TO_ISO[formData.country] || null}
+                        data={formData.country_specific_data || {}}
+                        onChange={(data) => setFormData({ ...formData, country_specific_data: data })}
+                        showValidation={false}
+                        filter="fiscal"
+                        hideTitle
+                      />
+                    )}
 
                     {/* Tags */}
                     <div className="flex items-center gap-6 pt-2">
@@ -666,6 +670,26 @@ export default function EntreprisesPage() {
                         placeholder="Informations d'accès, parking, code porte..."
                       />
                     </div>
+                  </div>
+                )
+              },
+              {
+                id: 'contacts',
+                title: (
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-violet-500" />
+                    <span>Contacts associés</span>
+                  </div>
+                ),
+                content: (
+                  <div className="pt-4">
+                    {companyId && (
+                      <ContactSelector
+                        companyId={companyId}
+                        selectedContactIds={selectedContactIds}
+                        onChange={setSelectedContactIds}
+                      />
+                    )}
                   </div>
                 )
               },
@@ -770,34 +794,17 @@ export default function EntreprisesPage() {
                       />
                     </div>
 
-                    {/* Champs spécifiques au pays (dynamiques) */}
-                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">
-                      <CountrySpecificFields
-                        country={formData.country ? COUNTRY_TO_ISO[formData.country] : null}
-                        data={formData.country_specific_data || {}}
-                        onChange={(data) => setFormData({ ...formData, country_specific_data: data })}
-                        showValidation={false}
-                      />
-                    </div>
-                  </div>
-                )
-              },
-              {
-                id: 'contacts',
-                title: (
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-violet-500" />
-                    <span>Contacts associés</span>
-                  </div>
-                ),
-                content: (
-                  <div className="pt-4">
-                    {companyId && (
-                      <ContactSelector
-                        companyId={companyId}
-                        selectedContactIds={selectedContactIds}
-                        onChange={setSelectedContactIds}
-                      />
+                    {/* Champs complémentaires spécifiques au pays (Canton, forme juridique, etc.) */}
+                    {formData.country && (
+                      <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">
+                        <CountrySpecificFields
+                          country={COUNTRY_TO_ISO[formData.country] || null}
+                          data={formData.country_specific_data || {}}
+                          onChange={(data) => setFormData({ ...formData, country_specific_data: data })}
+                          showValidation={false}
+                          filter="other"
+                        />
+                      </div>
                     )}
                   </div>
                 )

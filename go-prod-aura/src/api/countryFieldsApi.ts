@@ -14,11 +14,15 @@ const fieldsCache: { [countryCode: string]: CountryFieldConfig[] } = {};
  * Récupère les champs configurés pour un pays donné
  */
 export async function fetchCountryFields(countryCode: string): Promise<CountryFieldConfig[]> {
+  console.log('[countryFieldsApi] fetchCountryFields called with:', countryCode);
+  
   // Vérifier le cache
   if (fieldsCache[countryCode]) {
+    console.log('[countryFieldsApi] Returning cached fields for:', countryCode, fieldsCache[countryCode]);
     return fieldsCache[countryCode];
   }
 
+  console.log('[countryFieldsApi] Fetching from Supabase for:', countryCode);
   const { data, error } = await supabase
     .from('country_business_fields')
     .select('*')
@@ -26,9 +30,11 @@ export async function fetchCountryFields(countryCode: string): Promise<CountryFi
     .order('sort_order', { ascending: true });
 
   if (error) {
-    console.error('Erreur lors du chargement des champs pays:', error);
+    console.error('[countryFieldsApi] Erreur lors du chargement des champs pays:', error);
     return [];
   }
+
+  console.log('[countryFieldsApi] Data received from Supabase:', data);
 
   // Mettre en cache
   fieldsCache[countryCode] = data || [];

@@ -4,14 +4,34 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ENCRYPTION_KEY = Deno.env.get("SMTP_ENCRYPTION_KEY") || "GoProdEncrypt32CharKeyChange!!";
 
-// Configuration du relais SMTP (Railway)
-const SMTP_RELAY_URL = Deno.env.get("SMTP_RELAY_URL"); // Ex: https://smtp-relay-xxx.up.railway.app
+// Configuration du relais SMTP (Fly.io)
+const SMTP_RELAY_URL = Deno.env.get("SMTP_RELAY_URL"); // Ex: https://smtp-relay.fly.dev
 const SMTP_RELAY_API_KEY = Deno.env.get("SMTP_RELAY_API_KEY");
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
-console.log("[send-email] v4 SMTP Relay initialized");
+console.log("[send-email] v5 SMTP Relay with decryption");
+
+// =============================================================================
+// Déchiffrement XOR (même algo que manage-smtp-config)
+// =============================================================================
+function decryptPassword(encrypted: string): string {
+  try {
+    const data = atob(encrypted);
+    let result = "";
+    for (let i = 0; i < data.length; i++) {
+      result += String.fromCharCode(
+        data.charCodeAt(i) ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length)
+      );
+    }
+    return result;
+  } catch {
+    // Si le déchiffrement échoue, retourner tel quel (peut-être pas chiffré)
+    return encrypted;
+  }
+}
 
 // =============================================================================
 // CORS Headers
@@ -25,6 +45,12 @@ const corsHeaders = {
 // =============================================================================
 // Types
 // =============================================================================
+interface Attachment {
+  filename: string;
+  content: string; // Base64 encoded
+  contentType?: string;
+}
+
 interface EmailRequest {
   to: string | string[];
   cc?: string | string[];
@@ -36,6 +62,7 @@ interface EmailRequest {
   from?: string;
   replyTo?: string;
   companyId: string;
+  attachments?: Attachment[];
 }
 
 interface SmtpConfig {
@@ -87,12 +114,15 @@ async function sendViaSmtpRelay(
     };
   }
 
+  // Déchiffrer le mot de passe avant de l'envoyer au relay
+  const decryptedPassword = decryptPassword(config.password_encrypted);
+  
   const payload = {
     smtp: {
       host: config.host,
       port: config.port,
       username: config.username,
-      password: config.password_encrypted, // Le relais déchiffre
+      password: decryptedPassword,
     },
     email: {
       from: request.from || config.from_email,
@@ -104,8 +134,18 @@ async function sendViaSmtpRelay(
       html: request.html,
       text: request.text,
       replyTo: request.replyTo || config.reply_to,
+      attachments: request.attachments, // Pièces jointes (base64)
     },
   };
+
+  if (request.attachments?.length) {
+    console.log(`[send-email] ${request.attachments.length} pièce(s) jointe(s)`);
+  }
+  
+  // Debug CC/BCC
+  console.log(`[send-email] To: ${request.to}`);
+  console.log(`[send-email] CC: ${JSON.stringify(request.cc)}`);
+  console.log(`[send-email] BCC: ${JSON.stringify(request.bcc)}`);
 
   try {
     const response = await fetch(`${SMTP_RELAY_URL}/send`, {

@@ -38,6 +38,7 @@ import { fetchOfferTemplate, upsertOfferTemplate, updateOfferTemplateMapping, de
 import { OFFER_TEMPLATE_FIELDS, type OfferTemplateFieldKey } from '@/features/booking/offerTemplateConstants';
 import { PdfMappingModal } from '@/features/booking/components/PdfMappingModal';
 import { fetchOfferSettings, upsertOfferSettings, type OfferSettings } from '@/features/booking/offerSettingsApi';
+import { EmailAttachmentsManager } from '@/features/booking/components/EmailAttachmentsManager';
 
 // Composant pour un élément draggable Clause
 function SortableClause({ 
@@ -1165,6 +1166,9 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
               />
             </CardBody>
           </Card>
+
+          {/* Section Annexes Emails */}
+          <EmailAttachmentsManager companyId={companyId} />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Colonne EXTRAS */}

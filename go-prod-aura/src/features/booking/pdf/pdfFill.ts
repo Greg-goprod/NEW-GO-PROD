@@ -79,10 +79,26 @@ export async function generateOfferPdfAndUpload(
     (await tryFillTemplatePdf(input, templateConfig)) ??
     (await generateFallbackPdf(input));
 
-  const cleanEvent = normalizeName(input.event_name || "");
-  const cleanArtist = normalizeName(input.artist_name || "");
-  const base = `OFFRE_${cleanEvent || "EVENT"}_${cleanArtist || "ARTIST"}`;
-  const fileName = `${base}.pdf`;
+  // Construire le nom du fichier au format: EVENEMENT - OFFRE - ARTISTE - JOUR DD.MM.YYYY.pdf
+  const cleanEvent = normalizeName(input.event_name || "EVENT").toUpperCase();
+  const cleanArtist = normalizeName(input.artist_name || "ARTISTE").toUpperCase();
+  
+  // Formater la date avec le jour en toutes lettres (format européen)
+  let dateStr = "";
+  if (input.performance_date) {
+    const date = new Date(`${input.performance_date}T00:00:00`);
+    const weekday = date.toLocaleDateString("fr-FR", { weekday: "long" }).toUpperCase();
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    dateStr = `${weekday} ${day}.${month}.${year}`;
+  }
+  
+  // Assembler le nom de fichier (remplacer les espaces par des tirets pour éviter les problèmes)
+  const parts = [cleanEvent, "OFFRE", cleanArtist];
+  if (dateStr) parts.push(dateStr);
+  const fileName = `${parts.join(" - ")}.pdf`;
+  
   // Le chemin doit commencer par company_id pour respecter la politique RLS du bucket "offers"
   const storagePath = `${input.company_id}/${input.event_id}/${input.offer_id}/${fileName}`;
 

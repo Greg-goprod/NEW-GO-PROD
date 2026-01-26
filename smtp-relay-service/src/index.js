@@ -61,8 +61,8 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// JSON parser avec limite de taille
-app.use(express.json({ limit: '1mb' }));
+// JSON parser avec limite de taille (augmentée pour les pièces jointes)
+app.use(express.json({ limit: '25mb' }));
 
 // =============================================================================
 // Middleware d'authentification
@@ -70,6 +70,12 @@ app.use(express.json({ limit: '1mb' }));
 
 function authenticateRequest(req, res, next) {
   const apiKey = req.headers['x-api-key'];
+  
+  // Debug logging
+  console.log('[AUTH] Checking API key...');
+  console.log('[AUTH] API_SECRET_KEY defined:', !!API_SECRET_KEY);
+  console.log('[AUTH] API_SECRET_KEY length:', API_SECRET_KEY ? API_SECRET_KEY.length : 0);
+  console.log('[AUTH] Received key length:', apiKey ? apiKey.length : 0);
   
   if (!API_SECRET_KEY) {
     console.error('[AUTH] API_SECRET_KEY non configurée !');
@@ -81,18 +87,18 @@ function authenticateRequest(req, res, next) {
     return res.status(401).json({ success: false, error: 'API key manquante' });
   }
   
-  // Comparaison sécurisée (timing-safe)
-  const isValid = crypto.timingSafeEqual(
-    Buffer.from(apiKey),
-    Buffer.from(API_SECRET_KEY)
-  );
-  
-  if (!isValid) {
-    console.warn('[AUTH] API key invalide');
-    return res.status(401).json({ success: false, error: 'API key invalide' });
+  // Comparaison simple pour debug
+  if (apiKey === API_SECRET_KEY) {
+    console.log('[AUTH] API key valide (match exact)');
+    return next();
   }
   
-  next();
+  // Log des premiers caractères pour debug
+  console.warn('[AUTH] API key mismatch');
+  console.warn('[AUTH] Expected first 10:', API_SECRET_KEY.substring(0, 10));
+  console.warn('[AUTH] Received first 10:', apiKey.substring(0, 10));
+  
+  return res.status(401).json({ success: false, error: 'API key invalide' });
 }
 
 // =============================================================================
@@ -164,6 +170,24 @@ function validateEmailRequest(body) {
     errors.push('Contenu HTML trop volumineux (max 500KB)');
   }
   
+  // Validation des pièces jointes
+  if (body.email?.attachments) {
+    if (!Array.isArray(body.email.attachments)) {
+      errors.push('attachments doit être un tableau');
+    } else {
+      let totalSize = 0;
+      for (const att of body.email.attachments) {
+        if (!att.filename) errors.push('Chaque pièce jointe doit avoir un filename');
+        if (!att.content) errors.push('Chaque pièce jointe doit avoir un content (base64)');
+        if (att.content) totalSize += att.content.length;
+      }
+      // Limite ~20MB en base64 (base64 augmente la taille de ~33%)
+      if (totalSize > 25000000) {
+        errors.push('Pièces jointes trop volumineuses (max 20MB total)');
+      }
+    }
+  }
+  
   return errors;
 }
 
@@ -173,7 +197,7 @@ function validateEmailRequest(body) {
 
 app.post('/send', authenticateRequest, async (req, res) => {
   const startTime = Date.now();
-  const requestId = crypto.randomUUID().slice(0, 8);
+  const requestId = crypto.randomBytes(4).toString('hex');
   
   console.log(`[${requestId}] Nouvelle requête d'envoi`);
   
@@ -232,6 +256,16 @@ app.post('/send', authenticateRequest, async (req, res) => {
       mailOptions.bcc = Array.isArray(email.bcc) ? email.bcc.join(', ') : email.bcc;
     }
     
+    // Ajouter les pièces jointes si présentes
+    if (email.attachments && Array.isArray(email.attachments)) {
+      mailOptions.attachments = email.attachments.map(att => ({
+        filename: att.filename,
+        content: Buffer.from(att.content, 'base64'),
+        contentType: att.contentType || 'application/octet-stream',
+      }));
+      console.log(`[${requestId}] ${email.attachments.length} pièce(s) jointe(s)`);
+    }
+    
     // Envoyer l'email
     console.log(`[${requestId}] Connexion à ${smtp.host}:${smtp.port}...`);
     const info = await transporter.sendMail(mailOptions);
@@ -282,7 +316,7 @@ app.post('/send', authenticateRequest, async (req, res) => {
 // =============================================================================
 
 app.post('/test-connection', authenticateRequest, async (req, res) => {
-  const requestId = crypto.randomUUID().slice(0, 8);
+  const requestId = crypto.randomBytes(4).toString('hex');
   console.log(`[${requestId}] Test de connexion SMTP`);
   
   try {

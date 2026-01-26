@@ -576,7 +576,8 @@ export default function AdminBookingPage() {
 
   // Nouveaux handlers pour les modaux
   async function handleSendOfferModal(offer: Offer) {
-    setSelectedOffer(offer);
+    // Ajouter company_id à l'offre pour le modal d'envoi
+    setSelectedOffer({ ...offer, company_id: companyId } as Offer);
     setShowSendModal(true);
   }
 
