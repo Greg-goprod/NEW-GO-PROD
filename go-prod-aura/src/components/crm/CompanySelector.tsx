@@ -64,14 +64,14 @@ export function CompanySelector({ companyId, selectedCompanyIds, onChange }: Com
   const selectedCompanies = companies.filter(c => selectedCompanyIds.includes(c.id));
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+    <div className="flex flex-col">
+      <label className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
         Entreprises associées <span className="text-gray-400">(optionnel)</span>
       </label>
 
       {/* Tags des entreprises sélectionnées */}
       {selectedCompanies.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2 max-h-24 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="flex flex-wrap gap-2 mb-2 max-h-20 overflow-y-auto p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
           {selectedCompanies.map(company => (
             <span
               key={company.id}
@@ -97,7 +97,7 @@ export function CompanySelector({ companyId, selectedCompanyIds, onChange }: Com
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           disabled={loading}
-          className="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 transition-colors disabled:opacity-50"
+          className="w-full h-[42px] flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 transition-colors disabled:opacity-50"
         >
           <span className="text-sm text-gray-900 dark:text-gray-100">
             {loading ? 'Chargement...' : `Sélectionner des entreprises (${selectedCompanyIds.length})`}
@@ -136,10 +136,6 @@ export function CompanySelector({ companyId, selectedCompanyIds, onChange }: Com
           </div>
         )}
       </div>
-
-      <p className="text-xs text-gray-500 dark:text-gray-400">
-        Vous pouvez associer ce contact à plusieurs entreprises
-      </p>
     </div>
   );
 }

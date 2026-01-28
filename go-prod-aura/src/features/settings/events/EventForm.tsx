@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { Save, Plus, Trash2, MapPin, Info } from 'lucide-react';
+import { Save, Plus, Trash2, MapPin, Info, AlertTriangle } from 'lucide-react';
 import Modal, { ModalFooter, ModalButton } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -58,6 +58,13 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
   const [activeSection, setActiveSection] = useState<'info' | 'days' | 'stages'>('info');
   const [stageTypes, setStageTypes] = useState<StageType[]>([]);
   const [stageSpecificities, setStageSpecificities] = useState<StageSpecificity[]>([]);
+
+  // État pour le warning de suppression de jours
+  const [deleteDaysWarning, setDeleteDaysWarning] = useState<{
+    show: boolean;
+    daysToDelete: string[];
+    pendingDates: { start: string; end: string };
+  }>({ show: false, daysToDelete: [], pendingDates: { start: '', end: '' } });
 
   const {
     control,
@@ -131,39 +138,132 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
   // Surveiller les changements de dates pour générer automatiquement les jours
   const watchedStartDate = watch('start_date');
   const watchedEndDate = watch('end_date');
+  const watchedDays = watch('days');
 
-  useEffect(() => {
-    // Seulement en mode création (pas en édition)
-    if (!editingEventId && watchedStartDate && watchedEndDate) {
-      // Parser les dates en local avec helper timezone
-      const start = parseDateLocal(watchedStartDate);
-      const end = parseDateLocal(watchedEndDate);
+  // Ref pour éviter les boucles infinies et tracker les dates précédentes
+  const prevDatesRef = useRef<{ start: string; end: string } | null>(null);
+
+  // Fonction pour appliquer les changements de jours
+  const applyDaysChange = (newStartDate: string, newEndDate: string, skipWarning = false) => {
+    // Parser les dates en local avec helper timezone
+    const start = parseDateLocal(newStartDate);
+    const end = parseDateLocal(newEndDate);
+    
+    // Vérifier que end >= start
+    if (end < start) return;
+
+    // Générer la liste des dates attendues
+    const expectedDates: string[] = [];
+    let currentDate = new Date(start);
+    while (currentDate <= end) {
+      expectedDates.push(formatDateLocal(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Lire les jours actuels
+    const currentDaysSnapshot = watchedDays;
+
+    // Créer un map des jours existants par date pour préserver les heures
+    const existingDaysMap = new Map<string, EventDayInput>();
+    currentDaysSnapshot.forEach((day) => {
+      if (day.date) {
+        existingDaysMap.set(day.date, day);
+      }
+    });
+
+    // Vérifier si une synchronisation est nécessaire
+    const currentDates = currentDaysSnapshot.map((d) => d.date).filter(Boolean);
+    const datesMatch = 
+      expectedDates.length === currentDates.length &&
+      expectedDates.every((date, i) => date === currentDates[i]);
+
+    if (datesMatch) {
+      prevDatesRef.current = { start: newStartDate, end: newEndDate };
+      return;
+    }
+
+    // Identifier les jours qui vont être supprimés
+    const expectedDatesSet = new Set(expectedDates);
+    const daysToDelete = currentDates.filter((date) => !expectedDatesSet.has(date));
+
+    // Si des jours vont être supprimés ET qu'on est en mode édition ET qu'on n'a pas encore confirmé
+    if (daysToDelete.length > 0 && editingEventId && !skipWarning) {
+      setDeleteDaysWarning({
+        show: true,
+        daysToDelete,
+        pendingDates: { start: newStartDate, end: newEndDate },
+      });
+      return; // Attendre la confirmation
+    }
+
+    console.log('📅 Synchronisation des jours:', {
+      expectedDates,
+      currentDates,
+      daysToDelete,
+    });
+
+    // Construire la nouvelle liste de jours
+    const newDays: EventDayInput[] = [];
+    for (let index = 0; index < expectedDates.length; index++) {
+      const dateStr = expectedDates[index];
+      const existingDay = existingDaysMap.get(dateStr);
       
-      // Vérifier que end >= start
-      if (end >= start) {
-        const days: EventDayInput[] = [];
-        let currentDate = new Date(start);
-        
-        while (currentDate <= end) {
-          // Formater la date avec helper timezone
-          const dateStr = formatDateLocal(currentDate);
-          
-          days.push({
-            date: dateStr,
-            open_time: '17:00', // Ouverture par défaut 17h
-            close_time: '03:00', // Fermeture par défaut 03h (le lendemain)
-            is_closing_day: currentDate.getTime() === end.getTime(),
-            notes: '',
-          });
-          
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-        
-        // Remplacer les jours dans le formulaire
-        setValue('days', days);
+      if (existingDay) {
+        newDays.push({
+          ...existingDay,
+          is_closing_day: index === expectedDates.length - 1,
+        });
+      } else {
+        const previousDay = index > 0 ? newDays[index - 1] : null;
+        newDays.push({
+          date: dateStr,
+          open_time: previousDay?.open_time || '17:00',
+          close_time: previousDay?.close_time || '03:00',
+          is_closing_day: index === expectedDates.length - 1,
+          notes: '',
+        });
       }
     }
-  }, [watchedStartDate, watchedEndDate, editingEventId, setValue]);
+
+    console.log('📅 Nouveaux jours générés:', newDays.map(d => d.date));
+
+    // Mettre à jour la ref AVANT setValue pour éviter re-déclenchement
+    prevDatesRef.current = { start: newStartDate, end: newEndDate };
+
+    // Remplacer les jours dans le formulaire
+    setValue('days', newDays);
+  };
+
+  // Handler pour confirmer la suppression des jours
+  const handleConfirmDeleteDays = () => {
+    const { pendingDates } = deleteDaysWarning;
+    setDeleteDaysWarning({ show: false, daysToDelete: [], pendingDates: { start: '', end: '' } });
+    applyDaysChange(pendingDates.start, pendingDates.end, true);
+  };
+
+  // Handler pour annuler la suppression des jours
+  const handleCancelDeleteDays = () => {
+    // Restaurer les dates précédentes
+    if (prevDatesRef.current) {
+      setValue('start_date', prevDatesRef.current.start);
+      setValue('end_date', prevDatesRef.current.end);
+    }
+    setDeleteDaysWarning({ show: false, daysToDelete: [], pendingDates: { start: '', end: '' } });
+  };
+
+  useEffect(() => {
+    if (!watchedStartDate || !watchedEndDate) return;
+
+    // Éviter de re-déclencher si les dates n'ont pas changé
+    if (
+      prevDatesRef.current?.start === watchedStartDate &&
+      prevDatesRef.current?.end === watchedEndDate
+    ) {
+      return;
+    }
+
+    applyDaysChange(watchedStartDate, watchedEndDate);
+  }, [watchedStartDate, watchedEndDate, watchedDays]);
 
   // Charger l'évènement en mode édition
   useEffect(() => {
@@ -171,11 +271,16 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
       setLoading(true);
       loadFullEvent(editingEventId)
         .then((full) => {
+          // Mettre à jour la ref des dates AVANT le reset pour éviter le déclenchement du useEffect de sync
+          const startDate = full.event.start_date || '';
+          const endDate = full.event.end_date || '';
+          prevDatesRef.current = { start: startDate, end: endDate };
+
           reset({
             name: full.event.name,
             color_hex: full.event.color_hex || '#3b82f6',
-            start_date: full.event.start_date || '',
-            end_date: full.event.end_date || '',
+            start_date: startDate,
+            end_date: endDate,
             notes: full.event.notes || '',
             days: full.days.length > 0
               ? full.days.map((d) => ({
@@ -217,7 +322,8 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
         })
         .finally(() => setLoading(false));
     } else if (open && !editingEventId) {
-      // Mode création : réinitialiser
+      // Mode création : réinitialiser la ref et le formulaire
+      prevDatesRef.current = null;
       reset({
         name: '',
         color_hex: '#3b82f6',
@@ -439,43 +545,42 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
                       : '';
                     
                     return (
-                      <div key={field.id} className="grid grid-cols-3 gap-3">
+                      <div key={field.id} className="grid grid-cols-[1fr_auto] gap-3 items-center">
                         {/* Colonne 1 : Badge jour + date */}
-                        <div className="flex items-center">
-                          <div className="w-full h-[36px] px-3 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center">
-                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                              {formattedDate}
-                            </span>
-                          </div>
+                        <div className="h-[36px] px-3 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center">
+                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                            {formattedDate}
+                          </span>
                         </div>
 
-                        {/* Colonne 2 : Heure de début */}
-                        <Controller
-                          name={`days.${index}.open_time`}
-                          control={control}
-                          render={({ field: timeField }) => (
-                            <TimePickerPopup
-                              value={timeField.value}
-                              onChange={(time) => timeField.onChange(time)}
-                              disabled={saving}
-                              placeholder="Début"
-                            />
-                          )}
-                        />
-
-                        {/* Colonne 3 : Heure de fin */}
-                        <Controller
-                          name={`days.${index}.close_time`}
-                          control={control}
-                          render={({ field: timeField }) => (
-                            <TimePickerPopup
-                              value={timeField.value}
-                              onChange={(time) => timeField.onChange(time)}
-                              disabled={saving}
-                              placeholder="Fin"
-                            />
-                          )}
-                        />
+                        {/* Colonne 2 : Heures groupées */}
+                        <div className="flex items-center gap-2">
+                          <Controller
+                            name={`days.${index}.open_time`}
+                            control={control}
+                            render={({ field: timeField }) => (
+                              <TimePickerPopup
+                                value={timeField.value}
+                                onChange={(time) => timeField.onChange(time)}
+                                disabled={saving}
+                                placeholder="Début"
+                              />
+                            )}
+                          />
+                          <span className="text-gray-400">-</span>
+                          <Controller
+                            name={`days.${index}.close_time`}
+                            control={control}
+                            render={({ field: timeField }) => (
+                              <TimePickerPopup
+                                value={timeField.value}
+                                onChange={(time) => timeField.onChange(time)}
+                                disabled={saving}
+                                placeholder="Fin"
+                              />
+                            )}
+                          />
+                        </div>
                       </div>
                     );
                   })}
@@ -593,6 +698,73 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
           )}
         </form>
       )}
+
+      {/* Modal de warning pour suppression de jours */}
+      <Modal
+        isOpen={deleteDaysWarning.show}
+        onClose={handleCancelDeleteDays}
+        title="Attention - Suppression de jours"
+        size="sm"
+        draggable={true}
+        footer={
+          <ModalFooter>
+            <ModalButton variant="secondary" onClick={handleCancelDeleteDays}>
+              Annuler
+            </ModalButton>
+            <ModalButton variant="danger" onClick={handleConfirmDeleteDays}>
+              Confirmer la suppression
+            </ModalButton>
+          </ModalFooter>
+        }
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0">
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center"
+              style={{
+                background: 'color-mix(in oklab, var(--color-error) 15%, transparent)'
+              }}
+            >
+              <AlertTriangle className="w-5 h-5" style={{ color: 'var(--color-error)' }} />
+            </div>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm mb-3" style={{ color: 'var(--color-text-primary)' }}>
+              La modification des dates va supprimer {deleteDaysWarning.daysToDelete.length} jour{deleteDaysWarning.daysToDelete.length > 1 ? 's' : ''} de l'événement :
+            </p>
+            <div 
+              className="my-3 p-3 rounded-lg space-y-1"
+              style={{
+                background: 'var(--color-bg-surface)',
+                border: '1px solid var(--color-border)'
+              }}
+            >
+              {deleteDaysWarning.daysToDelete.map((date) => (
+                <p key={date} className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                  {formatDateFr(date, { uppercase: true })}
+                </p>
+              ))}
+            </div>
+            <div 
+              className="p-3 rounded-lg mt-3"
+              style={{
+                background: 'color-mix(in oklab, var(--color-error) 10%, transparent)',
+                border: '1px solid color-mix(in oklab, var(--color-error) 30%, transparent)'
+              }}
+            >
+              <p className="text-sm font-bold" style={{ color: 'var(--color-error)' }}>
+                ATTENTION : Toutes les données liées à ces jours seront également supprimées (performances, programmation, etc.)
+              </p>
+            </div>
+            <p 
+              className="text-sm font-bold uppercase tracking-wider mt-4"
+              style={{ color: 'var(--color-error)' }}
+            >
+              Cette action est irréversible
+            </p>
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
 }

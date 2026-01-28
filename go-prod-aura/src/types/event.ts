@@ -20,7 +20,7 @@ export interface EventRow {
   status: string;
   created_at: string;
   updated_at: string;
-  logo_path: string | null;
+  logo_url: string | null;
   contact_artist_id?: string | null;
   contact_tech_id?: string | null;
   contact_press_id?: string | null;

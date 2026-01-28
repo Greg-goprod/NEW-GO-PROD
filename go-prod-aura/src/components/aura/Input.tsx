@@ -8,9 +8,9 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export function Input({ label, helperText, error, className, ...rest }: InputProps) {
   return (
-    <div className="flex flex-col gap-2 mb-2">
+    <div className="flex flex-col">
       {label && (
-        <label className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+        <label className="text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
           {label}
         </label>
       )}

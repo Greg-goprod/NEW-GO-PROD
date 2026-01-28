@@ -6,6 +6,58 @@ import { normalizeName, formatIsoDate } from "@/services/date";
 import { fetchOfferSettings, type OfferSettings } from "../offerSettingsApi";
 
 // =============================================================================
+// Utilitaire pour fusionner les runs XML fragmentés dans Word
+// Word divise souvent le texte en plusieurs éléments <w:t> ce qui casse les placeholders
+// =============================================================================
+function mergeXmlRuns(xmlContent: string): string {
+  let merged = xmlContent;
+  
+  // Stratégie en 2 étapes:
+  // 1. Fusionner les <w:t> adjacents qui contiennent des parties de placeholders
+  // 2. Répéter jusqu'à ce qu'il n'y ait plus de changements
+  
+  // Pattern pour fusionner: <w:t>texte{partiel</w:t>...<w:t>suite}</w:t>
+  // ou: <w:t>}{</w:t> (cas spécial où } et { sont collés)
+  
+  const fragmentedPattern = /(<w:t[^>]*>)([^<]*\{[^}<]*)<\/w:t>(.*?)<w:t[^>]*>([^<]*\}[^<]*)<\/w:t>/gs;
+  
+  let iterations = 0;
+  const maxIterations = 100;
+  
+  while (iterations < maxIterations) {
+    const newMerged = merged.replace(fragmentedPattern, (match, openTag, textBefore, middleXml, textAfter) => {
+      // Extraire le texte des éléments <w:t> intermédiaires
+      const middleTextMatches = middleXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+      let middleText = "";
+      for (const m of middleTextMatches) {
+        const textMatch = m.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
+        if (textMatch) {
+          middleText += textMatch[1];
+        }
+      }
+      
+      // Reconstruire le texte fusionné
+      const fusedText = `${textBefore}${middleText}${textAfter}`;
+      
+      // Extraire le placeholder pour le log
+      const placeholderMatch = fusedText.match(/\{([a-z_0-9]+)\}/i);
+      if (placeholderMatch) {
+        console.log(`[Word] Fusion: {${placeholderMatch[1]}}`);
+      }
+      
+      return `${openTag}${fusedText}</w:t>`;
+    });
+    
+    if (newMerged === merged) break;
+    merged = newMerged;
+    iterations++;
+  }
+  
+  console.log(`[Word] Fusion terminée après ${iterations} itérations`);
+  return merged;
+}
+
+// =============================================================================
 // Types
 // =============================================================================
 export type OfferWordInput = {
@@ -18,13 +70,21 @@ export type OfferWordInput = {
   duration?: number | null;
   notes_date?: string | null;
   
+  // Version (pour le placeholder {version})
+  version?: number | null;
+  
   // Financier
   currency?: string | null;
   amount_net?: number | null;
   amount_gross?: number | null;
   amount_display?: number | null;
   amount_is_net?: boolean | null;
+  amount_gross_is_subject_to_withholding?: boolean | null;
+  withholding_note?: string | null;
   notes_financial?: string | null;
+  
+  // Note générale
+  note_general?: string | null;
   
   // Frais additionnels
   prod_fee_amount?: number | null;
@@ -156,13 +216,63 @@ function buildTemplateData(
   data.duration_minutes = input.duration ? `${input.duration} min` : "";
   data.validity_date = input.validity_date ? formatIsoDate(input.validity_date) : "";
   data.notes_date = input.notes_date || "";
+  
+  // Version (placeholder {version})
+  data.version = input.version ? `V${input.version}` : "V1";
 
-  // Financier
+  // Financier - remplir tous les placeholders disponibles
+  // Le template décide lesquels utiliser ({amount_net}, {amount_gross}, ou les deux)
   data.currency = input.currency || "EUR";
-  data.amount_display = formatAmount(input.amount_display);
-  data.amount_net = input.amount_is_net ? `NET: ${formatCurrency(input.amount_net, input.currency)}` : "";
-  data.amount_gross = !input.amount_is_net ? `BRUT: ${formatCurrency(input.amount_gross, input.currency)}` : "";
-  data.notes_financial = input.notes_financial || "";
+  
+  // Montants avec indication NET ou BRUT
+  if (input.amount_is_net && input.amount_net) {
+    data.amount_net = `NET: ${formatCurrency(input.amount_net, input.currency)}`;
+  } else {
+    data.amount_net = input.amount_net ? formatCurrency(input.amount_net, input.currency) : "";
+  }
+  
+  if (input.amount_gross_is_subject_to_withholding && input.amount_gross) {
+    data.amount_gross = `BRUT: ${formatCurrency(input.amount_gross, input.currency)}`;
+  } else {
+    data.amount_gross = input.amount_gross ? formatCurrency(input.amount_gross, input.currency) : "";
+  }
+  
+  // amount_display est gardé pour compatibilité avec d'anciens templates
+  data.amount_display = input.amount_display ? formatAmount(input.amount_display) : "";
+  
+  // ===========================================
+  // {notes_taxes} - Texte automatique basé sur le type de montant (checkboxes)
+  // ===========================================
+  // Si "Montant net" coché → "Montant net de taxes (impôts à la source à charge du festival)"
+  // Si "Montant brut" coché → "Montant brut, soumis à l'impôt à la source"
+  if (input.amount_is_net === true) {
+    data.notes_taxes = "Montant net de taxes (impôts à la source à charge du festival)";
+  } else if (input.amount_gross_is_subject_to_withholding === true) {
+    data.notes_taxes = "Montant brut, soumis à l'impôt à la source";
+  } else {
+    data.notes_taxes = "";
+  }
+  
+  console.log("[Word] notes_taxes généré:", JSON.stringify(data.notes_taxes));
+  console.log("[Word] amount_is_net:", input.amount_is_net);
+  console.log("[Word] amount_gross_is_subject_to_withholding:", input.amount_gross_is_subject_to_withholding);
+  
+  // ===========================================
+  // {notes_financial} - Texte libre saisi par l'utilisateur (textarea "Note Financière")
+  // ===========================================
+  const rawNotesFinancial = input.notes_financial;
+  const isValidNotesFinancial = 
+    typeof rawNotesFinancial === "string" && 
+    rawNotesFinancial.trim() !== "" && 
+    rawNotesFinancial.toLowerCase() !== "undefined" &&
+    rawNotesFinancial.toLowerCase() !== "null";
+  
+  data.notes_financial = isValidNotesFinancial ? rawNotesFinancial : "";
+  
+  console.log("[Word] notes_financial (texte libre):", JSON.stringify(data.notes_financial));
+  
+  // Note générale
+  data.note_general = input.note_general || "";
 
   // Frais additionnels
   data.prod_fee = formatAmount(input.prod_fee_amount);
@@ -283,15 +393,33 @@ export async function generateOfferWord(
 
     // Charger le document avec PizZip
     const zip = new PizZip(templateBuffer);
+    
+    // Pré-traitement: fusionner les placeholders fragmentés dans le XML
+    // Word divise souvent le texte en plusieurs éléments <w:t>
+    const docXmlFile = zip.file("word/document.xml");
+    if (docXmlFile) {
+      const originalXml = docXmlFile.asText();
+      const mergedXml = mergeXmlRuns(originalXml);
+      zip.file("word/document.xml", mergedXml);
+      console.log("[Word] XML pré-traité pour fusionner les placeholders fragmentés");
+    }
+    
     const doc = new Docxtemplater(zip, {
       paragraphLoop: true,
       linebreaks: true,
       delimiters: { start: "{", end: "}" },
+      // Ignorer les valeurs undefined/null (affiche chaîne vide au lieu de "undefined")
+      nullGetter: () => "",
     });
 
     // Construire les donnees
     const templateData = buildTemplateData(input, settings);
     console.log("[Word] Donnees du template:", Object.keys(templateData).length, "champs");
+    
+    // Log des valeurs importantes pour debug
+    console.log("[Word] notes_financial =", templateData.notes_financial);
+    console.log("[Word] amount_net =", templateData.amount_net);
+    console.log("[Word] amount_gross =", templateData.amount_gross);
 
     // Remplir le template
     doc.render(templateData);

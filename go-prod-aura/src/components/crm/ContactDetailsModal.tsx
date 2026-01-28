@@ -4,7 +4,7 @@
 
 import { Modal } from '@/components/aura/Modal';
 import { Button } from '@/components/aura/Button';
-import { Building2, Mail, Phone, User, Printer, X } from 'lucide-react';
+import { Building2, Mail, Phone, User, Printer, X, Music, Moon, FileText, PenTool, Users, Briefcase } from 'lucide-react';
 import { formatPhoneNumber, getWhatsAppLink } from '@/utils/phoneUtils';
 import type { CRMContactWithRelations } from '@/types/crm';
 
@@ -43,17 +43,32 @@ export function ContactDetailsModal({ contact, open, onClose }: ContactDetailsMo
               <img
                 src={contact.photo_url}
                 alt={`${contact.first_name} ${contact.last_name}`}
-                className="w-20 h-20 rounded-full object-cover border-2 border-violet-500"
+                className="w-28 h-28 rounded-full object-cover border-2 border-violet-500"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-semibold text-2xl border-2 border-violet-500">
+              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-semibold text-3xl border-2 border-violet-500">
                 {getInitials(contact.first_name, contact.last_name)}
               </div>
             )}
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {contact.first_name} {contact.last_name}
-              </h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {contact.first_name} {contact.last_name}
+                </h2>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  contact.is_internal 
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                }`}>
+                  {contact.is_internal ? 'Interne' : 'Externe'}
+                </span>
+              </div>
+              {contact.department && (
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mt-1">
+                  <Briefcase className="w-4 h-4" />
+                  <span>{contact.department.label}</span>
+                </div>
+              )}
               {contact.main_company && (
                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mt-1">
                   <Building2 className="w-4 h-4" />
@@ -62,6 +77,30 @@ export function ContactDetailsModal({ contact, open, onClose }: ContactDetailsMo
               )}
             </div>
           </div>
+
+          {/* Badges d'options */}
+          {(contact.is_night_contact || contact.is_primary_for_company_billing || contact.is_signatory) && (
+            <div className="flex flex-wrap gap-2">
+              {contact.is_night_contact && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                  <Moon className="w-3.5 h-3.5" />
+                  Contact de nuit
+                </span>
+              )}
+              {contact.is_primary_for_company_billing && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                  <FileText className="w-3.5 h-3.5" />
+                  Contact facturation
+                </span>
+              )}
+              {contact.is_signatory && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                  <PenTool className="w-3.5 h-3.5" />
+                  Signataire
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Informations principales */}
           <div className="grid grid-cols-2 gap-4">
@@ -169,25 +208,28 @@ export function ContactDetailsModal({ contact, open, onClose }: ContactDetailsMo
             )}
           </div>
 
-          {/* Artistes associés - TODO: Add artists to CRMContactWithRelations type */}
-          {/* {contact.artists && contact.artists.length > 0 && (
+          {/* Artistes associés */}
+          {contact.artists && contact.artists.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Users className="w-4 h-4 text-violet-500" />
+                <Music className="w-4 h-4 text-violet-500" />
                 Artistes associés
               </h3>
               <div className="flex flex-wrap gap-2">
-                {contact.artists.map((artist: any) => (
+                {contact.artists.map((artist) => (
                   <span
                     key={artist.id}
                     className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-violet-100 to-purple-100 text-violet-900 dark:from-violet-900 dark:to-purple-900 dark:text-violet-100 border border-violet-200 dark:border-violet-800"
                   >
                     {artist.artist_name}
+                    {artist.artist_real_name && artist.artist_real_name !== artist.artist_name && (
+                      <span className="text-xs text-violet-600 dark:text-violet-300 ml-1">({artist.artist_real_name})</span>
+                    )}
                   </span>
                 ))}
               </div>
             </div>
-          )} */}
+          )}
 
           {/* Notes internes */}
           {contact.notes_internal && (
@@ -446,12 +488,12 @@ export function ContactDetailsModal({ contact, open, onClose }: ContactDetailsMo
             </div>
           )}
 
-          {/* Artistes associés - TODO: Add artists to CRMContactWithRelations type */}
-          {/* {contact.artists && contact.artists.length > 0 && (
+          {/* Artistes associés */}
+          {contact.artists && contact.artists.length > 0 && (
             <div className="mb-6">
               <h2 className="text-lg font-bold text-gray-900 mb-2 uppercase border-b border-gray-300 pb-1">Artistes associés</h2>
               <div className="flex flex-wrap gap-2 ml-4">
-                {contact.artists.map((artist: any) => (
+                {contact.artists.map((artist) => (
                   <span key={artist.id} className="px-3 py-1 bg-violet-50 text-violet-900 rounded border border-violet-200 font-medium">
                     {artist.artist_name}
                     {artist.artist_real_name && artist.artist_real_name !== artist.artist_name && (
@@ -461,7 +503,7 @@ export function ContactDetailsModal({ contact, open, onClose }: ContactDetailsMo
                 ))}
               </div>
             </div>
-          )} */}
+          )}
 
           {/* Notes internes */}
           {contact.notes_internal && (

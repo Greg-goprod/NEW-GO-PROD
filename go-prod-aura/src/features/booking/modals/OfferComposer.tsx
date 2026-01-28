@@ -1,6 +1,6 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from "react";
-import { FileText, Eye, Send, DollarSign, User, Plus, FileDown } from "lucide-react";
+import { FileText, Eye, Send, DollarSign, User, Plus, FileDown, MessageSquare } from "lucide-react";
 import { DraggableModal } from "../../../components/aura/DraggableModal";
 import { Button } from "../../../components/aura/Button";
 import { useToast } from "../../../components/aura/ToastProvider";
@@ -18,7 +18,7 @@ import {
   type ExclusivityPreset,
 } from "../advancedBookingApi";
 
-const STANDARD_DURATIONS = [60, 75, 90];
+const STANDARD_DURATIONS = [60, 75, 90, 105, 120];
 const getDurationMode = (duration?: number | null): "standard" | "custom" =>
   STANDARD_DURATIONS.includes(duration || 0) ? "standard" : "custom";
 
@@ -156,6 +156,7 @@ export function OfferComposer({
     artist_id: "",
     stage_id: "",
     agency_contact_id: "",
+    booking_agency_id: "", // ID de l'agence du booking agent
     date_time: "",
     performance_time: "14:00",
     duration: 60,
@@ -168,6 +169,10 @@ export function OfferComposer({
     amount_display: null as number | null,
     agency_commission_pct: null as number | null,
     validity_date: "",
+    // Notes pour le document Word
+    notes_date: "",
+    notes_financial: "",
+    note_general: "",
   });
   const [durationMode, setDurationMode] = useState<"standard" | "custom">("standard");
   const [linkedPerformanceId, setLinkedPerformanceId] = useState<string | null>(null);
@@ -255,14 +260,15 @@ export function OfferComposer({
     try {
       const BOOKING_AGENT_ROLE_ID = "bcd6fcc3-2327-4e25-ae87-25d31605816d";
       
-      // Récupérer uniquement les contacts avec rôle "Booking Agent"
+      // Récupérer uniquement les contacts avec rôle "Booking Agent" et leur agence
       const { data, error } = await supabase
         .from("crm_contacts")
         .select(`
           id, 
           display_name, 
           email_primary,
-          crm_contact_role_links!inner(role_id)
+          crm_contact_role_links!inner(role_id),
+          crm_contact_company_links(linked_company_id)
         `)
         .eq("company_id", companyId)
         .eq("crm_contact_role_links.role_id", BOOKING_AGENT_ROLE_ID)
@@ -270,8 +276,14 @@ export function OfferComposer({
       
       if (error) throw error;
       
-      console.log(`[OK] ${data?.length || 0} Booking Agent(s) chargé(s)`);
-      return data || [];
+      // Transformer les données pour extraire l'agence
+      const contactsWithAgency = (data || []).map(contact => ({
+        ...contact,
+        agency_id: contact.crm_contact_company_links?.[0]?.linked_company_id || null
+      }));
+      
+      console.log(`[OK] ${contactsWithAgency.length} Booking Agent(s) chargé(s)`);
+      return contactsWithAgency;
     } catch (error) {
       console.error("Erreur chargement booking agents:", error);
       return [];
@@ -438,10 +450,12 @@ export function OfferComposer({
     if (editingOffer) {
       // MODE ÉDITION
       console.log("[OfferComposer] MODE ÉDITION - Chargement des données de l'offre:", editingOffer.id);
+      console.log("[OfferComposer] MODE ÉDITION - agency_contact_id depuis editingOffer:", editingOffer.agency_contact_id, "booking_agency_id:", (editingOffer as any).booking_agency_id);
       setFormData({
         artist_id: editingOffer.artist_id,
         stage_id: editingOffer.stage_id,
         agency_contact_id: editingOffer.agency_contact_id || "",
+        booking_agency_id: (editingOffer as any).booking_agency_id || "",
         date_time: editingOffer.date_time ? editingOffer.date_time.split("T")[0] : "",
         performance_time: editingOffer.performance_time ? editingOffer.performance_time.slice(0, 5) : "14:00",
         duration: editingOffer.duration || editingOffer.duration_minutes || 60,
@@ -454,6 +468,10 @@ export function OfferComposer({
         amount_display: editingOffer.amount_display,
         agency_commission_pct: editingOffer.agency_commission_pct,
         validity_date: editingOffer.validity_date || "",
+        // Notes
+        notes_date: (editingOffer as any).notes_date || "",
+        notes_financial: (editingOffer as any).notes_financial || "",
+        note_general: (editingOffer as any).note_general || "",
       });
       setDurationMode(getDurationMode(editingOffer.duration || editingOffer.duration_minutes));
       
@@ -507,14 +525,22 @@ export function OfferComposer({
     } else if (prefilledData) {
       // MODE CRÉATION DEPUIS PERFORMANCE
       
-      // Charger le booking agent principal de l'artiste (si artiste pré-rempli)
+      // Charger le booking agent principal de l'artiste et son agence (si artiste pré-rempli)
       const loadMainAgent = async () => {
         if (prefilledData.artist_id) {
           const mainAgentId = await loadArtistMainBookingAgent(prefilledData.artist_id);
           if (mainAgentId) {
+            // Récupérer l'agence du booking agent
+            const { data: agencyData } = await supabase
+              .from("crm_contact_company_links")
+              .select("linked_company_id")
+              .eq("contact_id", mainAgentId)
+              .maybeSingle();
+            
             setFormData(prev => ({
               ...prev,
-              agency_contact_id: mainAgentId
+              agency_contact_id: mainAgentId,
+              booking_agency_id: agencyData?.linked_company_id || ""
             }));
           }
         }
@@ -527,6 +553,7 @@ export function OfferComposer({
         artist_id: prefilledData.artist_id || "",
         stage_id: prefilledData.stage_id || "",
         agency_contact_id: "", // Sera rempli par loadMainAgent()
+        booking_agency_id: "", // Sera rempli par loadMainAgent()
         date_time: prefilledData.event_day_date || prefilledData.date_time || "",
         performance_time: prefilledData.performance_time ? prefilledData.performance_time.slice(0, 5) : "14:00",
         duration: prefilledData.duration || 60,
@@ -595,9 +622,18 @@ export function OfferComposer({
       const mainAgentId = await loadArtistMainBookingAgent(formData.artist_id);
       if (mainAgentId) {
         console.log(`[AUTO] Booking agent auto-sélectionné: ${mainAgentId}`);
+        
+        // Récupérer l'agence du booking agent
+        const { data: agencyData } = await supabase
+          .from("crm_contact_company_links")
+          .select("linked_company_id")
+          .eq("contact_id", mainAgentId)
+          .maybeSingle();
+        
         setFormData(prev => ({
           ...prev,
-          agency_contact_id: mainAgentId
+          agency_contact_id: mainAgentId,
+          booking_agency_id: agencyData?.linked_company_id || ""
         }));
       }
     };
@@ -831,12 +867,14 @@ export function OfferComposer({
       const stageName = stages.find(s => s.id === formData.stage_id)?.name || "";
       
       // Construction payload
+      console.log("[OfferComposer] Sauvegarde - agency_contact_id:", formData.agency_contact_id, "booking_agency_id:", formData.booking_agency_id);
       const payload: any = {
         event_id: eventId,
         company_id: companyId,
         artist_id: formData.artist_id,
         stage_id: formData.stage_id,
         agency_contact_id: formData.agency_contact_id || null,
+        booking_agency_id: formData.booking_agency_id || null,
         artist_name: artistName,
         stage_name: stageName,
         date_time: dateTime,
@@ -868,6 +906,11 @@ export function OfferComposer({
         technical_fee_amount: technicalFeeAmount ?? 0,
         technical_fee_currency: formData.currency,
         
+        // Notes
+        notes_date: formData.notes_date || null,
+        notes_financial: formData.notes_financial || null,
+        note_general: formData.note_general || null,
+        
         // Clauses d'exclusivité
         terms_json: {
           selectedClauseIds: exclusivityClausesSelected,
@@ -897,10 +940,11 @@ export function OfferComposer({
         
         if (error) throw error;
         
-        // La fonction retourne un tableau avec {id, version}
-        if (data && data.length > 0) {
-          offerId = data[0].id;
-          console.log(`[OK] Version ${data[0].version} créée: ${offerId}`);
+        // La fonction retourne directement l'UUID de la nouvelle offre
+        const newVersion = (prefilledData.originalVersion || 1) + 1;
+        if (data) {
+          offerId = data as string;
+          console.log(`[OK] Version V${newVersion} créée: ${offerId}`);
         } else {
           throw new Error("Aucune donnée retournée par create_offer_version");
         }
@@ -1099,6 +1143,7 @@ export function OfferComposer({
           duration: formData.duration,
           validity_date: formData.validity_date || null,
           agency_contact_id: formData.agency_contact_id || null,
+          booking_agency_id: formData.booking_agency_id || null,
           prod_fee_amount: prodFeeAmount ?? 0,
           backline_fee_amount: backlineFeeAmount ?? 0,
           buyout_hotel_amount: buyoutHotelAmount ?? 0,
@@ -1107,6 +1152,10 @@ export function OfferComposer({
           technical_fee_amount: technicalFeeAmount ?? 0,
           amount_gross_is_subject_to_withholding: formData.amount_gross_is_subject_to_withholding,
           withholding_note: formData.withholding_note || null,
+          // Notes
+          notes_date: formData.notes_date || null,
+          notes_financial: formData.notes_financial || null,
+          note_general: formData.note_general || null,
           terms_json: {
             selectedClauseIds: exclusivityClausesSelected,
           },
@@ -1223,46 +1272,59 @@ export function OfferComposer({
       // 1. S'assurer que l'offre est sauvegardée d'abord
       let offerId = editingOffer?.id;
       
+      const selectedArtist = artists.find(a => a.id === formData.artist_id);
+      const selectedStage = stages.find(s => s.id === formData.stage_id);
+      
+      // Construire le payload commun pour création et édition
+      const payload: any = {
+        company_id: companyId,
+        event_id: eventId,
+        artist_id: formData.artist_id || null,
+        stage_id: formData.stage_id || null,
+        artist_name: selectedArtist?.name || prefilledData?.artist_name || "",
+        stage_name: selectedStage?.name || prefilledData?.stage_name || "",
+        currency: formData.currency,
+        amount_net: formData.amount_net,
+        amount_gross: formData.amount_gross,
+        amount_is_net: formData.amount_is_net,
+        amount_display: formData.amount_is_net ? formData.amount_net : formData.amount_gross,
+        agency_commission_pct: formData.agency_commission_pct,
+        date_time: formData.date_time ? new Date(formData.date_time).toISOString() : null,
+        performance_time: formData.performance_time || null,
+        duration: formData.duration,
+        validity_date: formData.validity_date || null,
+        agency_contact_id: formData.agency_contact_id || null,
+        booking_agency_id: formData.booking_agency_id || null,
+        prod_fee_amount: prodFeeAmount ?? 0,
+        backline_fee_amount: backlineFeeAmount ?? 0,
+        buyout_hotel_amount: buyoutHotelAmount ?? 0,
+        buyout_meal_amount: buyoutMealAmount ?? 0,
+        flight_contribution_amount: flightContributionAmount ?? 0,
+        technical_fee_amount: technicalFeeAmount ?? 0,
+        amount_gross_is_subject_to_withholding: formData.amount_gross_is_subject_to_withholding,
+        withholding_note: formData.withholding_note || null,
+        // Notes
+        notes_date: formData.notes_date || null,
+        notes_financial: formData.notes_financial || null,
+        note_general: formData.note_general || null,
+        terms_json: {
+          selectedClauseIds: exclusivityClausesSelected,
+        },
+      };
+      
+      console.log("[OfferComposer] Sauvegarde - agency_contact_id:", formData.agency_contact_id, "booking_agency_id:", formData.booking_agency_id);
+      
       if (!offerId) {
-        toastSuccess("Sauvegarde de l'offre...");
-        
-        const selectedArtist = artists.find(a => a.id === formData.artist_id);
-        const selectedStage = stages.find(s => s.id === formData.stage_id);
-        
-        const payload: any = {
-          company_id: companyId,
-          event_id: eventId,
-          artist_id: formData.artist_id || null,
-          stage_id: formData.stage_id || null,
-          artist_name: selectedArtist?.name || prefilledData?.artist_name || "",
-          stage_name: selectedStage?.name || prefilledData?.stage_name || "",
-          status: "draft",
-          currency: formData.currency,
-          amount_net: formData.amount_net,
-          amount_gross: formData.amount_gross,
-          amount_is_net: formData.amount_is_net,
-          amount_display: formData.amount_is_net ? formData.amount_net : formData.amount_gross,
-          agency_commission_pct: formData.agency_commission_pct,
-          date_time: formData.date_time ? new Date(formData.date_time).toISOString() : null,
-          performance_time: formData.performance_time || null,
-          duration: formData.duration,
-          validity_date: formData.validity_date || null,
-          agency_contact_id: formData.agency_contact_id || null,
-          prod_fee_amount: prodFeeAmount ?? 0,
-          backline_fee_amount: backlineFeeAmount ?? 0,
-          buyout_hotel_amount: buyoutHotelAmount ?? 0,
-          buyout_meal_amount: buyoutMealAmount ?? 0,
-          flight_contribution_amount: flightContributionAmount ?? 0,
-          technical_fee_amount: technicalFeeAmount ?? 0,
-          amount_gross_is_subject_to_withholding: formData.amount_gross_is_subject_to_withholding,
-          withholding_note: formData.withholding_note || null,
-          terms_json: {
-            selectedClauseIds: exclusivityClausesSelected,
-          },
-        };
-        
+        // MODE CRÉATION: nouvelle offre
+        toastSuccess("Création de l'offre...");
+        payload.status = "draft";
         const newOffer = await createOffer(payload);
         offerId = newOffer.id;
+        await saveOfferExtras(offerId, selectedExtras);
+      } else {
+        // MODE ÉDITION: mettre à jour l'offre existante avec les modifications
+        toastSuccess("Mise à jour de l'offre...");
+        await updateOffer(offerId, payload);
         await saveOfferExtras(offerId, selectedExtras);
       }
       
@@ -1274,8 +1336,7 @@ export function OfferComposer({
         .single();
       
       const eventName = eventData?.name || "Événement";
-      const selectedArtist = artists.find(a => a.id === formData.artist_id);
-      const selectedStage = stages.find(s => s.id === formData.stage_id);
+      // selectedArtist et selectedStage déjà déclarés plus haut
       
       // 3. Construire les listes d'extras
       const extrasEntries = Object.entries(selectedExtras);
@@ -1301,6 +1362,11 @@ export function OfferComposer({
         : [];
       
       // 5. Générer le WORD
+      // Déterminer la version pour le placeholder {version}
+      const offerVersion = prefilledData?.isModification 
+        ? (prefilledData.originalVersion || 1) + 1 
+        : (editingOffer?.version || 1);
+      
       toastSuccess("Génération du document Word...");
       const wordInput: OfferWordInput = {
         event_name: eventName,
@@ -1309,13 +1375,17 @@ export function OfferComposer({
         performance_date: formData.date_time || prefilledData?.event_day_date || "",
         performance_time: formData.performance_time || "",
         duration: formData.duration || null,
+        version: offerVersion, // Version pour le placeholder {version}
         currency: formData.currency || null,
         amount_net: formData.amount_net,
         amount_gross: formData.amount_gross,
         amount_display: formData.amount_is_net ? formData.amount_net : formData.amount_gross,
         amount_is_net: formData.amount_is_net,
-        notes_date: null,
-        notes_financial: null,
+        amount_gross_is_subject_to_withholding: formData.amount_gross_is_subject_to_withholding,
+        withholding_note: formData.withholding_note || null,
+        notes_date: formData.notes_date || null,
+        notes_financial: formData.notes_financial || null, // Si vide, sera généré automatiquement dans wordFill.ts
+        note_general: formData.note_general || null,
         prod_fee_amount: prodFeeAmount || null,
         backline_fee_amount: backlineFeeAmount || null,
         buyout_hotel_amount: buyoutHotelAmount || null,
@@ -1332,6 +1402,11 @@ export function OfferComposer({
         event_id: eventId,
         company_id: companyId,
       };
+      
+      // Debug: vérifier les valeurs avant génération
+      console.log("[OfferComposer] wordInput.notes_financial:", JSON.stringify(wordInput.notes_financial));
+      console.log("[OfferComposer] wordInput.amount_is_net:", wordInput.amount_is_net);
+      console.log("[OfferComposer] wordInput.amount_gross_is_subject_to_withholding:", wordInput.amount_gross_is_subject_to_withholding);
       
       const { wordPath } = await generateOfferWordAndUpload(wordInput);
       
@@ -1539,6 +1614,7 @@ export function OfferComposer({
         artist_id: "",
         stage_id: "",
         agency_contact_id: "",
+        booking_agency_id: "",
         date_time: "",
         performance_time: "14:00",
         duration: 60,
@@ -1551,6 +1627,9 @@ export function OfferComposer({
         amount_display: null,
         agency_commission_pct: null,
         validity_date: "",
+        notes_date: "",
+        notes_financial: "",
+        note_general: "",
       });
       setErrors({});
       setShowPdfPreview(false);
@@ -1644,7 +1723,17 @@ export function OfferComposer({
               <select
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus-border-transparent"
                 value={formData.agency_contact_id}
-                onChange={(e) => setFormData(prev => ({ ...prev, agency_contact_id: e.target.value }))}
+                onChange={(e) => {
+                  const contactId = e.target.value;
+                  const selectedContact = contacts.find(c => c.id === contactId);
+                  const agencyId = (selectedContact as any)?.agency_id || "";
+                  console.log("[OfferComposer] Changement booking agent:", contactId, "agence:", agencyId);
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    agency_contact_id: contactId,
+                    booking_agency_id: agencyId
+                  }));
+                }}
               >
                 <option value="">Sélectionner un booking agent</option>
                 {contacts.map(contact => (
@@ -2153,6 +2242,64 @@ export function OfferComposer({
         </div>
       ),
     },
+
+    // =========================================================================
+    // SECTION 4 : NOTES
+    // =========================================================================
+    {
+      id: "notes",
+      title: (
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-violet-400" />
+          <span>Notes</span>
+        </div>
+      ),
+      content: (
+        <div className="pt-4 space-y-4">
+          {/* Note Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+              Note Date <span className="text-xs text-gray-500">(placeholder: {'{'}notes_date{'}'})</span>
+            </label>
+            <textarea
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
+              rows={2}
+              value={formData.notes_date}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes_date: e.target.value }))}
+              placeholder="Ex: Horaire susceptible de changer, confirmation 2 semaines avant..."
+            />
+          </div>
+
+          {/* Note Financière */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+              Note Financière <span className="text-xs text-gray-500">(placeholder: {'{'}notes_financial{'}'})</span>
+            </label>
+            <textarea
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
+              rows={2}
+              value={formData.notes_financial}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes_financial: e.target.value }))}
+              placeholder="Ex: Paiement 50% à la signature, 50% le jour du concert..."
+            />
+          </div>
+
+          {/* Note Générale */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+              Note Générale <span className="text-xs text-gray-500">(placeholder: {'{'}note_general{'}'})</span>
+            </label>
+            <textarea
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
+              rows={3}
+              value={formData.note_general}
+              onChange={(e) => setFormData(prev => ({ ...prev, note_general: e.target.value }))}
+              placeholder="Remarques générales concernant l'offre..."
+            />
+          </div>
+        </div>
+      ),
+    },
   ];
 
   // =============================================================================
@@ -2165,71 +2312,57 @@ export function OfferComposer({
 
         {/* Actions footer */}
         <div className="flex justify-between items-center pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
+          {/* Boutons de téléchargement (si offre existante avec documents) */}
           <div className="flex gap-2">
+            {editingOffer?.word_storage_path && (
+              <Button
+                variant="ghost"
+                onClick={handleDownloadWord}
+                disabled={generatingPdf || saving}
+                title="Télécharger le document Word"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Word
+              </Button>
+            )}
+            
+            {editingOffer?.pdf_storage_path && (
+              <Button
+                variant="ghost"
+                onClick={handleDownloadPdf}
+                disabled={generatingPdf || saving}
+                title="Ouvrir le PDF"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                PDF
+              </Button>
+            )}
+          </div>
+          
+          {/* Boutons d'action */}
+          <div className="flex gap-3">
+            <Button variant="ghost" onClick={onClose} disabled={saving || generatingPdf}>
+              Annuler
+            </Button>
+            
+            {/* Bouton principal unique : Générer l'offre */}
             <Button
               variant="primary"
               onClick={handleGenerateOffer}
               disabled={generatingPdf || saving}
+              className="min-w-[180px]"
             >
-              <FileDown className="w-4 h-4 mr-2" />
-              {generatingPdf ? "Génération..." : "Générer l'offre"}
-            </Button>
-            
-            {editingOffer && (
-              <>
-                <Button
-                  variant="ghost"
-                  onClick={handleDownloadWord}
-                  disabled={generatingPdf || saving}
-                  title="Télécharger le document Word"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Word
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  onClick={handleDownloadPdf}
-                  disabled={generatingPdf || saving}
-                  title="Ouvrir le PDF"
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  PDF
-                </Button>
-              </>
-            )}
-          </div>
-          
-          <div className="flex gap-3">
-            <Button variant="ghost" onClick={onClose} disabled={saving}>
-              Annuler
-            </Button>
-            
-            <Button
-              variant="secondary"
-              onClick={() => handleSave("draft")}
-              disabled={saving}
-            >
-              {saving ? "Enregistrement..." : "Enregistrer brouillon"}
-            </Button>
-            
-            {editingOffer && editingOffer.status === "draft" && (
-              <Button
-                variant="primary"
-                onClick={handleReadyToSend}
-                disabled={saving}
-              >
-                <Send className="w-4 h-4 mr-2" />
-                Prêt à envoyer
-              </Button>
-            )}
-            
-            <Button
-              variant="primary"
-              onClick={() => handleSave("draft")}
-              disabled={saving}
-            >
-              {editingOffer ? "Modifier" : "Créer l'offre"}
+              {generatingPdf ? (
+                <>
+                  <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Génération...
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-4 h-4 mr-2" />
+                  {editingOffer ? "Regénérer l'offre" : "Générer l'offre"}
+                </>
+              )}
             </Button>
           </div>
         </div>

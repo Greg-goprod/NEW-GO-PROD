@@ -177,46 +177,96 @@ export async function updateEvent(id: string, data: Partial<EventRow>): Promise<
 }
 
 /**
- * Remplace tous les jours d'un évènement (delete + insert)
+ * Synchronise les jours d'un évènement (préserve les IDs existants pour garder les FK)
+ * - Met à jour les jours existants (par date)
+ * - Ajoute les nouveaux jours
+ * - Supprime les jours qui ne sont plus dans la liste
  */
 export async function replaceEventDays(eventId: string, days: EventDayInput[]): Promise<void> {
   if (!eventId) {
     throw new Error('event_id requis');
   }
 
-  // 1. Supprimer les anciens jours
-  const { error: deleteError } = await supabase
+  // 1. Récupérer les jours existants
+  const { data: existingDays, error: fetchError } = await supabase
     .from('event_days')
-    .delete()
+    .select('id, date')
     .eq('event_id', eventId);
 
-  if (deleteError) {
-    console.error('Erreur replaceEventDays (delete):', deleteError);
-    throw deleteError;
+  if (fetchError) {
+    console.error('Erreur replaceEventDays (fetch):', fetchError);
+    throw fetchError;
   }
 
-  // 2. Insérer les nouveaux jours
-  if (days.length === 0) {
-    return; // Pas de jours à insérer
+  // Créer un map date -> id des jours existants
+  const existingDaysMap = new Map<string, string>();
+  (existingDays || []).forEach((day) => {
+    if (day.date) {
+      existingDaysMap.set(day.date, day.id);
+    }
+  });
+
+  // Dates des nouveaux jours
+  const newDates = new Set(days.map((d) => d.date).filter(Boolean));
+
+  // 2. Identifier les jours à supprimer (dates qui ne sont plus présentes)
+  const daysToDelete: string[] = [];
+  existingDaysMap.forEach((id, date) => {
+    if (!newDates.has(date)) {
+      daysToDelete.push(id);
+    }
+  });
+
+  // 3. Supprimer les jours obsolètes
+  if (daysToDelete.length > 0) {
+    const { error: deleteError } = await supabase
+      .from('event_days')
+      .delete()
+      .in('id', daysToDelete);
+
+    if (deleteError) {
+      console.error('Erreur replaceEventDays (delete):', deleteError);
+      throw deleteError;
+    }
   }
 
-  const payload = days.map((day, index) => ({
-    event_id: eventId,
-    date: day.date || null,
-    open_time: day.open_time || null,
-    close_time: day.close_time || null,
-    is_closing_day: day.is_closing_day || false,
-    notes: day.notes || null,
-    display_order: index + 1,
-  }));
+  // 4. Mettre à jour ou insérer les jours
+  for (let index = 0; index < days.length; index++) {
+    const day = days[index];
+    const existingId = day.date ? existingDaysMap.get(day.date) : null;
 
-  const { error: insertError } = await supabase
-    .from('event_days')
-    .insert(payload);
+    const payload = {
+      event_id: eventId,
+      date: day.date || null,
+      open_time: day.open_time || null,
+      close_time: day.close_time || null,
+      is_closing_day: day.is_closing_day || false,
+      notes: day.notes || null,
+      display_order: index + 1,
+    };
 
-  if (insertError) {
-    console.error('Erreur replaceEventDays (insert):', insertError);
-    throw insertError;
+    if (existingId) {
+      // Mettre à jour le jour existant (préserve l'ID)
+      const { error: updateError } = await supabase
+        .from('event_days')
+        .update(payload)
+        .eq('id', existingId);
+
+      if (updateError) {
+        console.error('Erreur replaceEventDays (update):', updateError);
+        throw updateError;
+      }
+    } else {
+      // Insérer un nouveau jour
+      const { error: insertError } = await supabase
+        .from('event_days')
+        .insert(payload);
+
+      if (insertError) {
+        console.error('Erreur replaceEventDays (insert):', insertError);
+        throw insertError;
+      }
+    }
   }
 }
 

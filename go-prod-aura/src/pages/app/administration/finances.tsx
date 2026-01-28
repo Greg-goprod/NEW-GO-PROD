@@ -6,6 +6,7 @@ import { Badge } from "@/components/aura/Badge";
 import { useToast } from "@/components/aura/ToastProvider";
 import { PaymentTrackingChart } from "@/features/booking/components/PaymentTrackingChart";
 import { PaymentNotifications } from "@/features/booking/components/PaymentNotifications";
+import { EventDaysContainer } from "@/components/aura/EventDaysContainer";
 import { listOffers } from "@/features/booking/bookingApi";
 import { listOfferPayments } from "@/features/booking/advancedBookingApi";
 import { getCurrentCompanyId } from "@/lib/tenant";
@@ -143,6 +144,17 @@ export default function FinancesPage() {
               </CardBody>
             )}
           </Card>
+
+          {/* Vue par jour */}
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Finances par jour
+            </h2>
+            <EventDaysContainer 
+              eventId={eventId}
+              emptyMessage="Aucune donnée financière pour ce jour"
+            />
+          </div>
           
           {/* TODO: Ajouter plus de fonctionnalités financières */}
           {/* - Factures */}

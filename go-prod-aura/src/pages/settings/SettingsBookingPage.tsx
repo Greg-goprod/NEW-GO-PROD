@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, type ChangeEvent, type DragEvent } from 'react';
-import { FileText, Calendar, Plus, Edit2, Trash2, GripVertical, UploadCloud, Download, Settings2, Truck, CreditCard, Save, Volume2, Bus, UtensilsCrossed, Image, Monitor, ShoppingBag, Receipt, Clock, FileType } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, type ChangeEvent, type DragEvent } from 'react';
+import { FileText, Calendar, Plus, Edit2, Trash2, GripVertical, UploadCloud, Download, Settings2, Truck, CreditCard, Save, Volume2, Bus, UtensilsCrossed, Image, Monitor, ShoppingBag, Receipt, Clock, FileType, ChevronDown } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import { Card, CardHeader, CardBody } from '@/components/aura/Card';
 import { Button } from '@/components/aura/Button';
@@ -39,6 +39,8 @@ import { OFFER_TEMPLATE_FIELDS, type OfferTemplateFieldKey } from '@/features/bo
 import { PdfMappingModal } from '@/features/booking/components/PdfMappingModal';
 import { fetchOfferSettings, upsertOfferSettings, type OfferSettings } from '@/features/booking/offerSettingsApi';
 import { EmailAttachmentsManager } from '@/features/booking/components/EmailAttachmentsManager';
+import { SimpleHtmlEditor } from '@/components/ui/SimpleHtmlEditor';
+import { Mail } from 'lucide-react';
 
 // Composant pour un élément draggable Clause
 function SortableClause({ 
@@ -224,6 +226,33 @@ function SortableExclusivity({
 
 export function SettingsBookingPage() {
   const { success: toastSuccess, error: toastError } = useToast();
+  const scrollPositionRef = useRef<number>(0);
+  
+  // Fonction pour obtenir le conteneur de scroll
+  const getScrollContainer = useCallback(() => {
+    return document.querySelector('[data-settings-scroll-container]') as HTMLElement | null;
+  }, []);
+  
+  // Fonction pour sauvegarder la position de scroll
+  const saveScrollPosition = useCallback(() => {
+    const scrollContainer = getScrollContainer();
+    if (scrollContainer) {
+      scrollPositionRef.current = scrollContainer.scrollTop;
+    }
+  }, [getScrollContainer]);
+  
+  // Fonction pour restaurer la position de scroll
+  const restoreScrollPosition = useCallback(() => {
+    // Double requestAnimationFrame pour s'assurer que le DOM est mis à jour
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const scrollContainer = getScrollContainer();
+        if (scrollContainer && scrollPositionRef.current > 0) {
+          scrollContainer.scrollTop = scrollPositionRef.current;
+        }
+      });
+    });
+  }, [getScrollContainer]);
   
   const TEMPLATE_BUCKET =
     import.meta.env.VITE_SUPABASE_OFFER_TEMPLATE_BUCKET ||
@@ -286,10 +315,16 @@ export function SettingsBookingPage() {
     tour_bus: '',
     catering_meals: '',
     artwork: '',
+    // Corps HTML des emails d'offres
+    email_body_html: '',
   });
 
 const [clausesSortable, setClausesSortable] = useState(false);
 const [exclusivitySortable, setExclusivitySortable] = useState(false);
+
+// États pour les accordéons
+const [accordionOffersOpen, setAccordionOffersOpen] = useState(true);
+const [accordionMailsOpen, setAccordionMailsOpen] = useState(false);
 
 const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: boolean) => {
   if (!enabled) return undefined;
@@ -395,6 +430,7 @@ const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: bool
           tour_bus: settings.tour_bus || '',
           catering_meals: settings.catering_meals || '',
           artwork: settings.artwork || '',
+          email_body_html: settings.email_body_html || '',
         });
       }
     } catch (e) {
@@ -435,6 +471,7 @@ const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: bool
   const handleAddClause = async () => {
     if (!companyId || !newClauseData.title.trim()) return;
     
+    saveScrollPosition();
     try {
       const sortOrder = getNextSortOrder(clauses, clausesSortable);
       const payload: Parameters<typeof createOfferClause>[1] = {
@@ -452,7 +489,8 @@ const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: bool
       toastSuccess("Extra ajouté");
       setNewClauseData({ title: '', body: '' });
       setShowAddForm(false);
-      loadBookingData();
+      await loadBookingData();
+      restoreScrollPosition();
     } catch (e: unknown) {
       const error = e as { message?: string };
       console.error("Erreur ajout extra:", e);
@@ -468,6 +506,7 @@ const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: bool
   const handleSaveClause = async () => {
     if (!editingClauseId || !editClauseData.title.trim()) return;
     
+    saveScrollPosition();
     try {
       await updateOfferClause(editingClauseId, {
         key: editClauseData.title.toLowerCase().replace(/\s+/g, '_'),
@@ -480,7 +519,8 @@ const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: bool
       toastSuccess("Extra mis à jour");
       setEditingClauseId(null);
       setEditClauseData({ title: '', body: '' });
-      loadBookingData();
+      await loadBookingData();
+      restoreScrollPosition();
     } catch (e: unknown) {
       const error = e as { message?: string };
       console.error("Erreur mise à jour extra:", e);
@@ -497,6 +537,7 @@ const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: bool
   const handleAddExcl = async () => {
     if (!companyId || !newExclData.name.trim()) return;
     
+    saveScrollPosition();
     try {
       const sortOrder = getNextSortOrder(exclPresets, exclusivitySortable);
       const payload: Parameters<typeof createExclusivityPreset>[1] = {
@@ -514,7 +555,8 @@ const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: bool
       toastSuccess("Clause d'exclusivité ajoutée");
       setNewExclData({ name: '', description: '' });
       setShowAddExclForm(false);
-      loadBookingData();
+      await loadBookingData();
+      restoreScrollPosition();
     } catch (e: unknown) {
       const error = e as { message?: string };
       console.error("Erreur ajout clause exclusivité:", e);
@@ -530,6 +572,7 @@ const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: bool
   const handleSaveExcl = async () => {
     if (!editingExclId || !editExclData.name.trim()) return;
     
+    saveScrollPosition();
     try {
       await updateExclusivityPreset(editingExclId, {
         name: editExclData.name,
@@ -538,7 +581,8 @@ const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: bool
       toastSuccess("Clause d'exclusivité mise à jour");
       setEditingExclId(null);
       setEditExclData({ name: '', description: '' });
-      loadBookingData();
+      await loadBookingData();
+      restoreScrollPosition();
     } catch (e: unknown) {
       const error = e as { message?: string };
       console.error("Erreur mise à jour clause exclusivité:", e);
@@ -968,7 +1012,9 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
       } catch (error) {
         console.error("Erreur mise à jour ordre extras:", error);
         toastError("Impossible d'enregistrer l'ordre des extras");
-        loadBookingData();
+        saveScrollPosition();
+        await loadBookingData();
+        restoreScrollPosition();
       }
     }
   };
@@ -1022,7 +1068,9 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
       } catch (error) {
         console.error("Erreur mise à jour ordre clauses:", error);
         toastError("Impossible d'enregistrer l'ordre des clauses");
-        loadBookingData();
+        saveScrollPosition();
+        await loadBookingData();
+        restoreScrollPosition();
       }
     }
   };
@@ -1045,8 +1093,46 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
         </div>
       ) : (
         <>
-          {/* Section Modele Word d'offre */}
-          <Card>
+          {/* ACCORDEON 1: PARAMETRAGES OFFRES */}
+          <div 
+            className="rounded-xl overflow-hidden"
+            style={{ 
+              background: 'var(--bg-elevated)', 
+              border: '1px solid var(--border-default)',
+              boxShadow: 'var(--shadow-md)',
+            }}
+          >
+            {/* Header accordéon */}
+            <button
+              type="button"
+              onClick={() => setAccordionOffersOpen(!accordionOffersOpen)}
+              className="w-full px-5 py-4 flex items-center justify-between transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              style={{ background: accordionOffersOpen ? 'rgba(113, 61, 255, 0.05)' : 'transparent' }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30">
+                  <FileText className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    PARAMETRAGES OFFRES
+                  </h3>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    Modele Word, Extras et Clauses d'exclusivite
+                  </p>
+                </div>
+              </div>
+              <ChevronDown 
+                className={`w-5 h-5 transition-transform duration-200 ${accordionOffersOpen ? 'rotate-180' : ''}`}
+                style={{ color: 'var(--text-muted)' }}
+              />
+            </button>
+
+            {/* Contenu accordéon */}
+            {accordionOffersOpen && (
+              <div className="px-5 pb-5 space-y-6 border-t" style={{ borderColor: 'var(--border-default)' }}>
+                {/* Section Modele Word d'offre */}
+                <Card className="mt-5">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30">
@@ -1145,7 +1231,7 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
                   <p className="text-sm text-center max-w-md" style={{ color: 'var(--text-muted)' }}>
                     {templateConfig 
                       ? 'Glissez un nouveau fichier .docx ou cliquez pour selectionner'
-                      : <>ou cliquez pour selectionner un fichier .docx avec des placeholders comme {'{'}artist_name{'}'}, {'{'}amount_display{'}'}</>
+                      : <>ou cliquez pour selectionner un fichier .docx avec des placeholders comme {'{'}artist_name{'}'}, {'{'}amount_net{'}'}, {'{'}amount_gross{'}'}</>
                     }
                   </p>
                 </div>
@@ -1167,9 +1253,6 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
             </CardBody>
           </Card>
 
-          {/* Section Annexes Emails */}
-          <EmailAttachmentsManager companyId={companyId} />
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Colonne EXTRAS */}
             <div>
@@ -1185,7 +1268,7 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
                 </div>
                 <Button
                   size="sm"
-                  variant="secondary"
+                  variant="primary"
                   onClick={() => setShowAddForm(!showAddForm)}
                 >
                   <Plus size={16} className="mr-1" />
@@ -1299,7 +1382,7 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
                 </div>
                 <Button
                   size="sm"
-                  variant="secondary"
+                  variant="primary"
                   onClick={() => setShowAddExclForm(!showAddExclForm)}
                 >
                   <Plus size={16} className="mr-1" />
@@ -1716,6 +1799,120 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
             </Card>
           </div>
         </div>
+              </div>
+            )}
+          </div>
+
+          {/* ACCORDEON 2: PARAMETRAGES MAILS BOOKING */}
+          <div 
+            className="rounded-xl overflow-hidden"
+            style={{ 
+              background: 'var(--bg-elevated)', 
+              border: '1px solid var(--border-default)',
+              boxShadow: 'var(--shadow-md)',
+            }}
+          >
+            {/* Header accordéon */}
+            <button
+              type="button"
+              onClick={() => setAccordionMailsOpen(!accordionMailsOpen)}
+              className="w-full px-5 py-4 flex items-center justify-between transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              style={{ background: accordionMailsOpen ? 'rgba(59, 130, 246, 0.05)' : 'transparent' }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    PARAMETRAGES MAILS BOOKING
+                  </h3>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    Annexes et corps des emails d'offres
+                  </p>
+                </div>
+              </div>
+              <ChevronDown 
+                className={`w-5 h-5 transition-transform duration-200 ${accordionMailsOpen ? 'rotate-180' : ''}`}
+                style={{ color: 'var(--text-muted)' }}
+              />
+            </button>
+
+            {/* Contenu accordéon */}
+            {accordionMailsOpen && (
+              <div className="px-5 pb-5 space-y-6 border-t" style={{ borderColor: 'var(--border-default)' }}>
+                {/* Section Annexes Emails et Corps de l'email - 2 colonnes */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-5">
+                  {/* Annexes Emails */}
+                  <EmailAttachmentsManager companyId={companyId} />
+
+                  {/* Corps de l'email */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                          <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                            Corps de l'email d'offre
+                          </h3>
+                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                            Modele HTML par defaut pour le corps des emails d'envoi d'offres
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          const defaultTemplate = `Bonjour {recipient_name},
+
+Veuillez trouver ci-joint notre offre pour {artist_name} dans le cadre de {event_name}.
+
+Documents joints :
+{attachments_list}
+
+<strong style="color: #DC2626;">Cette offre est valable jusqu'au {validity_date}.</strong>
+
+N'hesitez pas a nous contacter pour toute question.
+
+Cordialement`;
+                          updateSettingsField('email_body_html', defaultTemplate.replace(/\n/g, '<br>'));
+                        }}
+                        title="Inserer le modele par defaut"
+                      >
+                        Modele par defaut
+                      </Button>
+                    </CardHeader>
+                    <CardBody>
+                      <div className="space-y-3">
+                        <div className="text-xs p-3 rounded-lg" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                          <p className="font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Variables disponibles :</p>
+                          <div className="grid grid-cols-2 gap-1">
+                            <span><code className="text-violet-600">{'{'}recipient_name{'}'}</code> - Nom du destinataire</span>
+                            <span><code className="text-violet-600">{'{'}artist_name{'}'}</code> - Nom de l'artiste</span>
+                            <span><code className="text-violet-600">{'{'}event_name{'}'}</code> - Nom de l'evenement</span>
+                            <span><code className="text-violet-600">{'{'}performance_date{'}'}</code> - Date du concert</span>
+                            <span><code className="text-violet-600">{'{'}amount_display{'}'}</code> - Montant de l'offre</span>
+                            <span><code className="text-violet-600">{'{'}validity_date{'}'}</code> - Date limite de validite</span>
+                            <span className="col-span-2"><code className="text-violet-600">{'{'}attachments_list{'}'}</code> - Liste des documents joints (PDF offre + annexes)</span>
+                          </div>
+                        </div>
+                        <SimpleHtmlEditor
+                          value={settingsForm.email_body_html}
+                          onChange={(html) => updateSettingsField('email_body_html', html)}
+                          placeholder="Composez le corps de votre email d'offre ici..."
+                          minHeight={250}
+                          disabled={savingSettings}
+                        />
+                      </div>
+                    </CardBody>
+                  </Card>
+                </div>
+              </div>
+            )}
+          </div>
         </>
       )}
 
@@ -1726,6 +1923,7 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
         onConfirm={async () => {
           if (!deleteConfirm) return;
 
+          saveScrollPosition();
           try {
             if (deleteConfirm.type === 'clause') {
               await deleteOfferClause(deleteConfirm.id);
@@ -1748,7 +1946,8 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
             }
 
             setDeleteConfirm(null);
-            loadBookingData();
+            await loadBookingData();
+            restoreScrollPosition();
           } catch (e: unknown) {
             const error = e as { message?: string };
             console.error("Erreur suppression:", e);

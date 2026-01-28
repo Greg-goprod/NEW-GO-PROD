@@ -460,7 +460,6 @@ export default function AdminBookingPage() {
 
     const unmatchedOffers = offers
       .filter((offer) => !matchedOfferIds.has(offer.id))
-      .filter((offer) => offer.status !== "rejected") // Exclure les offres rejetées
       .map((offer) => {
         const rawDate = (offer as any).event_day_date ||
           (offer.date_time ? offer.date_time.slice(0, 10) : null);
@@ -472,13 +471,8 @@ export default function AdminBookingPage() {
         };
       });
 
-    // Filtrer aussi les performances/offres avec statut rejeté
-    const filteredRows = [...performanceRows, ...unmatchedOffers].filter((row: any) => {
-      const status = row.status || row.booking_status;
-      return status !== "rejected" && status !== "offre_rejetee";
-    });
-
-    return filteredRows;
+    // Ne plus filtrer les statuts - afficher toutes les offres
+    return [...performanceRows, ...unmatchedOffers];
   }, [offers, performances, computeRealDate]);
 
   async function handleMove(offerId: string, newStatus: OfferStatus | "draft_and_todo") {
@@ -908,17 +902,55 @@ ${data.sender.name}
               ) : (
                 <OffersListView
                   offers={offersListRows}
+                  days={eventDays}
                   onViewPdf={handleViewPdf}
                   onDownloadWord={handleDownloadWord}
                   onSendOffer={handleSendOffer}
                   onModify={(offer) => {
-                    setEditingOffer(offer);
-                    setPrefilledOfferData(null);
+                    // Versioning UNIQUEMENT si l'offre a déjà été envoyée (sent)
+                    const offerStatus = offer.status || (offer as any).booking_status;
+                    const needsVersioning = offerStatus === "sent" || offerStatus === "accepted" || offerStatus === "rejected";
+                    
+                    if (needsVersioning) {
+                      // Mode versioning: crée une nouvelle version (V2, V3, etc.)
+                      setEditingOffer(null);
+                      setPrefilledOfferData({
+                        isModification: true,
+                        originalOfferId: offer.original_offer_id || offer.id,
+                        originalVersion: offer.version || 1,
+                        performance_id: (offer as any).performance_id,
+                        artist_id: offer.artist_id,
+                        artist_name: offer.artist_name,
+                        stage_id: offer.stage_id,
+                        stage_name: offer.stage_name,
+                        event_day_date: (offer as any).event_day_date || (offer.date_time ? offer.date_time.slice(0, 10) : null),
+                        performance_time: offer.performance_time,
+                        duration: offer.duration || (offer as any).duration_minutes,
+                        fee_amount: offer.amount_is_net ? offer.amount_net : offer.amount_gross,
+                        fee_currency: offer.currency,
+                        amount_is_net: offer.amount_is_net,
+                        commission_percentage: offer.agency_commission_pct,
+                        amount_gross_is_subject_to_withholding: offer.amount_gross_is_subject_to_withholding,
+                        withholding_note: offer.withholding_note,
+                        prod_fee_amount: offer.prod_fee_amount,
+                        backline_fee_amount: offer.backline_fee_amount,
+                        buyout_hotel_amount: offer.buyout_hotel_amount,
+                        buyout_meal_amount: offer.buyout_meal_amount,
+                        flight_contribution_amount: offer.flight_contribution_amount,
+                        technical_fee_amount: offer.technical_fee_amount,
+                      });
+                    } else {
+                      // Mode édition directe: modifie l'offre existante (draft, ready_to_send)
+                      setPrefilledOfferData(null);
+                      setEditingOffer(offer as Offer);
+                    }
                     setShowComposer(true);
                   }}
                   onMove={handleMove}
                   onDelete={(o) => handleDelete(o.id)}
                   onCreateOffer={handleCreateOfferFromPerformance}
+                  onValidateOffer={(offer) => handleMove(offer.id, "accepted")}
+                  onRejectOffer={(offer) => handleRejectOfferModal(offer)}
                 />
               )}
             </CardBody>
@@ -948,13 +980,40 @@ ${data.sender.name}
                   onDownloadWord={handleDownloadWord}
                   onSendOffer={handleSendOffer}
                   onModify={(offer) => {
-                    setEditingOffer(offer);
-                    setPrefilledOfferData(null);
+                    // Pour les offres acceptées: toujours versioning
+                    setEditingOffer(null);
+                    setPrefilledOfferData({
+                      isModification: true,
+                      originalOfferId: offer.original_offer_id || offer.id,
+                      originalVersion: offer.version || 1,
+                      performance_id: (offer as any).performance_id,
+                      artist_id: offer.artist_id,
+                      artist_name: offer.artist_name,
+                      stage_id: offer.stage_id,
+                      stage_name: offer.stage_name,
+                      event_day_date: (offer as any).event_day_date || (offer.date_time ? offer.date_time.slice(0, 10) : null),
+                      performance_time: offer.performance_time,
+                      duration: offer.duration || (offer as any).duration_minutes,
+                      fee_amount: offer.amount_is_net ? offer.amount_net : offer.amount_gross,
+                      fee_currency: offer.currency,
+                      amount_is_net: offer.amount_is_net,
+                      commission_percentage: offer.agency_commission_pct,
+                      amount_gross_is_subject_to_withholding: offer.amount_gross_is_subject_to_withholding,
+                      withholding_note: offer.withholding_note,
+                      prod_fee_amount: offer.prod_fee_amount,
+                      backline_fee_amount: offer.backline_fee_amount,
+                      buyout_hotel_amount: offer.buyout_hotel_amount,
+                      buyout_meal_amount: offer.buyout_meal_amount,
+                      flight_contribution_amount: offer.flight_contribution_amount,
+                      technical_fee_amount: offer.technical_fee_amount,
+                    });
                     setShowComposer(true);
                   }}
                   onMove={handleMove}
                   onDelete={(o) => handleDelete(o.id)}
                   onCreateOffer={handleCreateOfferFromPerformance}
+                  onValidateOffer={(offer) => handleMove(offer.id, "accepted")}
+                  onRejectOffer={(offer) => handleRejectOfferModal(offer)}
                 />
               )}
             </CardBody>

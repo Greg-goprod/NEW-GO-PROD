@@ -507,7 +507,27 @@ export default function BudgetArtistiquePage() {
       return timeA.localeCompare(timeB);
     });
 
-    // Grouper par jour d'evenement
+    // Créer un map des performances par date
+    const perfsByDate = new Map<string, typeof sorted>();
+    sorted.forEach((perf) => {
+      const eventDay = perf.event_day_date || "";
+      if (!perfsByDate.has(eventDay)) {
+        perfsByDate.set(eventDay, []);
+      }
+      perfsByDate.get(eventDay)!.push(perf);
+    });
+
+    // Utiliser tous les jours de l'événement (même sans performances)
+    if (days.length > 0) {
+      return days
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((day) => ({
+          date: day.date,
+          items: perfsByDate.get(day.date) || [],
+        }));
+    }
+
+    // Fallback: grouper par les performances existantes seulement
     const groups: { date: string; items: typeof sorted }[] = [];
     let currentDate = "";
     let currentGroup: typeof sorted = [];
@@ -530,7 +550,7 @@ export default function BudgetArtistiquePage() {
     }
 
     return groups;
-  }, [performances, artistsBudgets, eventDaysMap]);
+  }, [performances, artistsBudgets, eventDaysMap, days]);
 
   // Calculer les statistiques globales
   const globalStats = useMemo(() => {
@@ -917,9 +937,9 @@ export default function BudgetArtistiquePage() {
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           Chargement...
         </div>
-      ) : performancesByDay.length === 0 ? (
+      ) : days.length === 0 ? (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          Aucune performance programmee pour le moment
+          Aucun jour configure pour cet evenement
         </div>
       ) : (
         <div className="space-y-6">
@@ -961,7 +981,11 @@ export default function BudgetArtistiquePage() {
 
                   {/* Liste des performances du jour */}
                   <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {group.items.map((perf) => {
+                    {group.items.length === 0 ? (
+                      <div className="px-5 py-4 text-center text-sm text-gray-400 dark:text-gray-500 italic">
+                        Aucune performance pour ce jour
+                      </div>
+                    ) : group.items.map((perf) => {
                       const budget = perf.budget;
                       const feeType = perf.fee_is_net ? 'net' : 'brut';
                       const commissionAmount = calculateCommissionAmount(perf.fee_amount, perf.commission_percentage);

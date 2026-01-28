@@ -40,8 +40,13 @@ export function CustomTimePicker({ open, onClose, onConfirm, performance }: Cust
   };
 
   const handleDurationChange = (value: string) => {
+    // Permettre de vider le champ pour retaper
+    if (value === "") {
+      setDuration(0);
+      return;
+    }
     const numValue = parseInt(value);
-    if (!isNaN(numValue) && numValue > 0 && numValue <= 480) { // Max 8h
+    if (!isNaN(numValue) && numValue >= 0 && numValue <= 480) { // Max 8h
       setDuration(numValue);
     }
   };
@@ -73,7 +78,7 @@ export function CustomTimePicker({ open, onClose, onConfirm, performance }: Cust
             Durée (min) <span className="text-red-500">*</span>
           </label>
           <div className="flex gap-2 mb-2">
-            {[60, 75, 90].map(d => (
+            {[60, 75, 90, 105, 120].map(d => (
               <Button
                 key={d}
                 type="button"
@@ -87,7 +92,7 @@ export function CustomTimePicker({ open, onClose, onConfirm, performance }: Cust
           </div>
           <Input
             type="number"
-            value={duration}
+            value={duration || ""}
             onChange={(e) => handleDurationChange(e.target.value)}
             min="5"
             max="480"

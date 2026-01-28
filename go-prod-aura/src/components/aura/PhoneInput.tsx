@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, Check, X } from 'lucide-react';
-import { getCountries } from 'libphonenumber-js/max';
+import { getCountries, getExampleNumber } from 'libphonenumber-js/max';
 import type { CountryCode } from 'libphonenumber-js/max';
+import examples from 'libphonenumber-js/mobile/examples';
 import {
   cleanPhoneNumber,
   validatePhoneNumber,
@@ -129,10 +130,23 @@ export function PhoneInput({
     return '';
   };
 
+  // Générer un placeholder dynamique basé sur le pays sélectionné
+  const dynamicPlaceholder = useMemo(() => {
+    try {
+      const exampleNumber = getExampleNumber(selectedCountry, examples);
+      if (exampleNumber) {
+        return exampleNumber.formatInternational();
+      }
+    } catch {
+      // Fallback si pas d'exemple disponible
+    }
+    return placeholder;
+  }, [selectedCountry, placeholder]);
+
   return (
-    <div className="flex flex-col gap-2 mb-2">
+    <div className="flex flex-col">
       {label && (
-        <label className="text-sm font-medium text-gray-900 dark:text-white">
+        <label className="text-sm font-medium text-gray-900 dark:text-white mb-2">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -238,7 +252,7 @@ export function PhoneInput({
             onChange={(e) => handleValueChange(e.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={handleBlur}
-            placeholder={placeholder}
+            placeholder={dynamicPlaceholder}
             disabled={disabled}
             className={`w-full h-[42px] px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent ${getValidationClass()} ${
               disabled ? 'opacity-50 cursor-not-allowed' : ''

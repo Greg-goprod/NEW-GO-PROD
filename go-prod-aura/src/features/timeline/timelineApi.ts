@@ -218,6 +218,25 @@ export async function fetchEventStages(eventId?: string): Promise<EventStage[]> 
 export async function fetchPerformances(eventId?: string): Promise<Performance[]> {
   if (noEventGuard(eventId)) return [];
   
+  // Récupérer les IDs des jours de l'événement
+  const { data: eventDaysData, error: daysError } = await supabase
+    .from("event_days")
+    .select("id")
+    .eq("event_id", eventId);
+  
+  if (daysError) {
+    console.error("❌ Erreur récupération event_days:", daysError);
+    throw daysError;
+  }
+  
+  const dayIds = eventDaysData?.map(d => d.id) || [];
+  console.log("📅 fetchPerformances - eventId:", eventId, "dayIds:", dayIds);
+  
+  if (dayIds.length === 0) {
+    console.warn("⚠️ Aucun jour trouvé pour l'événement:", eventId);
+    return [];
+  }
+  
   const { data, error } = await supabase
     .from("artist_performances")
     .select(`
@@ -232,9 +251,9 @@ export async function fetchPerformances(eventId?: string): Promise<Performance[]
       event_days (date)
     `)
     .neq("booking_status", "offre_rejetee")
-    .in("event_day_id", 
-      (await supabase.from("event_days").select("id").eq("event_id", eventId)).data?.map(d => d.id) || []
-    );
+    .in("event_day_id", dayIds);
+  
+  console.log("🎭 fetchPerformances - performances trouvées:", data?.length || 0);
     
   if (error) throw error;
   

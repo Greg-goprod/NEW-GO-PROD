@@ -8,6 +8,7 @@ import { useEventContext } from '@/hooks/useEventContext';
 import { useEventStore } from '@/store/useEventStore';
 import { EventForm } from '@/features/settings/events/EventForm';
 import { StageEnumsManager } from '@/features/settings/events/StageEnumsManager';
+import { EventStagesManager } from '@/features/settings/events/EventStagesManager';
 import { SmtpConfigManager } from '@/features/settings/email/SmtpConfigManager';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { fetchEventsByCompany, deleteEvent, type EventRow } from '@/api/eventsApi';
@@ -75,26 +76,53 @@ export function SettingsGeneralPage() {
   useEffect(() => {
     const savedLanguage = localStorage.getItem('app_lang') || 'fr';
     const savedTheme = localStorage.getItem('theme') || 'dark';
-    const savedActiveLogo = localStorage.getItem(`event_logo_path_${eventId}`) || null;
     
     setLanguage(savedLanguage);
     setTheme(savedTheme);
-    setActiveLogo(savedActiveLogo);
     
-    // Charger les logos existants (simulation)
-    if (hasEvent) {
+    // Charger les logos existants depuis Supabase Storage
+    if (hasEvent && eventId) {
       loadEventLogos();
     }
   }, [hasEvent, eventId]);
 
-  const loadEventLogos = () => {
-    // Simulation - en réalité, charger depuis Supabase Storage
-    const mockLogos = [
-      'logo1.png',
-      'logo2.png',
-      'logo3.png',
-    ];
-    setEventLogos(mockLogos);
+  // Charger le logo actif depuis la table events
+  useEffect(() => {
+    if (eventId && contextEvent?.logo_url) {
+      setActiveLogo(contextEvent.logo_url);
+    } else {
+      setActiveLogo(null);
+    }
+  }, [eventId, contextEvent]);
+
+  const loadEventLogos = async () => {
+    if (!eventId) return;
+    
+    try {
+      // Lister les fichiers dans le dossier de l'événement
+      const { data, error } = await supabase.storage
+        .from('event-logos')
+        .list(eventId, {
+          limit: 100,
+          sortBy: { column: 'created_at', order: 'desc' }
+        });
+
+      if (error) {
+        console.error('Erreur chargement logos:', error);
+        setEventLogos([]);
+        return;
+      }
+
+      // Filtrer les fichiers (exclure les dossiers .emptyFolderPlaceholder)
+      const logoFiles = (data || [])
+        .filter(file => file.name && !file.name.startsWith('.'))
+        .map(file => `${eventId}/${file.name}`);
+
+      setEventLogos(logoFiles);
+    } catch (err) {
+      console.error('Erreur loadEventLogos:', err);
+      setEventLogos([]);
+    }
   };
 
   const handleLanguageChange = (newLanguage: string) => {
@@ -121,7 +149,7 @@ export function SettingsGeneralPage() {
   };
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!hasEvent) {
+    if (!hasEvent || !eventId) {
       toastError('Aucun évènement sélectionné');
       return;
     }
@@ -129,40 +157,85 @@ export function SettingsGeneralPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validation
-    if (!file.type.startsWith('image/')) {
-      toastError('Veuillez sélectionner un fichier image');
+    // Validation du type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      toastError('Format non supporté. Utilisez JPG, PNG, WebP, GIF ou SVG');
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB
-      toastError('Le fichier ne doit pas dépasser 5MB');
+    // Validation de la taille (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toastError('Le fichier ne doit pas dépasser 5 Mo');
       return;
     }
 
     setUploading(true);
     try {
-      // Simulation upload - en réalité, uploader vers Supabase Storage
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const fileName = `logo_${Date.now()}.${file.name.split('.').pop()}`;
-      setEventLogos(prev => [...prev, fileName]);
+      // Générer un nom de fichier unique
+      const timestamp = Date.now();
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const safeName = `logo_${timestamp}.${extension}`;
+      const storagePath = `${eventId}/${safeName}`;
+
+      // Upload vers Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('event-logos')
+        .upload(storagePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Erreur upload logo:', uploadError);
+        throw new Error(uploadError.message);
+      }
+
+      // Ajouter à la liste locale
+      setEventLogos(prev => [storagePath, ...prev]);
       
       toastSuccess('Logo uploadé avec succès');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur upload logo:', error);
-      toastError('Erreur lors de l\'upload du logo');
+      toastError(error?.message || 'Erreur lors de l\'upload du logo');
     } finally {
       setUploading(false);
+      // Reset le champ input
+      event.target.value = '';
     }
   };
 
-  const handleLogoSelect = (logo: string) => {
-    setActiveLogo(logo);
-    localStorage.setItem(`event_logo_path_${eventId}`, logo);
-    
-    // En réalité, mettre à jour events.logo_path dans Supabase
-    toastSuccess('Logo sélectionné comme actif');
+  const handleLogoSelect = async (logoPath: string) => {
+    if (!eventId) {
+      toastError('Aucun évènement sélectionné');
+      return;
+    }
+
+    try {
+      // Générer l'URL publique du logo
+      const { data: urlData } = supabase.storage
+        .from('event-logos')
+        .getPublicUrl(logoPath);
+
+      const logoUrl = urlData?.publicUrl || null;
+
+      // Mettre à jour events.logo_url dans Supabase
+      const { error } = await supabase
+        .from('events')
+        .update({ logo_url: logoUrl })
+        .eq('id', eventId);
+
+      if (error) {
+        console.error('Erreur mise à jour logo:', error);
+        throw error;
+      }
+
+      setActiveLogo(logoUrl);
+      toastSuccess('Logo sélectionné comme actif');
+    } catch (error: any) {
+      console.error('Erreur handleLogoSelect:', error);
+      toastError(error?.message || 'Erreur lors de la sélection du logo');
+    }
   };
 
   // Handlers pour les événements
@@ -339,36 +412,59 @@ export function SettingsGeneralPage() {
                     Logos disponibles
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {eventLogos.map((logo, index) => (
-                      <div
-                        key={index}
-                        className="relative group cursor-pointer"
-                        onClick={() => handleLogoSelect(logo)}
-                      >
-                        <div 
-                          className="aspect-square rounded-xl flex items-center justify-center overflow-hidden"
-                          style={{ 
-                            background: 'var(--bg-surface)',
-                            border: '1px solid var(--color-border)'
-                          }}
+                    {eventLogos.map((logoPath, index) => {
+                      // Générer l'URL publique pour l'affichage
+                      const { data: urlData } = supabase.storage
+                        .from('event-logos')
+                        .getPublicUrl(logoPath);
+                      const logoUrl = urlData?.publicUrl || '';
+                      const isActive = activeLogo === logoUrl;
+                      
+                      return (
+                        <div
+                          key={index}
+                          className="relative group cursor-pointer"
+                          onClick={() => handleLogoSelect(logoPath)}
                         >
-                          <ImageIcon className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
-                        </div>
-                        {activeLogo === logo && (
-                          <div className="absolute top-2 right-2">
-                            <Badge color="green" className="flex items-center gap-1">
-                              <Check className="w-3 h-3" />
-                              Actif
-                            </Badge>
+                          <div 
+                            className={`aspect-square rounded-xl flex items-center justify-center overflow-hidden transition-all ${
+                              isActive ? 'ring-2 ring-green-500' : ''
+                            }`}
+                            style={{ 
+                              background: 'var(--bg-surface)',
+                              border: `1px solid ${isActive ? 'var(--success)' : 'var(--color-border)'}`
+                            }}
+                          >
+                            {logoUrl ? (
+                              <img 
+                                src={logoUrl} 
+                                alt={`Logo ${index + 1}`}
+                                className="w-full h-full object-contain p-2"
+                                onError={(e) => {
+                                  // Fallback si l'image ne charge pas
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                  (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <ImageIcon className={`w-8 h-8 ${logoUrl ? 'hidden' : ''}`} style={{ color: 'var(--text-muted)' }} />
                           </div>
-                        )}
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all flex items-center justify-center">
-                          <span className="text-white text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                            Sélectionner
-                          </span>
+                          {isActive && (
+                            <div className="absolute top-2 right-2">
+                              <Badge color="green" className="flex items-center gap-1">
+                                <Check className="w-3 h-3" />
+                                Actif
+                              </Badge>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-xl transition-all flex items-center justify-center">
+                            <span className="text-white text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg">
+                              Selectionner
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -519,11 +615,25 @@ export function SettingsGeneralPage() {
             )}
           </div>
 
-          {/* Configuration des scènes */}
+          {/* Scènes de l'événement courant */}
           <div className="mt-12">
             <h2 className="text-2xl font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>
-              Configuration des scenes
+              Scenes de l'evenement
             </h2>
+            <EventStagesManager 
+              eventId={currentEvent?.id || null} 
+              companyId={currentCompanyId} 
+            />
+          </div>
+
+          {/* Configuration des types/spécificités de scènes */}
+          <div className="mt-12">
+            <h2 className="text-2xl font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>
+              Types et specificites de scenes
+            </h2>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+              Configurez les options disponibles pour categoriser vos scenes
+            </p>
             <StageEnumsManager companyId={currentCompanyId} />
           </div>
 

@@ -29,6 +29,17 @@ export function TimePickerPopup({
     onChange(time)
   }
 
+  // Normaliser l'affichage en HH:MM (supprimer les secondes si présentes)
+  const displayValue = React.useMemo(() => {
+    if (!value) return null
+    // Si format HH:MM:SS, ne garder que HH:MM
+    const parts = value.split(':')
+    if (parts.length >= 2) {
+      return `${parts[0]}:${parts[1]}`
+    }
+    return value
+  }, [value])
+
   // Empêcher le scroll quand le popup est ouvert
   React.useEffect(() => {
     if (isOpen) {
@@ -61,7 +72,7 @@ export function TimePickerPopup({
       type="button"
       onClick={() => !disabled && setIsOpen(true)}
       disabled={disabled}
-      className={`flex items-center justify-between ${className || ''}`}
+      className={`flex items-center gap-2 ${className || ''}`}
       style={{
         textAlign: 'left',
         opacity: disabled ? 0.5 : 1,
@@ -70,10 +81,10 @@ export function TimePickerPopup({
         lineHeight: 'normal',
       }}
     >
-      <span style={{ color: value ? 'inherit' : 'var(--text-muted)' }}>
-        {value || placeholder}
+      <Clock className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
+      <span style={{ color: displayValue ? 'inherit' : 'var(--text-muted)' }}>
+        {displayValue || placeholder}
       </span>
-      <Clock className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
     </button>
   );
 
@@ -110,7 +121,7 @@ export function TimePickerPopup({
       <div
         className="fixed inset-0 flex items-center justify-center"
         style={{
-          zIndex: 1000,
+          zIndex: 1200,
         }}
         onClick={() => setIsOpen(false)}
       >

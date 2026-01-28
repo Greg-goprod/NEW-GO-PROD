@@ -3,7 +3,7 @@ import type { Offer } from "./bookingTypes";
 import { Button } from "@/components/aura/Button";
 import { Badge } from "@/components/aura/Badge";
 import { getStatusConfig } from "./bookingStatuses";
-import { Send, Edit } from "lucide-react";
+import { Send, Edit, CheckCircle, XCircle } from "lucide-react";
 
 // Couleurs AURA pour les statuts (hex)
 const STATUS_COLORS: Record<string, { bg: string; hover: string; text: string; border: string }> = {
@@ -18,8 +18,16 @@ const STATUS_COLORS: Record<string, { bg: string; hover: string; text: string; b
   negotiating: { bg: "#8B5CF6", hover: "#7C3AED", text: "#FFFFFF", border: "#8B5CF6" },
 };
 
+interface EventDay {
+  id: string;
+  date: string;
+  open_time?: string;
+  close_time?: string;
+}
+
 export function OffersListView({
   offers,
+  days,
   onViewPdf,
   onDownloadWord,
   onSendOffer,
@@ -27,8 +35,11 @@ export function OffersListView({
   onMove,
   onDelete,
   onCreateOffer,
+  onValidateOffer,
+  onRejectOffer,
 }: {
   offers: any[];
+  days?: EventDay[];
   onViewPdf: (offer: Offer) => void;
   onDownloadWord?: (offer: Offer) => void;
   onSendOffer: (offer: Offer) => void;
@@ -36,6 +47,8 @@ export function OffersListView({
   onMove: (offerId: string, newStatus: any) => void;
   onDelete: (offer: Offer) => void;
   onCreateOffer?: (performanceData: any) => void;
+  onValidateOffer?: (offer: Offer) => void;
+  onRejectOffer?: (offer: Offer) => void;
 }) {
   const normalizeTime = (value?: string | null) => {
     if (!value) return "";
@@ -81,8 +94,30 @@ export function OffersListView({
     });
   }, [offers]);
 
-  // Grouper par jour d'evenement
+  // Grouper par jour d'evenement - inclure tous les jours même sans offres
   const groupedByDay = useMemo(() => {
+    // Si on a des jours fournis, les utiliser comme base
+    if (days && days.length > 0) {
+      // Créer un map des offres par date
+      const offersByDate = new Map<string, any[]>();
+      sortedOffers.forEach((o) => {
+        const eventDay = getEventDayDateForDisplay(o);
+        if (!offersByDate.has(eventDay)) {
+          offersByDate.set(eventDay, []);
+        }
+        offersByDate.get(eventDay)!.push(o);
+      });
+
+      // Créer les groupes pour tous les jours
+      return days
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((day) => ({
+          date: day.date,
+          items: offersByDate.get(day.date) || [],
+        }));
+    }
+
+    // Fallback: grouper uniquement par les offres existantes
     const groups: { date: string; items: any[] }[] = [];
     let currentDate = "";
     let currentGroup: any[] = [];
@@ -105,14 +140,15 @@ export function OffersListView({
     }
 
     return groups;
-  }, [sortedOffers]);
+  }, [sortedOffers, days]);
 
   const getStatusBadge = (status: string) => {
     const config = getStatusConfig(status);
     return <Badge color={config.color}>{config.label}</Badge>;
   };
 
-  if (offers.length === 0) {
+  // Si pas de jours ET pas d'offres, afficher le message vide
+  if (offers.length === 0 && (!days || days.length === 0)) {
     return (
       <div className="text-center py-8 text-gray-500 dark:text-gray-400">
         Aucune offre
@@ -139,7 +175,11 @@ export function OffersListView({
 
           {/* Liste des artistes du jour */}
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
-            {group.items.map((o: any) => {
+            {group.items.length === 0 ? (
+              <div className="px-5 py-4 text-center text-sm text-gray-400 dark:text-gray-500 italic">
+                Aucune offre pour ce jour
+              </div>
+            ) : group.items.map((o: any) => {
               const artistDisplay = (o.artist_name || "—").toString().toUpperCase();
               const stageDisplay = o.stage_name || "—";
               const timeDisplay = normalizeTime(o.performance_time || o.date_time) || "—";
@@ -223,10 +263,21 @@ export function OffersListView({
                           )}
                         </div>
                         
-                        {/* Bouton Modifier - couleur du statut actuel */}
+                        {/* Version badge si > 1 */}
+                        {o.version && o.version > 1 && (
+                          <span className="px-2 py-0.5 text-xs font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mr-1">
+                            V{o.version}
+                          </span>
+                        )}
+                        
+                        {/* Bouton Modifier - versioning uniquement si sent/accepted/rejected */}
                         <button 
                           onClick={() => onModify(o)}
-                          title="Modifier l'offre"
+                          title={
+                            statusDisplay === "sent" || statusDisplay === "accepted" || statusDisplay === "rejected"
+                              ? "Modifier l'offre (crée une nouvelle version)"
+                              : "Modifier l'offre"
+                          }
                           className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1 hover:opacity-80"
                           style={{
                             backgroundColor: STATUS_COLORS[statusDisplay]?.bg || '#6B7280',
@@ -238,21 +289,59 @@ export function OffersListView({
                           Modifier
                         </button>
                         
-                        {/* Bouton Envoyer - couleur "Prêt à envoyer" (violet) */}
-                        <button 
-                          onClick={() => onSendOffer(o)}
-                          title="Envoyer l'offre"
-                          className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1"
-                          style={{
-                            backgroundColor: STATUS_COLORS.ready_to_send.bg,
-                            color: STATUS_COLORS.ready_to_send.text,
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.ready_to_send.hover}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.ready_to_send.bg}
-                        >
-                          <Send className="w-4 h-4" />
-                          Envoyer
-                        </button>
+                        {/* Bouton Valider - vert (accepted) - UNIQUEMENT si statut = sent */}
+                        {statusDisplay === "sent" && onValidateOffer && (
+                          <button 
+                            onClick={() => onValidateOffer(o)}
+                            title="Valider l'offre"
+                            className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1"
+                            style={{
+                              backgroundColor: STATUS_COLORS.accepted.bg,
+                              color: STATUS_COLORS.accepted.text,
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.accepted.hover}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.accepted.bg}
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            Valider
+                          </button>
+                        )}
+                        
+                        {/* Bouton Rejeter - rouge - UNIQUEMENT si statut = sent */}
+                        {statusDisplay === "sent" && onRejectOffer && (
+                          <button 
+                            onClick={() => onRejectOffer(o)}
+                            title="Rejeter l'offre"
+                            className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1"
+                            style={{
+                              backgroundColor: STATUS_COLORS.rejected.bg,
+                              color: STATUS_COLORS.rejected.text,
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.rejected.hover}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.rejected.bg}
+                          >
+                            <XCircle className="w-4 h-4" />
+                            Rejeter
+                          </button>
+                        )}
+                        
+                        {/* Bouton Envoyer - couleur "Prêt à envoyer" (violet) - seulement si pas déjà rejeté */}
+                        {statusDisplay !== "rejected" && (
+                          <button 
+                            onClick={() => onSendOffer(o)}
+                            title="Envoyer l'offre"
+                            className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1"
+                            style={{
+                              backgroundColor: STATUS_COLORS.ready_to_send.bg,
+                              color: STATUS_COLORS.ready_to_send.text,
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.ready_to_send.hover}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.ready_to_send.bg}
+                          >
+                            <Send className="w-4 h-4" />
+                            Envoyer
+                          </button>
+                        )}
                       </>
                     ) : (
                       // Pour les performances sans statut offre_a_faire, afficher juste le label

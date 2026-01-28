@@ -34,6 +34,9 @@ export interface OfferSettings {
   catering_meals: string | null;
   artwork: string | null;
   
+  // Corps HTML des emails d'offres
+  email_body_html: string | null;
+  
   created_at: string;
   updated_at: string;
 }

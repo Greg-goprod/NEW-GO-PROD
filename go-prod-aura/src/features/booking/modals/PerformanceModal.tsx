@@ -160,7 +160,7 @@ export function PerformanceModal({
           event_stage_id: initialData.event_stage_id || "",
           performance_time: initialData.performance_time ? initialData.performance_time.slice(0, 5) : "14:00",
           duration: initialData.duration || 60,
-          duration_type: initialData.duration && ![60, 75, 90].includes(initialData.duration) ? "custom" : "standard",
+          duration_type: initialData.duration && ![60, 75, 90, 105, 120].includes(initialData.duration) ? "custom" : "standard",
           fee_amount: initialData.fee_amount ?? null,
           fee_currency: initialData.fee_currency || "EUR",
           commission_percentage: initialData.commission_percentage ?? null,
@@ -657,7 +657,7 @@ export function PerformanceModal({
                         className="w-4 h-4"
                       />
                       <span className="text-sm text-gray-700 dark:text-gray-300">Standard:</span>
-                      {[60, 75, 90].map(duration => (
+                      {[60, 75, 90, 105, 120].map(duration => (
                         <Button
                           key={duration}
                           variant={formData.duration === duration && formData.duration_type === "standard" ? "primary" : "secondary"}

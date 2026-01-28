@@ -18,8 +18,9 @@ import { ContactDetailsModal } from '@/components/crm/ContactDetailsModal';
 import { fetchContactArtists, linkContactToArtists } from '@/api/artistsApi';
 import { fetchContactCompanyIds, linkContactToCompanies } from '@/api/crmContactCompanyLinksApi';
 import { fetchContactRoleIds, linkContactToRoles } from '@/api/crmContactRoleLinksApi';
+import { fetchDepartments } from '@/api/crmLookupsApi';
 import { formatPhoneNumber, getWhatsAppLink } from '@/utils/phoneUtils';
-import type { CRMContactWithRelations, CRMContactInput } from '@/types/crm';
+import type { CRMContactWithRelations, CRMContactInput, Department } from '@/types/crm';
 
 export default function PersonnesPage() {
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -61,12 +62,21 @@ export default function PersonnesPage() {
     notes_internal: '',
     is_primary_for_company_billing: false,
     is_night_contact: false,
+    is_signatory: false,
+    is_internal: false,
     photo_url: undefined,
   });
   
   const [selectedArtistIds, setSelectedArtistIds] = useState<string[]>([]);
   const [selectedCompanyIds, setSelectedCompanyIds] = useState<string[]>([]);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+
+  // Charger les départements
+  useEffect(() => {
+    if (!companyId) return;
+    fetchDepartments(companyId).then(setDepartments).catch(console.error);
+  }, [companyId]);
 
   // Charger les contacts
   const loadContacts = useCallback(async () => {
@@ -109,9 +119,20 @@ export default function PersonnesPage() {
 
   const availableCompanies = Array.from(
     new Set(
-      contacts.flatMap(contact => 
-        contact.linked_companies?.map((company: any) => JSON.stringify({ id: company.id, name: company.name })) || []
-      )
+      contacts.flatMap(contact => {
+        const companies: string[] = [];
+        // Ajouter l'entreprise principale
+        if (contact.main_company) {
+          companies.push(JSON.stringify({ id: contact.main_company.id, name: contact.main_company.company_name }));
+        }
+        // Ajouter les entreprises liées
+        if (contact.linked_companies) {
+          contact.linked_companies.forEach((company: any) => {
+            companies.push(JSON.stringify({ id: company.id, name: company.company_name }));
+          });
+        }
+        return companies;
+      })
     )
   ).map(str => JSON.parse(str));
 
@@ -131,8 +152,9 @@ export default function PersonnesPage() {
       const matchesRole = roleFilter === 'all' || 
         contact.roles?.some(role => role.id === roleFilter);
 
-      // Filtre par entreprise
+      // Filtre par entreprise (main_company ou linked_companies)
       const matchesCompany = companyFilter === 'all' || 
+        contact.main_company?.id === companyFilter ||
         contact.linked_companies?.some((company: any) => company.id === companyFilter);
 
       return matchesSearch && matchesRole && matchesCompany;
@@ -150,6 +172,20 @@ export default function PersonnesPage() {
       } else if (sortColumn === 'phone') {
         aVal = a.phone_mobile || '';
         bVal = b.phone_mobile || '';
+      } else if (sortColumn === 'company') {
+        // Tri par nom de l'entreprise principale ou première entreprise liée
+        const aCompany = a.main_company?.company_name || a.linked_companies?.[0]?.company_name || '';
+        const bCompany = b.main_company?.company_name || b.linked_companies?.[0]?.company_name || '';
+        aVal = aCompany.toLowerCase();
+        bVal = bCompany.toLowerCase();
+      } else if (sortColumn === 'department') {
+        // Tri par nom du département
+        aVal = (a.department?.label || '').toLowerCase();
+        bVal = (b.department?.label || '').toLowerCase();
+      } else if (sortColumn === 'type') {
+        // Tri par type (interne/externe) - internes en premier si asc
+        aVal = a.is_internal ? 'a' : 'b';
+        bVal = b.is_internal ? 'a' : 'b';
       } else {
         aVal = (a as any)[sortColumn] || '';
         bVal = (b as any)[sortColumn] || '';
@@ -175,6 +211,8 @@ export default function PersonnesPage() {
       notes_internal: '',
       is_primary_for_company_billing: false,
       is_night_contact: false,
+      is_signatory: false,
+      is_internal: false,
       photo_url: undefined,
     });
     setSelectedArtistIds([]);
@@ -197,6 +235,8 @@ export default function PersonnesPage() {
       notes_internal: contact.notes_internal || '',
       is_primary_for_company_billing: contact.is_primary_for_company_billing,
       is_night_contact: contact.is_night_contact,
+      is_signatory: contact.is_signatory,
+      is_internal: contact.is_internal,
       photo_url: contact.photo_url || undefined,
     });
     
@@ -567,6 +607,28 @@ export default function PersonnesPage() {
                     </span>
                   </div>
                 </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-violet-400 transition-colors select-none"
+                  onClick={() => handleSort('type')}
+                >
+                  <div className="flex items-center gap-2">
+                    Type
+                    <span className={sortColumn === 'type' ? 'text-violet-400' : 'text-gray-400 dark:text-gray-500'}>
+                      {sortColumn === 'type' && sortDirection === 'asc' ? '▲' : '▼'}
+                    </span>
+                  </div>
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-violet-400 transition-colors select-none"
+                  onClick={() => handleSort('department')}
+                >
+                  <div className="flex items-center gap-2">
+                    Département
+                    <span className={sortColumn === 'department' ? 'text-violet-400' : 'text-gray-400 dark:text-gray-500'}>
+                      {sortColumn === 'department' && sortDirection === 'asc' ? '▲' : '▼'}
+                    </span>
+                  </div>
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Fonction
                 </th>
@@ -592,8 +654,16 @@ export default function PersonnesPage() {
                     </span>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Entreprises
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-violet-400 transition-colors select-none"
+                  onClick={() => handleSort('company')}
+                >
+                  <div className="flex items-center gap-2">
+                    Entreprises
+                    <span className={sortColumn === 'company' ? 'text-violet-400' : 'text-gray-400 dark:text-gray-500'}>
+                      {sortColumn === 'company' && sortDirection === 'asc' ? '▲' : '▼'}
+                    </span>
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Actions
@@ -633,6 +703,24 @@ export default function PersonnesPage() {
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {contact.first_name} {contact.last_name}
+                    </div>
+                  </td>
+                  
+                  {/* Type */}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      contact.is_internal 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                    }`}>
+                      {contact.is_internal ? 'Interne' : 'Externe'}
+                    </span>
+                  </td>
+                  
+                  {/* Département */}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      {contact.department?.label || '-'}
                     </div>
                   </td>
                   
@@ -748,8 +836,25 @@ export default function PersonnesPage() {
             />
           </div>
 
-          {/* Ligne 2 : Fonction, Téléphone */}
+          {/* Ligne 2 : Département, Fonction */}
           <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                Département
+              </label>
+              <select
+                value={formData.department_id || ''}
+                onChange={(e) => setFormData({ ...formData, department_id: e.target.value || undefined })}
+                className="w-full h-[42px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+              >
+                <option value="">-</option>
+                {departments.filter(d => d.active).map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             {companyId && (
               <RoleSelector
                 companyId={companyId}
@@ -757,55 +862,36 @@ export default function PersonnesPage() {
                 onChange={setSelectedRoleIds}
               />
             )}
-            <PhoneInput
-              label="Téléphone"
-              value={formData.phone_mobile || ''}
-              onChange={(value) => setFormData({ ...formData, phone_mobile: value })}
-              placeholder="+41 79 123 45 67"
-              defaultCountry="CH"
-            />
           </div>
 
-          {/* Ligne 3 : LinkedIn */}
-          <Input
-            label="LinkedIn"
-            value={formData.linkedin_url || ''}
-            onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
-            placeholder="https://linkedin.com/in/..."
-          />
-
-          {/* Ligne 4 : Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Notes internes
-            </label>
-            <textarea
-              value={formData.notes_internal || ''}
-              onChange={(e) => setFormData({ ...formData, notes_internal: e.target.value })}
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-violet-500 placeholder-gray-400 dark:placeholder-gray-500"
-              placeholder="Notes internes..."
-            />
-          </div>
-
-          {/* Ligne 5 : Entreprises et Artistes */}
-          {companyId && (
-            <div className="grid grid-cols-2 gap-4">
-              <CompanySelector
-                companyId={companyId}
-                selectedCompanyIds={selectedCompanyIds}
-                onChange={setSelectedCompanyIds}
-              />
-              <ArtistSelector
-                companyId={companyId}
-                selectedArtistIds={selectedArtistIds}
-                onChange={setSelectedArtistIds}
-              />
+          {/* Ligne 3 : Type de contact + Options */}
+          <div className="flex items-center gap-6 flex-wrap">
+            {/* Type de contact (radio buttons) */}
+            <div className="flex items-center gap-4 pr-4 border-r border-gray-300 dark:border-gray-600">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Type :</span>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="contact_type"
+                  checked={formData.is_internal === false}
+                  onChange={() => setFormData({ ...formData, is_internal: false })}
+                  className="w-4 h-4 border-gray-300 text-violet-600 focus:ring-violet-500"
+                />
+                <span className="text-sm text-gray-900 dark:text-gray-100">Externe</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="contact_type"
+                  checked={formData.is_internal === true}
+                  onChange={() => setFormData({ ...formData, is_internal: true })}
+                  className="w-4 h-4 border-gray-300 text-violet-600 focus:ring-violet-500"
+                />
+                <span className="text-sm text-gray-900 dark:text-gray-100">Interne</span>
+              </label>
             </div>
-          )}
 
-          {/* Ligne 6 : Checkboxes */}
-          <div className="flex items-center gap-6">
+            {/* Options (checkboxes) */}
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -825,9 +911,66 @@ export default function PersonnesPage() {
               />
               <span className="text-sm text-gray-900 dark:text-gray-100">Contact facturation</span>
             </label>
+            
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.is_signatory || false}
+                onChange={(e) => setFormData({ ...formData, is_signatory: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+              />
+              <span className="text-sm text-gray-900 dark:text-gray-100">Signataire</span>
+            </label>
           </div>
 
-          {/* Ligne 7 : Photo centrée */}
+          {/* Ligne 4 : Téléphone, LinkedIn */}
+          <div className="grid grid-cols-2 gap-3">
+            <PhoneInput
+              label="Téléphone"
+              value={formData.phone_mobile || ''}
+              onChange={(value) => setFormData({ ...formData, phone_mobile: value })}
+              placeholder="+41 79 123 45 67"
+              defaultCountry="CH"
+            />
+            <Input
+              label="LinkedIn"
+              value={formData.linkedin_url || ''}
+              onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
+              placeholder="https://linkedin.com/in/..."
+            />
+          </div>
+
+          {/* Ligne 4 : Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+              Notes internes
+            </label>
+            <textarea
+              value={formData.notes_internal || ''}
+              onChange={(e) => setFormData({ ...formData, notes_internal: e.target.value })}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-violet-500 placeholder-gray-400 dark:placeholder-gray-500"
+              placeholder="Notes internes..."
+            />
+          </div>
+
+          {/* Ligne 7 : Entreprises et Artistes */}
+          {companyId && (
+            <div className="grid grid-cols-2 gap-4">
+              <CompanySelector
+                companyId={companyId}
+                selectedCompanyIds={selectedCompanyIds}
+                onChange={setSelectedCompanyIds}
+              />
+              <ArtistSelector
+                companyId={companyId}
+                selectedArtistIds={selectedArtistIds}
+                onChange={setSelectedArtistIds}
+              />
+            </div>
+          )}
+
+          {/* Ligne 8 : Photo centrée */}
           <div className="flex justify-center pt-2 border-t border-gray-200 dark:border-gray-700">
             <div className="w-64">
               <PhotoUploader

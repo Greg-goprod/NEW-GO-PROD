@@ -260,6 +260,7 @@ export async function createOffer(payload: any): Promise<Offer> {
 }
 
 export async function updateOffer(id: string, payload: any): Promise<Offer> {
+  console.log("[bookingApi] updateOffer - id:", id, "agency_contact_id:", payload.agency_contact_id);
   const { data, error } = await supabase
     .from("offers")
     .update({
@@ -271,6 +272,7 @@ export async function updateOffer(id: string, payload: any): Promise<Offer> {
     .single();
     
   if (error) throw error;
+  console.log("[bookingApi] updateOffer - résultat agency_contact_id:", data?.agency_contact_id);
   return data as Offer;
 }
 

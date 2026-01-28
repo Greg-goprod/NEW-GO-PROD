@@ -187,6 +187,8 @@ export interface CRMContact {
   main_company_id?: string;
   is_primary_for_company_billing: boolean;
   is_night_contact: boolean;
+  is_signatory: boolean;
+  is_internal: boolean;
   
   // Statut relation
   blacklist_reason?: string;
@@ -285,6 +287,7 @@ export interface CRMContactWithRelations extends CRMContact {
   main_company?: CRMCompany;
   roles?: ContactRole[];
   linked_companies?: CRMCompany[];
+  artists?: { id: string; artist_name: string; artist_real_name?: string }[];
 }
 
 // -----------------------------------------------------------------------------

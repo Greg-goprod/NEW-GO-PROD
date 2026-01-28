@@ -506,9 +506,51 @@ export default function BookingPage() {
                   offers={[...offers, ...(offreAFaireItems as any[]), ...(rejectedPerfItems as any[])]}
                   onViewPdf={handleViewPdf}
                   onSendOffer={handleSendOffer}
-                  onModify={() => setShowComposer(true)}
+                  onModify={(offer) => {
+                    // Versioning UNIQUEMENT si l'offre a déjà été envoyée (sent, accepted, rejected)
+                    const offerStatus = offer.status || (offer as any).booking_status;
+                    const needsVersioning = offerStatus === "sent" || offerStatus === "accepted" || offerStatus === "rejected";
+                    
+                    if (needsVersioning) {
+                      // Mode versioning: crée une nouvelle version
+                      setPrefilledOfferData({
+                        isModification: true,
+                        originalOfferId: (offer as any).original_offer_id || offer.id,
+                        originalVersion: (offer as any).version || 1,
+                        artist_id: offer.artist_id,
+                        artist_name: offer.artist_name,
+                        stage_id: offer.stage_id,
+                        stage_name: offer.stage_name,
+                        event_day_date: (offer as any).event_day_date || (offer.date_time ? offer.date_time.slice(0, 10) : null),
+                        performance_time: offer.performance_time,
+                        duration: offer.duration || (offer as any).duration_minutes,
+                        fee_amount: offer.amount_is_net ? offer.amount_net : offer.amount_gross,
+                        fee_currency: offer.currency,
+                        amount_is_net: offer.amount_is_net,
+                      });
+                    } else {
+                      // Mode édition directe: modifie l'offre existante
+                      setPrefilledOfferData({
+                        isModification: false,
+                        editingOfferId: offer.id,
+                        artist_id: offer.artist_id,
+                        artist_name: offer.artist_name,
+                        stage_id: offer.stage_id,
+                        stage_name: offer.stage_name,
+                        event_day_date: (offer as any).event_day_date || (offer.date_time ? offer.date_time.slice(0, 10) : null),
+                        performance_time: offer.performance_time,
+                        duration: offer.duration || (offer as any).duration_minutes,
+                        fee_amount: offer.amount_is_net ? offer.amount_net : offer.amount_gross,
+                        fee_currency: offer.currency,
+                        amount_is_net: offer.amount_is_net,
+                      });
+                    }
+                    setShowComposer(true);
+                  }}
                   onMove={handleMove}
                   onDelete={(o) => handleDelete(o.id)}
+                  onValidateOffer={(o) => handleMove(o.id, "accepted")}
+                  onRejectOffer={(o) => handleRejectOfferModal(o)}
                 />
               )}
             </CardBody>
