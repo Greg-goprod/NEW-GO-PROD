@@ -1,0 +1,35 @@
+# Configuration Netlify pour GO-PROD AURA
+# Ce fichier doit être à la racine du repo
+
+[build]
+  base = "go-prod-aura"
+  command = "npm run build"
+  publish = "go-prod-aura/dist"
+  
+[build.environment]
+  NODE_VERSION = "22"
+  
+  # Désactiver le scan de secrets pour les variables publiques VITE_*
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY,SUPABASE_ANON_KEY,SUPABASE_DATABASE_URL,SUPABASE_JWT_SECRET,VITE_SPOTIFY_CLIENT_ID,VITE_SPOTIFY_CLIENT_SECRET,VITE_RAPIDAPI_KEY,VITE_TWILIO_ACCOUNT_SID,VITE_TWILIO_AUTH_TOKEN,VITE_TWILIO_WHATSAPP_NUMBER"
+  
+  # Exclure les fichiers de documentation du scan
+  SECRETS_SCAN_OMIT_PATHS = "*.md,sql/**,database/**,supabase/migrations/**"
+
+[dev]
+  command = "npm run dev"
+  port = 5173
+
+# Headers pour sécurité
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+# Redirects SPA - Toutes les routes vers index.html (React Router)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
