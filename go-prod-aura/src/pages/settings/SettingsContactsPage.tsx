@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, Building2, Users, Briefcase, TrendingUp, Plus, Edit2, Trash2, GripVertical } from 'lucide-react';
+import { Phone, Building2, Users, Briefcase, TrendingUp, Plus, Edit2, Trash2, GripVertical, ChevronDown } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/aura/Card';
 import { Button } from '@/components/aura/Button';
 import { Input } from '@/components/aura/Input';
@@ -65,19 +65,14 @@ function SortableItem({
   return (
     <div
       ref={setNodeRef}
-      style={{
-        ...style,
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-default)',
-      }}
-      className="flex items-center gap-3 p-3 rounded-xl transition-all"
+      style={style}
+      className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
     >
-      {/* Poignée de drag */}
+      {/* Poignee de drag */}
       <div 
         {...attributes} 
         {...listeners}
-        className="cursor-grab active:cursor-grabbing transition-colors"
-        style={{ color: 'var(--text-muted)' }}
+        className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
       >
         <GripVertical className="w-5 h-5" />
       </div>
@@ -124,6 +119,7 @@ function SortableItem({
             size="sm"
             variant="ghost"
             onClick={onDelete}
+            className="text-red-500 hover:text-red-600"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -322,10 +318,7 @@ function LookupManager({
         <div className="space-y-2">
           {/* Formulaire d'ajout */}
           {showAddForm && (
-            <div 
-              className="flex items-center gap-3 p-3 rounded-xl"
-              style={{ background: 'var(--bg-surface)' }}
-            >
+            <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
               <Input
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
@@ -380,16 +373,9 @@ function LookupManager({
               </SortableContext>
               <DragOverlay>
                 {activeLookup ? (
-                  <div 
-                    className="flex items-center gap-3 p-3 rounded-xl shadow-xl"
-                    style={{
-                      background: 'var(--bg-elevated)',
-                      border: '2px solid var(--primary)',
-                      boxShadow: 'var(--glow-primary)',
-                    }}
-                  >
-                    <GripVertical className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
-                    <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border-2 border-violet-500 shadow-xl">
+                    <GripVertical className="w-5 h-5 text-gray-400" />
+                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 font-medium">
                       {activeLookup.label}
                     </span>
                   </div>
@@ -416,9 +402,12 @@ function LookupManager({
 }
 
 export function SettingsContactsPage() {
+  const [accordionPersonnesOpen, setAccordionPersonnesOpen] = useState(false);
+  const [accordionEntreprisesOpen, setAccordionEntreprisesOpen] = useState(false);
+
   return (
     <div className="space-y-6">
-      {/* En-tête */}
+      {/* En-tete */}
       <div>
         <h2 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
           Options CRM
@@ -428,73 +417,126 @@ export function SettingsContactsPage() {
         </p>
       </div>
 
-      {/* Grille 2 colonnes */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Colonne PERSONNES */}
-        <div className="space-y-6">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <Users className="w-5 h-5 text-violet-400" />
-              Parametres Personnes
-            </h3>
-            <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-              Options pour la gestion des contacts
-            </p>
+      {/* ACCORDEON 1: PERSONNES */}
+      <div 
+        className="rounded-xl overflow-hidden"
+        style={{ 
+          background: 'var(--bg-elevated)', 
+          border: '1px solid var(--border-default)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setAccordionPersonnesOpen(!accordionPersonnesOpen)}
+          className="w-full px-5 py-4 flex items-center justify-between transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+          style={{ background: accordionPersonnesOpen ? 'rgba(113, 61, 255, 0.05)' : 'transparent' }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30">
+              <Users className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div className="text-left">
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                PERSONNES
+              </h3>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Departements, roles, seniorite et statuts des contacts
+              </p>
+            </div>
           </div>
-
-          {/* Départements */}
-          <LookupManager
-            title="Départements"
-            icon={Briefcase}
-            table="departments"
-            description="Booking, Transport, Hospitality, Technique, Presse, Finance..."
+          <ChevronDown 
+            className={`w-5 h-5 transition-transform duration-200 ${accordionPersonnesOpen ? 'rotate-180' : ''}`}
+            style={{ color: 'var(--text-muted)' }}
           />
+        </button>
 
-          {/* Rôles de contacts */}
-          <LookupManager
-            title="Rôles de contacts"
-            icon={Users}
-            table="contact_roles"
-            description="Booker, Tour Manager, Chauffeur, Responsable hôtel..."
-          />
+        {accordionPersonnesOpen && (
+          <div className="px-5 pb-5 border-t" style={{ borderColor: 'var(--border-default)' }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-5">
+              {/* Departements */}
+              <LookupManager
+                title="Departements"
+                icon={Briefcase}
+                table="departments"
+                description="Booking, Transport, Hospitality..."
+              />
 
-          {/* Niveaux de séniorité */}
-          <LookupManager
-            title="Niveaux de séniorité"
-            icon={TrendingUp}
-            table="seniority_levels"
-            description="Décision, Management, Opérationnel, Assistant..."
-          />
+              {/* Roles de contacts */}
+              <LookupManager
+                title="Roles"
+                icon={Users}
+                table="contact_roles"
+                description="Booker, Tour Manager, Chauffeur..."
+              />
 
-          {/* Statuts de contacts */}
-          <LookupManager
-            title="Statuts de contacts"
-            icon={Phone}
-            table="contact_statuses"
-            description="Actif, À valider, Blacklist, Archivé..."
-          />
-        </div>
+              {/* Niveaux de seniorite */}
+              <LookupManager
+                title="Seniorite"
+                icon={TrendingUp}
+                table="seniority_levels"
+                description="Decision, Management, Operationnel..."
+              />
 
-        {/* Colonne SOCIÉTÉS */}
-        <div className="space-y-6">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <Building2 className="w-5 h-5 text-violet-400" />
-              Parametres Societes
-            </h3>
-            <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-              Options pour la gestion des entreprises
-            </p>
+              {/* Statuts de contacts */}
+              <LookupManager
+                title="Statuts"
+                icon={Phone}
+                table="contact_statuses"
+                description="Actif, A valider, Blacklist..."
+              />
+            </div>
           </div>
+        )}
+      </div>
 
-          {/* Types de sociétés */}
-          <LookupManager
-            title="Types de sociétés"
-            icon={Building2}
-            table="company_types"
-            description="Label, Maison de disques, Agence de booking, Salle, Festival..."
+      {/* ACCORDEON 2: ENTREPRISES */}
+      <div 
+        className="rounded-xl overflow-hidden"
+        style={{ 
+          background: 'var(--bg-elevated)', 
+          border: '1px solid var(--border-default)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setAccordionEntreprisesOpen(!accordionEntreprisesOpen)}
+          className="w-full px-5 py-4 flex items-center justify-between transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+          style={{ background: accordionEntreprisesOpen ? 'rgba(113, 61, 255, 0.05)' : 'transparent' }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30">
+              <Building2 className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div className="text-left">
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                ENTREPRISES
+              </h3>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Types de societes et categories
+              </p>
+            </div>
+          </div>
+          <ChevronDown 
+            className={`w-5 h-5 transition-transform duration-200 ${accordionEntreprisesOpen ? 'rotate-180' : ''}`}
+            style={{ color: 'var(--text-muted)' }}
           />
-        </div>
+        </button>
+
+        {accordionEntreprisesOpen && (
+          <div className="px-5 pb-5 border-t" style={{ borderColor: 'var(--border-default)' }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-5">
+              {/* Types de societes */}
+              <LookupManager
+                title="Types de societes"
+                icon={Building2}
+                table="company_types"
+                description="Label, Agence, Salle, Festival..."
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

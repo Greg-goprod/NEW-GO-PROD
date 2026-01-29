@@ -12,10 +12,12 @@ import { fetchAllArtists } from '@/api/artistsApi';
 import { fetchCRMContacts } from '@/api/crmContactsApi';
 import type { Travel, TravelWithRelations, TravelType, TravelFormData } from '@/types/production';
 import { Button } from '@/components/aura/Button';
+import { PageHeader } from '@/components/aura/PageHeader';
 import { Input } from '@/components/aura/Input';
 import { Modal } from '@/components/aura/Modal';
 import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
 import { TravelStepper } from '@/components/production/TravelStepper';
+import { DateTimePickerPopup } from '@/components/ui/pickers/DateTimePickerPopup';
 
 const TRAVEL_TYPES: { value: TravelType; label: string; isVehicle: boolean }[] = [
   { value: 'PLANE', label: 'Avion', isVehicle: false },
@@ -210,18 +212,16 @@ export default function TravelPage() {
   return (
     <div className="p-6">
       {/* Header */}
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Plane className="w-5 h-5 text-violet-400" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            TRAVELS
-          </h1>
-        </div>
-        <Button variant="primary" onClick={handleOpenModal}>
-          <Plus className="w-4 h-4 mr-1" />
-          Nouveau voyage
-        </Button>
-      </header>
+      <PageHeader
+        icon={Plane}
+        title="TRAVELS"
+        actions={
+          <Button variant="primary" onClick={handleOpenModal}>
+            <Plus className="w-4 h-4 mr-1" />
+            Nouveau voyage
+          </Button>
+        }
+      />
 
       {/* Liste des travels */}
       {travels.length === 0 ? (
@@ -303,7 +303,7 @@ export default function TravelPage() {
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => setDeleteId(travel.id)}
-                      className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                      className="p-1 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                       title="Supprimer"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -321,7 +321,7 @@ export default function TravelPage() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title="Nouveau voyage"
-        widthClass="max-w-4xl"
+        size="lg"
       >
         <div className="p-6">
           <TravelStepper currentStep={currentStep} steps={steps} />
@@ -533,16 +533,11 @@ export default function TravelPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                    Date et heure <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    type="datetime-local"
-                    value={formData.scheduled_datetime || ''}
-                    onChange={(e) => setFormData({ ...formData, scheduled_datetime: e.target.value })}
-                  />
-                </div>
+                <DateTimePickerPopup
+                  label="Date et heure *"
+                  value={formData.scheduled_datetime ? new Date(formData.scheduled_datetime) : null}
+                  onChange={(date) => setFormData({ ...formData, scheduled_datetime: date ? date.toISOString() : '' })}
+                />
                 <div>
                   <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                     Nombre de passagers

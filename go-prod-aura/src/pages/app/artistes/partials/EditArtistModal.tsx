@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Music, Search, Bug } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import Modal, { ModalFooter, ModalButton } from "@/components/ui/Modal";
+import { Modal } from "@/components/aura/Modal";
 import SpotifySearchModal from "./SpotifySearchModal";
 import { supabase } from "../../../../lib/supabaseClient";
 
@@ -207,26 +207,24 @@ export default function EditArtistModal({ artist, companyId, onClose, onSaved }:
   return (
     <>
       <Modal
-        isOpen={true}
+        open={true}
         onClose={onClose}
         title="Modifier l'artiste"
         size="sm"
-        draggable={true}
         footer={
-          <ModalFooter>
+          <>
             {err && <div className="text-xs text-red-400 mr-auto">{err}</div>}
-            <ModalButton variant="secondary" onClick={onClose}>
+            <Button variant="secondary" onClick={onClose}>
               Annuler
-            </ModalButton>
-            <ModalButton 
+            </Button>
+            <Button 
               variant="primary" 
               onClick={onSubmit} 
-              disabled={!canSave}
-              loading={loading}
+              disabled={!canSave || loading}
             >
-              Enregistrer
-            </ModalButton>
-          </ModalFooter>
+              {loading ? 'Enregistrement...' : 'Enregistrer'}
+            </Button>
+          </>
         }
       >
         <p className="mb-4 text-sm font-sans" style={{color: 'var(--text-secondary)'}}>

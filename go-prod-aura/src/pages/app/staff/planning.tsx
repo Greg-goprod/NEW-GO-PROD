@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Plus, Clock, Users, MapPin, Edit2, Trash2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import Modal from '@/components/ui/Modal';
+import { PageHeader } from '@/components/aura/PageHeader';
+import { Modal } from '@/components/aura/Modal';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Select } from '@/components/ui/Select';
@@ -243,23 +244,20 @@ export default function StaffPlanningPage() {
 
   return (
     <div className="p-6">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-violet-400" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            STAFF • PLANNING
-          </h1>
-        </div>
-        <Button
-          onClick={openCreateModal}
-          disabled={!selectedEventId}
-          size="sm"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Créer un shift
-        </Button>
-      </header>
+      <PageHeader
+        icon={Calendar}
+        title="STAFF PLANNING"
+        actions={
+          <Button
+            onClick={openCreateModal}
+            disabled={!selectedEventId}
+            size="sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Créer un shift
+          </Button>
+        }
+      />
 
       {/* Sélecteur d'événement */}
       <div className="mb-6">
@@ -367,7 +365,7 @@ export default function StaffPlanningPage() {
 
       {/* Modal création/édition */}
       <Modal
-        isOpen={modalOpen}
+        open={modalOpen}
         onClose={closeModal}
         title={editingShift ? 'Modifier le shift' : 'Créer un shift'}
         size="lg"

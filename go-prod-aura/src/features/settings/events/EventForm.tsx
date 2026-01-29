@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { Save, Plus, Trash2, MapPin, Info, AlertTriangle } from 'lucide-react';
-import Modal, { ModalFooter, ModalButton } from '@/components/ui/Modal';
+import { Modal } from '@/components/aura/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
@@ -142,6 +142,12 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
 
   // Ref pour éviter les boucles infinies et tracker les dates précédentes
   const prevDatesRef = useRef<{ start: string; end: string } | null>(null);
+  
+  // Ref pour stocker les données initiales (pour détecter les changements)
+  const initialDataRef = useRef<{
+    days: EventDayInput[];
+    stages: EventStageInput[];
+  } | null>(null);
 
   // Fonction pour appliquer les changements de jours
   const applyDaysChange = (newStartDate: string, newEndDate: string, skipWarning = false) => {
@@ -276,44 +282,55 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
           const endDate = full.event.end_date || '';
           prevDatesRef.current = { start: startDate, end: endDate };
 
+          // Préparer les données des jours et scènes
+          const daysData = full.days.length > 0
+            ? full.days.map((d) => ({
+                date: d.date || '',
+                open_time: d.open_time || '',
+                close_time: d.close_time || '',
+                is_closing_day: d.is_closing_day || false,
+                notes: d.notes || '',
+              }))
+            : [
+                {
+                  date: '',
+                  open_time: '11:00',
+                  close_time: '02:00',
+                  is_closing_day: false,
+                  notes: '',
+                },
+              ];
+
+          const stagesData = full.stages.length > 0
+            ? full.stages.map((s) => ({
+                name: s.name,
+                type: s.type,
+                specificity: s.specificity,
+                capacity: s.capacity,
+              }))
+            : [
+                {
+                  name: 'Main',
+                  type: null,
+                  specificity: null,
+                  capacity: null,
+                },
+              ];
+
+          // Stocker les données initiales pour comparaison
+          initialDataRef.current = {
+            days: JSON.parse(JSON.stringify(daysData)),
+            stages: JSON.parse(JSON.stringify(stagesData)),
+          };
+
           reset({
             name: full.event.name,
             color_hex: full.event.color_hex || '#3b82f6',
             start_date: startDate,
             end_date: endDate,
             notes: full.event.notes || '',
-            days: full.days.length > 0
-              ? full.days.map((d) => ({
-                  date: d.date || '',
-                  open_time: d.open_time || '',
-                  close_time: d.close_time || '',
-                  is_closing_day: d.is_closing_day || false,
-                  notes: d.notes || '',
-                }))
-              : [
-                  {
-                    date: '',
-                    open_time: '11:00',
-                    close_time: '02:00',
-                    is_closing_day: false,
-                    notes: '',
-                  },
-                ],
-            stages: full.stages.length > 0
-              ? full.stages.map((s) => ({
-                  name: s.name,
-                  type: s.type,
-                  specificity: s.specificity,
-                  capacity: s.capacity,
-                }))
-              : [
-                  {
-                    name: 'Main',
-                    type: null,
-                    specificity: null,
-                    capacity: null,
-                  },
-                ],
+            days: daysData,
+            stages: stagesData,
           });
         })
         .catch((err) => {
@@ -385,11 +402,26 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
         });
       }
 
-      // Remplacer les jours
-      await replaceEventDays(eventId!, data.days);
+      // En mode édition, ne synchroniser que si les données ont changé
+      if (editingEventId && initialDataRef.current) {
+        // Comparer les jours
+        const daysChanged = JSON.stringify(data.days) !== JSON.stringify(initialDataRef.current.days);
+        if (daysChanged) {
+          console.log('📅 Jours modifiés, synchronisation...');
+          await replaceEventDays(eventId!, data.days);
+        }
 
-      // Remplacer les scènes
-      await replaceEventStages(eventId!, data.stages);
+        // Comparer les scènes
+        const stagesChanged = JSON.stringify(data.stages) !== JSON.stringify(initialDataRef.current.stages);
+        if (stagesChanged) {
+          console.log('🎭 Scènes modifiées, synchronisation...');
+          await replaceEventStages(eventId!, data.stages);
+        }
+      } else {
+        // Mode création : toujours créer les jours et scènes
+        await replaceEventDays(eventId!, data.days);
+        await replaceEventStages(eventId!, data.stages);
+      }
 
       // Sauvegarder dans localStorage
       localStorage.setItem('selected_event_id', eventId!);
@@ -425,26 +457,24 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
 
   return (
     <Modal
-      isOpen={open}
+      open={open}
       onClose={handleClose}
       title={editingEventId ? 'Éditer l\'évènement' : 'Créer un évènement'}
       size="lg"
-      draggable={true}
       footer={
-        <ModalFooter>
-          <ModalButton variant="secondary" onClick={handleClose} disabled={saving}>
+        <>
+          <Button variant="secondary" onClick={handleClose} disabled={saving}>
             Annuler
-          </ModalButton>
-          <ModalButton
+          </Button>
+          <Button
             variant="primary"
             onClick={handleSubmit(onSubmit)}
             disabled={saving || loading}
-            loading={saving}
           >
             <Save className="w-4 h-4 mr-2" />
-            Enregistrer
-          </ModalButton>
-        </ModalFooter>
+            {saving ? 'Enregistrement...' : 'Enregistrer'}
+          </Button>
+        </>
       }
     >
       {loading ? (
@@ -701,20 +731,22 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
 
       {/* Modal de warning pour suppression de jours */}
       <Modal
-        isOpen={deleteDaysWarning.show}
+        open={deleteDaysWarning.show}
         onClose={handleCancelDeleteDays}
         title="Attention - Suppression de jours"
         size="sm"
-        draggable={true}
         footer={
-          <ModalFooter>
-            <ModalButton variant="secondary" onClick={handleCancelDeleteDays}>
+          <>
+            <Button variant="secondary" onClick={handleCancelDeleteDays}>
               Annuler
-            </ModalButton>
-            <ModalButton variant="danger" onClick={handleConfirmDeleteDays}>
+            </Button>
+            <button
+              onClick={handleConfirmDeleteDays}
+              className="px-4 py-2 rounded-lg font-medium text-sm bg-red-600 hover:bg-red-700 text-white transition-colors"
+            >
               Confirmer la suppression
-            </ModalButton>
-          </ModalFooter>
+            </button>
+          </>
         }
       >
         <div className="flex items-start gap-4">

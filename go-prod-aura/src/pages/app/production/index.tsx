@@ -15,6 +15,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useCurrentEvent } from '@/hooks/useCurrentEvent';
+import { PageHeader } from '@/components/aura/PageHeader';
 import { fetchTouringPartyByEvent } from '@/api/touringPartyApi';
 import { fetchTravelsByEvent } from '@/api/travelsApi';
 import { fetchMissionsByEvent } from '@/api/missionsApi';
@@ -237,15 +238,7 @@ export default function ProductionPage() {
   if (!currentEvent) {
     return (
       <div className="p-6">
-        <header className="mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Clapperboard className="w-6 h-6 text-violet-400" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">PRODUCTION</h1>
-          </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Gestion complète de la production événementielle
-          </p>
-        </header>
+      <PageHeader icon={Clapperboard} title="PRODUCTION" />
 
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
           <div className="flex items-center gap-3 mb-2">
@@ -286,21 +279,16 @@ export default function ProductionPage() {
 
   return (
     <div className="p-6">
-      <header className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Clapperboard className="w-6 h-6 text-violet-400" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">PRODUCTION</h1>
-          </div>
+      <PageHeader
+        icon={Clapperboard}
+        title="PRODUCTION"
+        actions={
           <div className="flex items-center gap-2 px-3 py-1 bg-violet-100 dark:bg-violet-900/20 text-violet-800 dark:text-violet-300 rounded-full text-sm font-medium">
             <CheckCircle2 className="w-4 h-4" />
             {currentEvent.name}
           </div>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Gestion complète de la production événementielle
-        </p>
-      </header>
+        }
+      />
 
       {/* Statistiques */}
       {isLoading ? (

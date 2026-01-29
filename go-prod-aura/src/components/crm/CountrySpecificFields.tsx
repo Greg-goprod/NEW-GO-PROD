@@ -43,6 +43,9 @@ export function CountrySpecificFields({
   const [allFields, setAllFields] = useState<CountryFieldConfig[]>([]);
   const [loading, setLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  
+  // Log pour debug
+  console.log('[CountrySpecificFields] Props received:', { country, data, filter });
 
   // Filtrer les champs selon le mode
   const fields = useMemo(() => {

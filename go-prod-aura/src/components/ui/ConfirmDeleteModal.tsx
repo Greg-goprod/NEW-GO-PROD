@@ -1,5 +1,6 @@
 import { AlertTriangle } from "lucide-react";
-import Modal, { ModalFooter, ModalButton } from "./Modal";
+import { Modal } from "../aura/Modal";
+import { Button } from "../aura/Button";
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean;
@@ -22,24 +23,23 @@ export function ConfirmDeleteModal({
 }: ConfirmDeleteModalProps) {
   return (
     <Modal
-      isOpen={isOpen}
+      open={isOpen}
       onClose={onClose}
       title={title}
       size="sm"
-      draggable={true}
       footer={
-        <ModalFooter>
-          <ModalButton variant="secondary" onClick={onClose} disabled={loading}>
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
             Annuler
-          </ModalButton>
-          <ModalButton 
-            variant="danger" 
-            onClick={onConfirm} 
-            loading={loading}
+          </Button>
+          <button 
+            onClick={onConfirm}
+            disabled={loading}
+            className="px-4 py-2 rounded-lg font-medium text-sm bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
           >
-            Supprimer
-          </ModalButton>
-        </ModalFooter>
+            {loading ? 'Suppression...' : 'Supprimer'}
+          </button>
+        </>
       }
     >
       <div className="flex items-start gap-4">

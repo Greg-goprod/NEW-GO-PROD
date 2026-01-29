@@ -107,7 +107,7 @@ export function ContactSelector({ companyId, selectedContactIds, onChange }: Con
 
         {/* Liste déroulante */}
         {isOpen && (
-          <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute z-[600] mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
             {contacts.length === 0 ? (
               <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
                 Aucun contact disponible

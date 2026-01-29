@@ -364,7 +364,7 @@ export function EmailAttachmentsManager({ companyId }: EmailAttachmentsManagerPr
         open={!!previewUrl}
         onClose={closePreview}
         title={`Prévisualisation - ${previewName}`}
-        widthClass="max-w-5xl"
+        size="xl"
       >
         <div className="h-[75vh]">
           {loadingPreview ? (

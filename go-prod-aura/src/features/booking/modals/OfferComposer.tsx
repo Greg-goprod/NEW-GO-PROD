@@ -93,6 +93,7 @@ export interface OfferComposerProps {
     stage_id?: string;
     stage_name?: string;
     event_day_date?: string | null;
+    date_time?: string | null;
     performance_time?: string;
     duration?: number | null;
     fee_amount?: number | null;
@@ -110,6 +111,15 @@ export interface OfferComposerProps {
     isModification?: boolean;
     originalOfferId?: string;
     originalVersion?: number;
+    // Champs additionnels pour le mode modification (versioning)
+    agency_contact_id?: string | null;
+    booking_agency_id?: string | null;
+    validity_date?: string | null;
+    notes_date?: string | null;
+    notes_financial?: string | null;
+    note_general?: string | null;
+    terms_json?: any;
+    offerId?: string; // ID de l'offre pour charger les extras
   } | null;
   onSuccess: () => void;
 }
@@ -523,10 +533,22 @@ export function OfferComposer({
       loadOfferExtras();
       
     } else if (prefilledData) {
-      // MODE CRÉATION DEPUIS PERFORMANCE
+      // MODE CRÉATION DEPUIS PERFORMANCE ou MODE MODIFICATION (versioning)
+      const isModificationMode = prefilledData.isModification === true;
       
-      // Charger le booking agent principal de l'artiste et son agence (si artiste pré-rempli)
+      // Charger le booking agent principal de l'artiste et son agence (si artiste pré-rempli et pas en mode modification)
       const loadMainAgent = async () => {
+        // En mode modification, on utilise le booking agent de l'offre originale
+        if (isModificationMode && prefilledData.agency_contact_id) {
+          setFormData(prev => ({
+            ...prev,
+            agency_contact_id: prefilledData.agency_contact_id || "",
+            booking_agency_id: prefilledData.booking_agency_id || ""
+          }));
+          return;
+        }
+        
+        // Sinon, charger le booking agent principal de l'artiste
         if (prefilledData.artist_id) {
           const mainAgentId = await loadArtistMainBookingAgent(prefilledData.artist_id);
           if (mainAgentId) {
@@ -545,6 +567,49 @@ export function OfferComposer({
           }
         }
       };
+      
+      // Charger les extras de l'offre originale (en mode modification)
+      const loadOfferExtrasFromOriginal = async () => {
+        if (!isModificationMode || !prefilledData.offerId) return;
+        
+        try {
+          const { data, error } = await supabase
+            .from("offer_extras")
+            .select("extra_id, charge_to")
+            .eq("offer_id", prefilledData.offerId);
+          
+          if (error) {
+            console.error("[EXTRAS] Erreur chargement extras (modification):", error);
+            return;
+          }
+          
+          if (data && data.length > 0) {
+            const extrasMap: Record<string, "festival" | "artist"> = {};
+            data.forEach((item: { extra_id: string | null; charge_to: string | null }) => {
+              if (item.extra_id && item.charge_to) {
+                extrasMap[item.extra_id] = item.charge_to as "festival" | "artist";
+              }
+            });
+            console.log("[EXTRAS] Extras chargés (modification):", extrasMap);
+            setSelectedExtras(extrasMap);
+          } else {
+            setSelectedExtras({});
+          }
+        } catch (err) {
+          console.error("[EXTRAS] Erreur:", err);
+        }
+      };
+      
+      // Charger les clauses d'exclusivité (en mode modification)
+      if (isModificationMode && prefilledData.terms_json) {
+        const termsJson = typeof prefilledData.terms_json === 'string' 
+          ? JSON.parse(prefilledData.terms_json) 
+          : prefilledData.terms_json;
+        if (termsJson?.selectedClauseIds) {
+          setExclusivityClausesSelected(termsJson.selectedClauseIds);
+        }
+      }
+      
       const amountValue = prefilledData.fee_amount ?? null;
       const isNet = prefilledData.amount_is_net ?? true;
       const budgetFields = new Set<string>();
@@ -552,8 +617,8 @@ export function OfferComposer({
       setFormData({
         artist_id: prefilledData.artist_id || "",
         stage_id: prefilledData.stage_id || "",
-        agency_contact_id: "", // Sera rempli par loadMainAgent()
-        booking_agency_id: "", // Sera rempli par loadMainAgent()
+        agency_contact_id: prefilledData.agency_contact_id || "", // Sera rempli par loadMainAgent() si vide
+        booking_agency_id: prefilledData.booking_agency_id || "", // Sera rempli par loadMainAgent() si vide
         date_time: prefilledData.event_day_date || prefilledData.date_time || "",
         performance_time: prefilledData.performance_time ? prefilledData.performance_time.slice(0, 5) : "14:00",
         duration: prefilledData.duration || 60,
@@ -565,7 +630,11 @@ export function OfferComposer({
         withholding_note: prefilledData.withholding_note || "",
         amount_display: amountValue,
         agency_commission_pct: prefilledData.commission_percentage ?? null,
-        validity_date: "",
+        validity_date: prefilledData.validity_date || "",
+        // Notes (en mode modification)
+        notes_date: prefilledData.notes_date || "",
+        notes_financial: prefilledData.notes_financial || "",
+        note_general: prefilledData.note_general || "",
       });
       setDurationMode(getDurationMode(prefilledData.duration));
       setLinkedPerformanceId(prefilledData.performance_id || null);
@@ -607,6 +676,9 @@ export function OfferComposer({
       
       // Charger le booking agent après setFormData
       loadMainAgent();
+      
+      // Charger les extras de l'offre originale (en mode modification)
+      loadOfferExtrasFromOriginal();
     } else {
       setDurationMode(getDurationMode(formData.duration));
     }
@@ -2307,7 +2379,7 @@ export function OfferComposer({
   // =============================================================================
   return (
     <>
-      <DraggableModal open={open} onClose={onClose} title={modalTitle} widthClass="max-w-6xl">
+      <DraggableModal open={open} onClose={onClose} title={modalTitle} size="xl">
         <Accordion items={accordionItems} defaultOpenId="general" className="space-y-4" />
 
         {/* Actions footer */}
@@ -2369,7 +2441,7 @@ export function OfferComposer({
       </DraggableModal>
 
       {/* PDF Preview Modal */}
-      <DraggableModal open={showPdfPreview} onClose={() => setShowPdfPreview(false)} title="Prévisualisation PDF" widthClass="max-w-6xl">
+      <DraggableModal open={showPdfPreview} onClose={() => setShowPdfPreview(false)} title="Prévisualisation PDF" size="xl">
         <div className="h-96">
           {pdfUrl ? (
             <iframe

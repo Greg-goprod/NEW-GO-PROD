@@ -52,7 +52,7 @@ export function CustomTimePicker({ open, onClose, onConfirm, performance }: Cust
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Modifier l'horaire" widthClass="max-w-md">
+    <Modal open={open} onClose={onClose} title="Modifier l'horaire" size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Artiste */}
         {performance && (

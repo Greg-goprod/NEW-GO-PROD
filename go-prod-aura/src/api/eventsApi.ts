@@ -271,45 +271,110 @@ export async function replaceEventDays(eventId: string, days: EventDayInput[]): 
 }
 
 /**
- * Remplace toutes les scènes d'un évènement (delete + insert)
+ * Synchronise les scènes d'un évènement (préserve les IDs existants pour garder les FK)
+ * - Met à jour les scènes existantes (par nom)
+ * - Ajoute les nouvelles scènes
+ * - Supprime les scènes qui ne sont plus dans la liste (seulement si pas de performances liées)
  */
 export async function replaceEventStages(eventId: string, stages: EventStageInput[]): Promise<void> {
   if (!eventId) {
     throw new Error('event_id requis');
   }
 
-  // 1. Supprimer les anciennes scènes
-  const { error: deleteError } = await supabase
+  // 1. Récupérer les scènes existantes
+  const { data: existingStages, error: fetchError } = await supabase
     .from('event_stages')
-    .delete()
+    .select('id, name')
     .eq('event_id', eventId);
 
-  if (deleteError) {
-    console.error('Erreur replaceEventStages (delete):', deleteError);
-    throw deleteError;
+  if (fetchError) {
+    console.error('Erreur replaceEventStages (fetch):', fetchError);
+    throw fetchError;
   }
 
-  // 2. Insérer les nouvelles scènes
-  if (stages.length === 0) {
-    return; // Pas de scènes à insérer
+  // Créer un map nom -> id des scènes existantes
+  const existingStagesMap = new Map<string, string>();
+  (existingStages || []).forEach((stage) => {
+    if (stage.name) {
+      existingStagesMap.set(stage.name.toLowerCase().trim(), stage.id);
+    }
+  });
+
+  // Noms des nouvelles scènes (normalisés)
+  const newStageNames = new Set(
+    stages.map((s) => s.name?.toLowerCase().trim()).filter(Boolean)
+  );
+
+  // 2. Identifier les scènes à supprimer (noms qui ne sont plus présents)
+  const stagesToDelete: string[] = [];
+  existingStagesMap.forEach((id, name) => {
+    if (!newStageNames.has(name)) {
+      stagesToDelete.push(id);
+    }
+  });
+
+  // 3. Supprimer les scènes obsolètes (seulement si pas de performances liées)
+  if (stagesToDelete.length > 0) {
+    // Vérifier s'il y a des performances liées à ces scènes
+    const { data: linkedPerformances } = await supabase
+      .from('artist_performances')
+      .select('id')
+      .in('event_stage_id', stagesToDelete)
+      .limit(1);
+
+    if (linkedPerformances && linkedPerformances.length > 0) {
+      console.warn('⚠️ Certaines scènes ont des performances liées et ne seront pas supprimées');
+      // Ne pas supprimer les scènes qui ont des performances liées
+    } else {
+      const { error: deleteError } = await supabase
+        .from('event_stages')
+        .delete()
+        .in('id', stagesToDelete);
+
+      if (deleteError) {
+        console.error('Erreur replaceEventStages (delete):', deleteError);
+        throw deleteError;
+      }
+    }
   }
 
-  const payload = stages.map((stage, index) => ({
-    event_id: eventId,
-    name: stage.name,
-    type: stage.type || null,
-    specificity: stage.specificity || null,
-    capacity: stage.capacity || null,
-    display_order: index + 1,
-  }));
+  // 4. Mettre à jour ou insérer les scènes
+  for (let index = 0; index < stages.length; index++) {
+    const stage = stages[index];
+    const normalizedName = stage.name?.toLowerCase().trim() || '';
+    const existingId = existingStagesMap.get(normalizedName);
 
-  const { error: insertError } = await supabase
-    .from('event_stages')
-    .insert(payload);
+    const payload = {
+      event_id: eventId,
+      name: stage.name?.trim() || '',
+      type: stage.type || null,
+      specificity: stage.specificity || null,
+      capacity: stage.capacity || null,
+      display_order: index + 1,
+    };
 
-  if (insertError) {
-    console.error('Erreur replaceEventStages (insert):', insertError);
-    throw insertError;
+    if (existingId) {
+      // Mettre à jour la scène existante (préserve l'ID)
+      const { error: updateError } = await supabase
+        .from('event_stages')
+        .update(payload)
+        .eq('id', existingId);
+
+      if (updateError) {
+        console.error('Erreur replaceEventStages (update):', updateError);
+        throw updateError;
+      }
+    } else {
+      // Insérer une nouvelle scène
+      const { error: insertError } = await supabase
+        .from('event_stages')
+        .insert(payload);
+
+      if (insertError) {
+        console.error('Erreur replaceEventStages (insert):', insertError);
+        throw insertError;
+      }
+    }
   }
 }
 

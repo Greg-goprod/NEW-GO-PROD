@@ -779,7 +779,7 @@ export default function LineupTimelinePage() {
           if (exportingTimeline) return;
           setExportModalOpen(false);
         }}
-        widthClass="max-w-xl"
+        size="md"
       >
         <div className="space-y-6">
           <div>

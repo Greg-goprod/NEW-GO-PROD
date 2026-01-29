@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, Plus, Search, Mail, Phone, Building2, Edit2, Trash2, List, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/aura/Button';
+import { PageHeader } from '@/components/aura/PageHeader';
 import { Input } from '@/components/aura/Input';
 import { PhoneInput } from '@/components/aura/PhoneInput';
 import { Modal } from '@/components/aura/Modal';
@@ -348,16 +349,16 @@ export default function PersonnesPage() {
   return (
     <div className="p-6">
       {/* En-tête */}
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-        <Users className="w-5 h-5 text-violet-400" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">PERSONNES</h1>
-        </div>
-        <Button variant="primary" onClick={handleAdd}>
-          <Plus className="w-4 h-4 mr-1" />
-          Ajouter un contact
-        </Button>
-      </header>
+      <PageHeader
+        icon={Users}
+        title="PERSONNES"
+        actions={
+          <Button variant="primary" onClick={handleAdd}>
+            <Plus className="w-4 h-4 mr-1" />
+            Ajouter un contact
+          </Button>
+        }
+      />
 
       {/* Barre de recherche et filtres */}
       <div className="mb-6 space-y-4">
@@ -795,6 +796,7 @@ export default function PersonnesPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteClick(contact)}
+                      className="text-red-500 hover:text-red-600"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

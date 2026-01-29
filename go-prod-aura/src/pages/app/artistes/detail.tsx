@@ -1,7 +1,8 @@
-﻿import { User, ArrowLeft, Music, TrendingUp, Calendar, Mail, Phone, MapPin, Briefcase, Globe } from "lucide-react";
+import { User, ArrowLeft, Music, TrendingUp, Calendar, Mail, Phone, MapPin, Briefcase, Globe } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
+import { PageHeader } from "@/components/aura/PageHeader";
 import { ArtistStatsChart } from "../../../components/artists/ArtistStatsChart";
 import { ContainerSongstats } from "../../../components/artist/ContainerSongstats";
 import { ArtistStatsOverview } from "../../../components/artist/ArtistStatsOverview";
@@ -249,25 +250,23 @@ export default function ArtistDetailPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <PageHeader
+        icon={User}
+        title={artist.name.toUpperCase()}
+        actions={
+          <div className="flex items-center gap-2">
             <button
               onClick={() => navigate(-1)}
               className="btn btn-secondary w-10 h-10 p-0 flex items-center justify-center"
             >
               <ArrowLeft size={16} />
             </button>
-            <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-violet-500 dark:text-violet-400" />
-              <h1 className="text-xl font-semibold text-slate-900 dark:text-white uppercase">
-                {artist.name}
-              </h1>
-            </div>
+            <button className="btn btn-primary">
+              Modifier
+            </button>
           </div>
-        <button className="btn btn-primary">
-          Modifier
-        </button>
-      </header>
+        }
+      />
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Building2, Plus, Search, Mail, Phone, Edit2, Trash2, FileText, CreditCard, Users } from 'lucide-react';
 import { Button } from '@/components/aura/Button';
+import { PageHeader } from '@/components/aura/PageHeader';
 import { Input } from '@/components/aura/Input';
 import { PhoneInput } from '@/components/aura/PhoneInput';
 import { Modal } from '@/components/aura/Modal';
@@ -25,6 +27,8 @@ const COUNTRIES = [
   { value: 'France', label: 'France' },
   { value: 'Royaume-Uni', label: 'Royaume-Uni' },
   { value: 'États-Unis', label: 'États-Unis' },
+  { value: 'Canada', label: 'Canada' },
+  { value: 'Australie', label: 'Australie' },
   { value: '---', label: '────────────', disabled: true },
   { value: 'Allemagne', label: 'Allemagne' },
   { value: 'Autriche', label: 'Autriche' },
@@ -50,6 +54,8 @@ const COUNTRY_TO_ISO: { [key: string]: string } = {
   'France': 'FR',
   'Royaume-Uni': 'GB',
   'États-Unis': 'US',
+  'Canada': 'CA',
+  'Australie': 'AU',
   'Allemagne': 'DE',
   'Belgique': 'BE',
   'Espagne': 'ES',
@@ -69,6 +75,8 @@ const COUNTRY_TO_ISO: { [key: string]: string } = {
 
 export default function EntreprisesPage() {
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const actionProcessedRef = useRef(false); // Pour eviter les appels multiples
   
   // Charger le companyId au démarrage
   useEffect(() => {
@@ -140,6 +148,54 @@ export default function EntreprisesPage() {
     loadCompanies();
   }, [loadCompanies]);
 
+  // Effet pour detecter l'action depuis les parametres URL
+  useEffect(() => {
+    const action = searchParams.get('action');
+    console.log('[entreprises] URL action detectee:', action, 'actionProcessed:', actionProcessedRef.current);
+    
+    // Eviter les appels multiples
+    if (actionProcessedRef.current) {
+      console.log('[entreprises] Action deja traitee, skip');
+      return;
+    }
+    
+    if (action === 'create') {
+      console.log('[entreprises] Ouverture du modal de creation');
+      actionProcessedRef.current = true;
+      
+      // Lire les donnees depuis sessionStorage AVANT d'appeler handleAdd
+      const prefillDataStr = sessionStorage.getItem('supplier_prefill_data');
+      let prefillData = null;
+      
+      if (prefillDataStr) {
+        try {
+          prefillData = JSON.parse(prefillDataStr);
+          console.log('[entreprises] Donnees prefill recuperees:', prefillData);
+        } catch (e) {
+          console.error('[entreprises] Erreur parsing prefill data:', e);
+        }
+      }
+      
+      // Ouvrir le modal de creation avec donnees pre-remplies
+      handleAdd(prefillData);
+      
+      // Nettoyer le parametre URL
+      setSearchParams({});
+    } else if (action === 'edit') {
+      const companyId = searchParams.get('id');
+      if (companyId) {
+        actionProcessedRef.current = true;
+        // Trouver la societe et ouvrir le modal d'edition
+        const company = companies.find(c => c.id === companyId);
+        if (company) {
+          handleEdit(company);
+        }
+        // Nettoyer les parametres URL
+        setSearchParams({});
+      }
+    }
+  }, [searchParams, companies]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Fonction de tri
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -191,26 +247,62 @@ export default function EntreprisesPage() {
     });
 
   // Ouvrir le modal
-  const handleAdd = () => {
+  const handleAdd = (prefillDataFromStorage?: any) => {
+    console.log('[entreprises] handleAdd appele avec prefillData:', prefillDataFromStorage);
     setEditingCompany(null);
-    setFormData({
-      company_name: '',
-      company_type_id: undefined,
-      is_supplier: false,
-      is_client: false,
-      status_label: 'actif',
-      main_email: '',
-      main_phone: '',
-      website_url: '',
-      address_line1: '',
-      city: '',
-      country: '',
-      tax_id: '',
-      notes_access: '',
-      country_specific_data: {},
-    });
+    
+    // Utiliser les donnees passees en parametre ou lire depuis sessionStorage
+    let prefillData = prefillDataFromStorage;
+    
+    if (!prefillData) {
+      const prefillDataStr = sessionStorage.getItem('supplier_prefill_data');
+      console.log('[entreprises] Lecture sessionStorage:', prefillDataStr);
+      
+      if (prefillDataStr) {
+        try {
+          prefillData = JSON.parse(prefillDataStr);
+          console.log('[entreprises] Donnees parsees:', prefillData);
+        } catch (e) {
+          console.error('[entreprises] Erreur parsing prefill data:', e);
+        }
+      }
+    }
+    
+    console.log('[entreprises] Remplissage du formulaire avec:', prefillData);
+    
+    const newFormData = {
+      company_name: prefillData?.company_name || '',
+      company_type_id: prefillData?.company_type_id || undefined,
+      is_supplier: prefillData?.is_supplier ?? true, // Par defaut true si vient de l'extraction facture
+      is_client: prefillData?.is_client ?? false,
+      status_label: prefillData?.status_label || 'actif',
+      main_email: prefillData?.main_email || '',
+      main_phone: prefillData?.main_phone || '',
+      website_url: prefillData?.website_url || '',
+      address_line1: prefillData?.address_line1 || '',
+      address_line2: prefillData?.address_line2 || '',
+      zip_code: prefillData?.zip_code || '',
+      city: prefillData?.city || '',
+      country: prefillData?.country || '',
+      tax_id: prefillData?.tax_id || '',
+      iban: prefillData?.iban || '',
+      swift_bic: prefillData?.swift_bic || '',
+      finance_email: prefillData?.finance_email || '',
+      notes_access: prefillData?.notes_access || '',
+      country_specific_data: prefillData?.country_specific_data || {},
+    };
+    
+    console.log('[entreprises] FormData apres remplissage:', newFormData);
+    console.log('[entreprises] country_specific_data details:', newFormData.country_specific_data);
+    setFormData(newFormData);
     setSelectedContactIds([]);
     setIsModalOpen(true);
+    
+    // Nettoyer sessionStorage seulement si on a effectivement utilise les donnees
+    if (prefillData) {
+      sessionStorage.removeItem('supplier_prefill_data');
+      console.log('[entreprises] sessionStorage nettoye');
+    }
   };
 
   const handleEdit = async (company: CRMCompanyWithRelations) => {
@@ -305,16 +397,16 @@ export default function EntreprisesPage() {
   return (
     <div className="p-6">
       {/* En-tête */}
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-violet-400" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">ENTREPRISES</h1>
-        </div>
-        <Button variant="primary" onClick={handleAdd}>
-          <Plus className="w-4 h-4 mr-1" />
-          Ajouter une société
-        </Button>
-      </header>
+      <PageHeader
+        icon={Building2}
+        title="ENTREPRISES"
+        actions={
+          <Button variant="primary" onClick={handleAdd}>
+            <Plus className="w-4 h-4 mr-1" />
+            Ajouter une société
+          </Button>
+        }
+      />
 
       {/* Barre de recherche et filtres */}
       <div className="mb-6 space-y-4">
@@ -412,7 +504,10 @@ export default function EntreprisesPage() {
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Contact
+                  Email
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Telephone
                 </th>
                 <th 
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-violet-400 transition-colors select-none"
@@ -440,7 +535,7 @@ export default function EntreprisesPage() {
                   className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                 >
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white uppercase">
                       {company.company_name}
                     </div>
                   </td>
@@ -450,20 +545,32 @@ export default function EntreprisesPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-gray-100">
-                      {company.main_email && (
-                        <div className="flex items-center mb-1">
-                          <Mail className="w-3 h-3 mr-1" />
-                          {company.main_email}
-                        </div>
-                      )}
-                      {company.main_phone && (
-                        <div className="flex items-center">
-                          <Phone className="w-3 h-3 mr-1" />
-                          {formatPhoneNumber(company.main_phone)}
-                        </div>
-                      )}
-                    </div>
+                    {company.main_email ? (
+                      <a 
+                        href={`mailto:${company.main_email}`}
+                        className="text-sm text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 hover:underline flex items-center gap-1"
+                      >
+                        <Mail className="w-3 h-3" />
+                        {company.main_email}
+                      </a>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {company.main_phone ? (
+                      <a 
+                        href={`https://wa.me/${company.main_phone.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 hover:underline flex items-center gap-1"
+                      >
+                        <Phone className="w-3 h-3" />
+                        {formatPhoneNumber(company.main_phone)}
+                      </a>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {company.city && company.country ? `${company.city}, ${company.country}` : company.city || company.country || '-'}
@@ -493,7 +600,7 @@ export default function EntreprisesPage() {
                       </button>
                       <button
                         onClick={() => handleDeleteClick(company)}
-                        className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        className="p-1 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                         title="Supprimer"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -512,7 +619,17 @@ export default function EntreprisesPage() {
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingCompany ? 'Modifier la société' : 'Nouvelle société'}
-        widthClass="max-w-6xl"
+        size="xl"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button variant="primary" onClick={handleSave}>
+              {editingCompany ? 'Mettre à jour' : 'Créer'}
+            </Button>
+          </>
+        }
       >
         <div className="space-y-4">
           <Accordion
@@ -538,13 +655,13 @@ export default function EntreprisesPage() {
                         placeholder="Acme Corp"
                       />
                       <div className="flex flex-col">
-                        <label className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                        <label className="text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
                           Type de société
                         </label>
                         <select
                           value={formData.company_type_id || ''}
                           onChange={(e) => setFormData({ ...formData, company_type_id: e.target.value || undefined })}
-                          className="h-[42px] px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                          className="input"
                         >
                           <option value="">-</option>
                           {companyTypes.map((type) => (
@@ -561,19 +678,16 @@ export default function EntreprisesPage() {
                         type="email"
                         value={formData.main_email || ''}
                         onChange={(e) => setFormData({ ...formData, main_email: e.target.value })}
-                        placeholder="contact@acme.com"
                       />
                       <Input
                         label="Site web"
                         value={formData.website_url || ''}
                         onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
-                        placeholder="https://acme.com"
                       />
                       <PhoneInput
                         label="Téléphone"
                         value={formData.main_phone || ''}
                         onChange={(value) => setFormData({ ...formData, main_phone: value })}
-                        placeholder="+41 21 123 45 67"
                         defaultCountry="CH"
                       />
                     </div>
@@ -584,31 +698,28 @@ export default function EntreprisesPage() {
                         label="Adresse"
                         value={formData.address_line1 || ''}
                         onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
-                        placeholder="123 Rue de..."
                       />
                       <Input
                         label="Code postal"
                         value={formData.zip_code || ''}
                         onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
-                        placeholder="1200"
                       />
                       <Input
                         label="Ville"
                         value={formData.city || ''}
                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                        placeholder="Genève"
                       />
                     </div>
 
                     {/* Ligne 4 : Pays */}
                     <div className="flex flex-col">
-                      <label className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                      <label className="text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
                         Pays
                       </label>
                       <select
                         value={formData.country || ''}
                         onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                        className="h-[42px] px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                        className="input"
                       >
                         <option value="">Sélectionner un pays</option>
                         {COUNTRIES.map((country) => (
@@ -708,7 +819,6 @@ export default function EntreprisesPage() {
                       label="Nom de facturation"
                       value={formData.billing_name || ''}
                       onChange={(e) => setFormData({ ...formData, billing_name: e.target.value })}
-                      placeholder="Acme Corporation SA"
                     />
 
                     {/* Adresse facturation */}
@@ -717,30 +827,27 @@ export default function EntreprisesPage() {
                         label="Adresse facturation"
                         value={formData.billing_address_line1 || ''}
                         onChange={(e) => setFormData({ ...formData, billing_address_line1: e.target.value })}
-                        placeholder="456 Avenue..."
                       />
                       <Input
                         label="Code postal"
                         value={formData.billing_zip_code || ''}
                         onChange={(e) => setFormData({ ...formData, billing_zip_code: e.target.value })}
-                        placeholder="1200"
                       />
                       <Input
                         label="Ville"
                         value={formData.billing_city || ''}
                         onChange={(e) => setFormData({ ...formData, billing_city: e.target.value })}
-                        placeholder="Genève"
                       />
                     </div>
 
                     <div className="flex flex-col">
-                      <label className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                      <label className="text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
                         Pays facturation
                       </label>
                       <select
                         value={formData.billing_country || ''}
                         onChange={(e) => setFormData({ ...formData, billing_country: e.target.value })}
-                        className="h-[42px] px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                        className="input"
                       >
                         <option value="">Sélectionner un pays</option>
                         {COUNTRIES.map((country) => (
@@ -761,13 +868,11 @@ export default function EntreprisesPage() {
                         label="IBAN"
                         value={formData.iban || ''}
                         onChange={(e) => setFormData({ ...formData, iban: e.target.value })}
-                        placeholder="CH93 0076 2011 6238 5295 7"
                       />
                       <Input
                         label="SWIFT/BIC"
                         value={formData.swift_bic || ''}
                         onChange={(e) => setFormData({ ...formData, swift_bic: e.target.value })}
-                        placeholder="POFICHBEXXX"
                       />
                     </div>
 
@@ -778,19 +883,16 @@ export default function EntreprisesPage() {
                         type="email"
                         value={formData.finance_email || ''}
                         onChange={(e) => setFormData({ ...formData, finance_email: e.target.value })}
-                        placeholder="compta@acme.com"
                       />
                       <Input
                         label="Conditions de paiement"
                         value={formData.payment_terms || ''}
                         onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
-                        placeholder="30 jours"
                       />
                       <Input
                         label="Devise préférée"
                         value={formData.currency_preferred || ''}
                         onChange={(e) => setFormData({ ...formData, currency_preferred: e.target.value })}
-                        placeholder="CHF"
                       />
                     </div>
 
@@ -812,15 +914,6 @@ export default function EntreprisesPage() {
             ]}
           />
 
-          {/* Boutons d'action */}
-          <div className="flex justify-end gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
-              Annuler
-            </Button>
-            <Button variant="primary" onClick={handleSave}>
-              {editingCompany ? 'Mettre à jour' : 'Créer'}
-            </Button>
-          </div>
         </div>
       </Modal>
 

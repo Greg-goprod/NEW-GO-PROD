@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import Modal, { ModalFooter, ModalButton } from "../../../components/ui/Modal";
+import { Modal } from "../../../components/aura/Modal";
 import { Button } from "../../../components/aura/Button";
 import { TimePickerPopup } from "../../../components/ui/pickers/TimePickerPopup";
 import { RejectOfferModal } from "./RejectOfferModal";
@@ -463,7 +463,7 @@ export function PerformanceModal({
   // Vérifier si on a les données nécessaires
   if (open && !initialData) {
     return (
-      <Modal isOpen={open} onClose={onClose} title="Performance">
+      <Modal open={open} onClose={onClose} title="Performance" size="sm">
         <div className="p-8 text-center">
           <div className="text-red-600 dark:text-red-400">
             Erreur : Données manquantes (companyId ou eventId)
@@ -475,7 +475,7 @@ export function PerformanceModal({
 
   if (loading) {
     return (
-      <Modal isOpen={open} onClose={onClose} title="Performance">
+      <Modal open={open} onClose={onClose} title="Performance" size="sm">
         <div className="p-8 text-center">
           <div className="text-gray-500 dark:text-gray-400">Chargement...</div>
         </div>
@@ -486,7 +486,7 @@ export function PerformanceModal({
   return (
     <>
       <Modal
-        isOpen={open}
+        open={open}
         onClose={onClose}
         title={
           financesOnly 
@@ -494,21 +494,19 @@ export function PerformanceModal({
             : (initialData?.performanceId ? "Modifier la performance" : "Ajouter une performance")
         }
         size="xl"
-        draggable={true}
         footer={
-          <ModalFooter>
-            <ModalButton variant="secondary" onClick={onClose} disabled={saving}>
+          <>
+            <Button variant="secondary" onClick={onClose} disabled={saving}>
               Annuler
-            </ModalButton>
-            <ModalButton
+            </Button>
+            <Button
               variant="primary"
               onClick={handleSave}
               disabled={saving}
-              loading={saving}
             >
-              Enregistrer
-            </ModalButton>
-          </ModalFooter>
+              {saving ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+          </>
         }
       >
         {/* Section Informations générales */}

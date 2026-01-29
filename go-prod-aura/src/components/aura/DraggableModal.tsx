@@ -1,14 +1,27 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardHeader, CardBody } from "./Card";
 import { Button } from "./Button";
 import { Move } from "lucide-react";
+
+// Tailles standardisees AURA (meme que Modal.tsx)
+const MODAL_SIZES = {
+  sm: '400px',
+  md: '600px',
+  lg: '800px',
+  xl: '1000px',
+} as const;
+
+type ModalSize = keyof typeof MODAL_SIZES;
 
 interface DraggableModalProps {
   open: boolean;
   title?: string;
   onClose: () => void;
   children: React.ReactNode;
+  /** @deprecated Utiliser `size` a la place */
   widthClass?: string;
+  /** Taille standardisee: 'sm' (400px), 'md' (600px), 'lg' (800px), 'xl' (1000px) */
+  size?: ModalSize;
   maxHeight?: string;
 }
 
@@ -21,7 +34,8 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
   title,
   onClose,
   children,
-  widthClass = "max-w-5xl",
+  widthClass,
+  size = 'xl',
   maxHeight = "90vh",
 }) => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -88,6 +102,9 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDragging, dragStart, position]);
 
+  // Utiliser size si defini, sinon fallback sur widthClass pour compatibilite
+  const modalWidth = widthClass ? undefined : MODAL_SIZES[size];
+
   if (!open) return null;
 
   return (
@@ -97,8 +114,10 @@ export const DraggableModal: React.FC<DraggableModalProps> = ({
     >
       <div
         ref={modalRef}
-        className={`relative ${widthClass} w-full`}
+        className={`relative ${widthClass || ''}`}
         style={{
+          width: modalWidth,
+          maxWidth: '90vw',
           transform: `translate(${position.x}px, ${position.y}px)`,
           transition: isDragging ? 'none' : 'transform 0.2s ease-out',
           maxHeight,
