@@ -6,6 +6,11 @@ import { ToastProvider } from './components/aura/ToastProvider'
 import { useEventStore } from './store/useEventStore'
 import { useEffect } from 'react'
 
+// Auth
+import { AuthProvider } from './contexts/AuthContext'
+import { RequireAuth } from './components/auth/RequireAuth'
+import SignInPage from './pages/auth/SignInPage'
+
 // Dashboard
 import DashboardPage from './pages/app/dashboard'
 
@@ -94,23 +99,27 @@ export default function App(){
   }, [hydrateFromLocalStorage]);
 
   return (
+    <AuthProvider>
     <ToastProvider>
       <Routes>
       {/* Redirect root to app */}
       <Route path="/" element={<Navigate to="/app" replace />} />
+
+      {/* Auth Routes */}
+      <Route path="/auth/signin" element={<SignInPage />} />
 
       {/* Public Routes (landing page) */}
       <Route path="/landing" element={<PublicLayout />}>
         <Route index element={<LandingPage />} />
       </Route>
 
-      {/* Timeline - FULL WIDTH (sans sidebar) */}
-      <Route path="/app/booking/timeline" element={<LineupTimelinePage/>}/>
+      {/* Timeline - FULL WIDTH (sans sidebar) - Protected */}
+      <Route path="/app/booking/timeline" element={<RequireAuth><LineupTimelinePage/></RequireAuth>}/>
       {/* Ancienne route maintenue pour compatibilité */}
       <Route path="/app/lineup/timeline" element={<Navigate to="/app/booking/timeline" replace />}/>
 
-      {/* App Routes */}
-      <Route path="/app" element={<AppLayout/>}>
+      {/* App Routes - All Protected */}
+      <Route path="/app" element={<RequireAuth><AppLayout/></RequireAuth>}>
         {/* Dashboard */}
         <Route index element={<DashboardPage/>}/>
         
@@ -213,12 +222,8 @@ export default function App(){
         </Route>
       </Route>
 
-      {/* Auth Routes (placeholders) */}
-      <Route path="/auth">
-        <Route path="signin" element={<div className="min-h-screen bg-night-900 flex items-center justify-center text-white"><div className="text-center"><h1 className="text-3xl font-bold mb-4">Connexion</h1><p className="text-gray-400">Page de connexion à implémenter</p></div></div>} />
-        <Route path="signup" element={<div className="min-h-screen bg-night-900 flex items-center justify-center text-white"><div className="text-center"><h1 className="text-3xl font-bold mb-4">Inscription</h1><p className="text-gray-400">Page d'inscription à implémenter</p></div></div>} />
-      </Route>
     </Routes>
     </ToastProvider>
+    </AuthProvider>
   )
 }
