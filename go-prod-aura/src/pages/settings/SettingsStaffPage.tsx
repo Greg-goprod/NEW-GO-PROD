@@ -182,318 +182,244 @@ export default function SettingsStaffPage() {
           <p style={{ color: 'var(--text-secondary)' }}>Chargement...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Colonne STATUTS */}
-          <div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Users className="w-5 h-5 text-violet-400" />
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Statuts</h3>
-                    </div>
-                    <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Statuts des benevoles</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Statuts */}
+          <Card>
+            <CardHeader>
+              <div>
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-violet-400" />
+                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Statuts</h3>
+                </div>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Statuts des benevoles</p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setShowAddStatusForm(!showAddStatusForm)}
+              >
+                <Plus size={16} />
+              </Button>
+            </CardHeader>
+            <CardBody>
+              <div className="space-y-1">
+                {showAddStatusForm && (
+                  <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <Input
+                      value={statusForm.name}
+                      onChange={(e) => setStatusForm({ ...statusForm, name: e.target.value })}
+                      placeholder="Nom..."
+                      className="flex-1 text-sm"
+                      autoFocus
+                    />
+                    <input
+                      type="color"
+                      value={statusForm.color}
+                      onChange={(e) => setStatusForm({ ...statusForm, color: e.target.value })}
+                      className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                    />
+                    <Button size="sm" variant="primary" onClick={handleSaveStatus}>OK</Button>
+                    <Button size="sm" variant="ghost" onClick={handleCancelEditStatus}>X</Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setShowAddStatusForm(!showAddStatusForm)}
-                  >
-                    <Plus size={16} className="mr-1" />
-                    Ajouter
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-2">
-                  {/* Formulaire d'ajout */}
-                  {showAddStatusForm && (
-                    <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: 'var(--bg-surface)' }}>
-                      <Input
-                        value={statusForm.name}
-                        onChange={(e) => setStatusForm({ ...statusForm, name: e.target.value })}
-                        placeholder="Nom du statut..."
-                        className="flex-1"
-                        autoFocus
-                      />
-                      <input
-                        type="color"
-                        value={statusForm.color}
-                        onChange={(e) => setStatusForm({ ...statusForm, color: e.target.value })}
-                        className="w-10 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
-                      />
-                      <Button size="sm" variant="primary" onClick={handleSaveStatus}>
-                        Ajouter
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={handleCancelEditStatus}>
-                        Annuler
-                      </Button>
-                    </div>
-                  )}
+                )}
 
-                  {/* Liste des statuts */}
-                  {!statuses || statuses.length === 0 ? (
-                    <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>
-                      Aucune option definie. Cliquez sur "Ajouter" pour en creer.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {statuses?.map((status) => (
-                        <div key={status.id} className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-                          <div className="text-gray-400">
-                            <GripVertical className="w-5 h-5" />
-                          </div>
-
-                          {editingStatusId === status.id ? (
-                            <>
-                              <Input
-                                value={statusForm.name}
-                                onChange={(e) => setStatusForm({ ...statusForm, name: e.target.value })}
-                                className="flex-1"
-                                autoFocus
-                              />
-                              <input
-                                type="color"
-                                value={statusForm.color}
-                                onChange={(e) => setStatusForm({ ...statusForm, color: e.target.value })}
-                                className="w-10 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
-                              />
-                              <Button size="sm" variant="primary" onClick={handleSaveStatus}>
-                                ✓
-                              </Button>
-                              <Button size="sm" variant="secondary" onClick={handleCancelEditStatus}>
-                                ✗
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <div
-                                className="w-4 h-4 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: status.color }}
-                              />
-                              <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">
-                                {status.name}
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleEditStatus(status)}
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setDeleteConfirm({ type: 'status', id: status.id, name: status.name })}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </CardBody>
-            </Card>
-          </div>
-
-          {/* Colonne GROUPES & COMPÉTENCES */}
-          <div className="space-y-6">
-            {/* Groupes */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <UsersRound className="w-5 h-5 text-violet-400" />
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Groupes</h3>
-                    </div>
-                    <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Groupes de benevoles</p>
+                {!statuses || statuses.length === 0 ? (
+                  <p className="text-xs py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                    Aucune option
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {statuses?.map((status) => (
+                      <div key={status.id} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <GripVertical className="w-4 h-4 text-gray-400" />
+                        {editingStatusId === status.id ? (
+                          <>
+                            <Input
+                              value={statusForm.name}
+                              onChange={(e) => setStatusForm({ ...statusForm, name: e.target.value })}
+                              className="flex-1 text-sm"
+                              autoFocus
+                            />
+                            <input
+                              type="color"
+                              value={statusForm.color}
+                              onChange={(e) => setStatusForm({ ...statusForm, color: e.target.value })}
+                              className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                            />
+                            <Button size="sm" variant="ghost" onClick={handleSaveStatus}>OK</Button>
+                          </>
+                        ) : (
+                          <>
+                            <div
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: status.color }}
+                            />
+                            <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">
+                              {status.name}
+                            </span>
+                            <Button size="sm" variant="ghost" className="p-1" onClick={() => handleEditStatus(status)}>
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="p-1 text-red-500 hover:text-red-600" onClick={() => setDeleteConfirm({ type: 'status', id: status.id, name: status.name })}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setShowAddGroupForm(!showAddGroupForm)}
-                  >
-                    <Plus size={16} className="mr-1" />
-                    Ajouter
-                  </Button>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Groupes */}
+          <Card>
+            <CardHeader>
+              <div>
+                <div className="flex items-center gap-2">
+                  <UsersRound className="w-5 h-5 text-violet-400" />
+                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Groupes</h3>
                 </div>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-2">
-                  {showAddGroupForm && (
-                    <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: 'var(--bg-surface)' }}>
-                      <Input
-                        value={groupForm.name}
-                        onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
-                        placeholder="Nom du groupe..."
-                        autoFocus
-                      />
-                      <Button size="sm" variant="primary" onClick={handleSaveGroup}>
-                        Ajouter
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={handleCancelEditGroup}>
-                        Annuler
-                      </Button>
-                    </div>
-                  )}
-
-                  {!groups || groups.length === 0 ? (
-                    <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>
-                      Aucune option definie. Cliquez sur "Ajouter" pour en creer.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {groups?.map((group) => (
-                        <div key={group.id} className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-                          <div className="text-gray-400">
-                            <GripVertical className="w-5 h-5" />
-                          </div>
-
-                          {editingGroupId === group.id ? (
-                            <>
-                              <Input
-                                value={groupForm.name}
-                                onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
-                                className="flex-1"
-                                autoFocus
-                              />
-                              <Button size="sm" variant="primary" onClick={handleSaveGroup}>
-                                ✓
-                              </Button>
-                              <Button size="sm" variant="secondary" onClick={handleCancelEditGroup}>
-                                ✗
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">
-                                {group.name}
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleEditGroup(group)}
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setDeleteConfirm({ type: 'group', id: group.id, name: group.name })}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </CardBody>
-            </Card>
-
-            {/* Compétences */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Award className="w-5 h-5 text-violet-400" />
-                      <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Competences</h3>
-                    </div>
-                    <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Competences des benevoles</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Groupes de benevoles</p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setShowAddGroupForm(!showAddGroupForm)}
+              >
+                <Plus size={16} />
+              </Button>
+            </CardHeader>
+            <CardBody>
+              <div className="space-y-1">
+                {showAddGroupForm && (
+                  <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <Input
+                      value={groupForm.name}
+                      onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                      placeholder="Nom..."
+                      className="text-sm"
+                      autoFocus
+                    />
+                    <Button size="sm" variant="primary" onClick={handleSaveGroup}>OK</Button>
+                    <Button size="sm" variant="ghost" onClick={handleCancelEditGroup}>X</Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setShowAddSkillForm(!showAddSkillForm)}
-                  >
-                    <Plus size={16} className="mr-1" />
-                    Ajouter
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-2">
-                  {showAddSkillForm && (
-                    <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: 'var(--bg-surface)' }}>
-                      <Input
-                        value={skillForm.name}
-                        onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
-                        placeholder="Nom de la compétence..."
-                        autoFocus
-                      />
-                      <Button size="sm" variant="primary" onClick={handleSaveSkill}>
-                        Ajouter
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={handleCancelEditSkill}>
-                        Annuler
-                      </Button>
-                    </div>
-                  )}
+                )}
 
-                  {!skills || skills.length === 0 ? (
-                    <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>
-                      Aucune option definie. Cliquez sur "Ajouter" pour en creer.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {skills?.map((skill) => (
-                        <div key={skill.id} className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-                          <div className="text-gray-400">
-                            <GripVertical className="w-5 h-5" />
-                          </div>
+                {!groups || groups.length === 0 ? (
+                  <p className="text-xs py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                    Aucune option
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {groups?.map((group) => (
+                      <div key={group.id} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <GripVertical className="w-4 h-4 text-gray-400" />
+                        {editingGroupId === group.id ? (
+                          <>
+                            <Input
+                              value={groupForm.name}
+                              onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                              className="flex-1 text-sm"
+                              autoFocus
+                            />
+                            <Button size="sm" variant="ghost" onClick={handleSaveGroup}>OK</Button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">
+                              {group.name}
+                            </span>
+                            <Button size="sm" variant="ghost" className="p-1" onClick={() => handleEditGroup(group)}>
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="p-1 text-red-500 hover:text-red-600" onClick={() => setDeleteConfirm({ type: 'group', id: group.id, name: group.name })}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
 
-                          {editingSkillId === skill.id ? (
-                            <>
-                              <Input
-                                value={skillForm.name}
-                                onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
-                                className="flex-1"
-                                autoFocus
-                              />
-                              <Button size="sm" variant="primary" onClick={handleSaveSkill}>
-                                ✓
-                              </Button>
-                              <Button size="sm" variant="secondary" onClick={handleCancelEditSkill}>
-                                ✗
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">
-                                {skill.name}
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleEditSkill(skill)}
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setDeleteConfirm({ type: 'skill', id: skill.id, name: skill.name })}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+          {/* Competences */}
+          <Card>
+            <CardHeader>
+              <div>
+                <div className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-violet-400" />
+                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Competences</h3>
                 </div>
-              </CardBody>
-            </Card>
-          </div>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Skills des benevoles</p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setShowAddSkillForm(!showAddSkillForm)}
+              >
+                <Plus size={16} />
+              </Button>
+            </CardHeader>
+            <CardBody>
+              <div className="space-y-1">
+                {showAddSkillForm && (
+                  <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <Input
+                      value={skillForm.name}
+                      onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
+                      placeholder="Nom..."
+                      className="text-sm"
+                      autoFocus
+                    />
+                    <Button size="sm" variant="primary" onClick={handleSaveSkill}>OK</Button>
+                    <Button size="sm" variant="ghost" onClick={handleCancelEditSkill}>X</Button>
+                  </div>
+                )}
+
+                {!skills || skills.length === 0 ? (
+                  <p className="text-xs py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                    Aucune option
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {skills?.map((skill) => (
+                      <div key={skill.id} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <GripVertical className="w-4 h-4 text-gray-400" />
+                        {editingSkillId === skill.id ? (
+                          <>
+                            <Input
+                              value={skillForm.name}
+                              onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
+                              className="flex-1 text-sm"
+                              autoFocus
+                            />
+                            <Button size="sm" variant="ghost" onClick={handleSaveSkill}>OK</Button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">
+                              {skill.name}
+                            </span>
+                            <Button size="sm" variant="ghost" className="p-1" onClick={() => handleEditSkill(skill)}>
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="p-1 text-red-500 hover:text-red-600" onClick={() => setDeleteConfirm({ type: 'skill', id: skill.id, name: skill.name })}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
         </div>
       )}
 

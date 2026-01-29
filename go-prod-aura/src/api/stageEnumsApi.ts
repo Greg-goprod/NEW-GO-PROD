@@ -151,6 +151,46 @@ export async function deleteStageSpecificity(id: string): Promise<void> {
 }
 
 /**
+ * Mettre a jour l'ordre d'affichage des types de scenes
+ */
+export async function updateStageTypesOrder(
+  orderedIds: string[]
+): Promise<void> {
+  const updates = orderedIds.map((id, index) => ({
+    id,
+    display_order: index,
+  }));
+
+  for (const update of updates) {
+    const { error } = await supabase
+      .from('stage_types')
+      .update({ display_order: update.display_order })
+      .eq('id', update.id);
+    if (error) throw error;
+  }
+}
+
+/**
+ * Mettre a jour l'ordre d'affichage des specificites de scenes
+ */
+export async function updateStageSpecificitiesOrder(
+  orderedIds: string[]
+): Promise<void> {
+  const updates = orderedIds.map((id, index) => ({
+    id,
+    display_order: index,
+  }));
+
+  for (const update of updates) {
+    const { error } = await supabase
+      .from('stage_specificities')
+      .update({ display_order: update.display_order })
+      .eq('id', update.id);
+    if (error) throw error;
+  }
+}
+
+/**
  * Initialiser les enums par défaut pour une company
  */
 export async function initializeStageEnumsForCompany(companyId: string): Promise<void> {

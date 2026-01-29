@@ -66,7 +66,7 @@ export function PdfPreviewModal({
       open={isOpen}
       onClose={onClose}
       title={`Prévisualisation de l'offre ${artistName ? `- ${artistName}` : ''}`}
-      widthClass="max-w-7xl"
+      size="xl"
     >
       <div className="flex flex-col h-full">
         {/* Zone de prévisualisation PDF */}
@@ -230,7 +230,7 @@ export function PdfPreviewModal({
       open={isOpen}
       onClose={onClose}
       title={`Prévisualisation de l'offre ${artistName ? `- ${artistName}` : ''}`}
-      widthClass="max-w-7xl"
+      size="xl"
     >
       <div className="flex flex-col h-full">
         {/* Zone de prévisualisation PDF */}

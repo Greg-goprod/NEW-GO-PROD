@@ -5,6 +5,7 @@ import { useCurrentEvent } from "../../../hooks/useCurrentEvent";
 import { Card, CardHeader, CardBody } from "../../../components/aura/Card";
 import { EmptyState } from "../../../components/aura/EmptyState";
 import { Button } from "../../../components/aura/Button";
+import { PageHeader } from "../../../components/aura/PageHeader";
 import { ConfirmDialog } from "../../../components/aura/ConfirmDialog";
 import { useToast } from "../../../components/aura/ToastProvider";
 import { DailySummaryCards } from "../../../features/timeline/components/DailySummaryCards";
@@ -691,23 +692,23 @@ export default function BudgetArtistiquePage() {
   
   return (
     <div className="p-6">
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-        <DollarSign className="w-5 h-5 text-violet-400" />
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{t('artistic_budget').toUpperCase()}</h1>
-        </div>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            toastSuccess("Actualisation des données...");
-            loadData();
-          }}
-          disabled={loading}
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Actualiser
-        </Button>
-      </header>
+      <PageHeader
+        icon={DollarSign}
+        title={t('artistic_budget').toUpperCase()}
+        actions={
+          <Button
+            variant="secondary"
+            onClick={() => {
+              toastSuccess("Actualisation des données...");
+              loadData();
+            }}
+            disabled={loading}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        }
+      />
 
       {/* Statistiques globales */}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
@@ -1137,7 +1138,7 @@ export default function BudgetArtistiquePage() {
                           <div className="w-16 flex items-center justify-center gap-1">
                             <button
                               onClick={() => setDeletingPerformance(perf)}
-                              className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                              className="p-1 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                               title="Supprimer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

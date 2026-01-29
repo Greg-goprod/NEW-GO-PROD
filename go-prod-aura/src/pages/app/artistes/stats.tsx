@@ -307,9 +307,8 @@ export default function ArtistStatsPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Stats artistes"
-        subtitle="Statistiques détaillées et évolution des artistes via Songstats"
         icon={BarChart3}
+        title="STATS ARTISTES"
       />
 
       {/* Container : Historique des artistes recemment consultes */}

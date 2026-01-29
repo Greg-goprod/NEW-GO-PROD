@@ -832,7 +832,8 @@ ${data.sender.name}
   return (
     <div className="p-6 space-y-6">
       <PageHeader
-        title="Booking"
+        icon={Calendar}
+        title="BOOKING"
         actions={
           <>
             <Button
@@ -938,6 +939,16 @@ ${data.sender.name}
                         buyout_meal_amount: offer.buyout_meal_amount,
                         flight_contribution_amount: offer.flight_contribution_amount,
                         technical_fee_amount: offer.technical_fee_amount,
+                        // Champs additionnels pour reprendre toutes les données
+                        agency_contact_id: offer.agency_contact_id,
+                        booking_agency_id: (offer as any).booking_agency_id,
+                        validity_date: offer.validity_date,
+                        notes_date: (offer as any).notes_date,
+                        notes_financial: (offer as any).notes_financial,
+                        note_general: (offer as any).note_general,
+                        terms_json: offer.terms_json,
+                        // ID de l'offre pour charger les extras
+                        offerId: offer.id,
                       });
                     } else {
                       // Mode édition directe: modifie l'offre existante (draft, ready_to_send)
@@ -1006,6 +1017,16 @@ ${data.sender.name}
                       buyout_meal_amount: offer.buyout_meal_amount,
                       flight_contribution_amount: offer.flight_contribution_amount,
                       technical_fee_amount: offer.technical_fee_amount,
+                      // Champs additionnels pour reprendre toutes les données
+                      agency_contact_id: offer.agency_contact_id,
+                      booking_agency_id: (offer as any).booking_agency_id,
+                      validity_date: offer.validity_date,
+                      notes_date: (offer as any).notes_date,
+                      notes_financial: (offer as any).notes_financial,
+                      note_general: (offer as any).note_general,
+                      terms_json: offer.terms_json,
+                      // ID de l'offre pour charger les extras
+                      offerId: offer.id,
                     });
                     setShowComposer(true);
                   }}

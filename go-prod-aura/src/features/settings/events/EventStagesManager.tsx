@@ -100,7 +100,7 @@ function SortableStage({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 p-3 rounded-lg border transition-all"
+      className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
       {...attributes}
     >
       {/* Handle de drag */}
@@ -519,10 +519,7 @@ export function EventStagesManager({ eventId, companyId }: EventStagesManagerPro
           <div className="space-y-3">
             {/* Formulaire d'ajout */}
             {showAddForm && (
-              <div 
-                className="p-3 rounded-lg"
-                style={{ background: 'var(--bg-surface)' }}
-              >
+              <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                 <div className="grid grid-cols-4 gap-2 items-center">
                   <Input
                     value={newStageData.name || ''}

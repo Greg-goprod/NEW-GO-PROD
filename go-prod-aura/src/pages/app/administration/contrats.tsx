@@ -4,7 +4,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import type { Contract, ContractStatus } from '../../../types/contracts';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import Modal from '../../../components/ui/Modal';
+import { Modal } from '../../../components/aura/Modal';
 import { PageHeader } from '../../../components/aura/PageHeader';
 // import { ContractsKanbanAura } from '../../../components/contracts/ContractsKanbanAura'; // TEMPORAIRE: Kanban supprimé
 import { ContractsListView } from '../../../components/contracts/ContractsListView';
@@ -40,9 +40,11 @@ function ContractViewModal({
     const loadPdfUrl = async () => {
       setLoading(true);
       try {
-        // Déterminer quel fichier afficher
+        // Déterminer quel fichier afficher (priorité: final > signed > annotated > original)
         const storagePath = 
-          contract.current_version === 'signed' && contract.signed_file_url
+          contract.current_version === 'final' && contract.final_signed_file_url
+            ? contract.final_signed_file_url
+            : contract.current_version === 'signed' && contract.signed_file_url
             ? contract.signed_file_url
             : contract.current_version === 'annotated' && contract.annotated_file_url
             ? contract.annotated_file_url
@@ -78,7 +80,7 @@ function ContractViewModal({
 
   return (
     <Modal
-      isOpen={isOpen}
+      open={isOpen}
       onClose={onClose}
       title={contract.contract_title}
       size="xl"
@@ -736,15 +738,15 @@ export default function ContratsPage() {
     try {
       setUploadingContractId(contract.id);
       
-      // Extraire le nom du fichier original (sans extension)
-      const originalFileName = file.name.replace(/\.pdf$/i, '');
+      // Nom de l'artiste sécurisé pour le nom de fichier (sans espaces ni caractères spéciaux)
+      const safeArtistName = (contract.artist_name || 'Artiste').replace(/[^a-zA-Z0-9]/g, '_');
       
       // Nom de l'événement sécurisé pour le nom de fichier
       const safeEventName = (contract.event_name || 'Evenement').replace(/[^a-zA-Z0-9]/g, '_');
       
-      // Générer le nom de fichier : {nom_fichier_original}_{Evenement}_SIGNE_ARTISTE.pdf
+      // Générer le nom de fichier : CONTRAT_{Evenement}_{Artiste}_SIGNE_ARTISTE.pdf
       const timestamp = Date.now();
-      const fileName = `${timestamp}_${originalFileName}_${safeEventName}_SIGNE_ARTISTE.pdf`;
+      const fileName = `${timestamp}_CONTRAT_${safeEventName}_${safeArtistName}_SIGNE_ARTISTE.pdf`;
       const storagePath = `${contract.event_id || 'general'}/${fileName}`;
 
       // Upload du fichier signé
@@ -1216,7 +1218,7 @@ export default function ContratsPage() {
 
       {selectedContract && showUploadModal && (
         <Modal
-          isOpen={showUploadModal}
+          open={showUploadModal}
           onClose={() => {
             setShowUploadModal(false);
             setSelectedContract(null);

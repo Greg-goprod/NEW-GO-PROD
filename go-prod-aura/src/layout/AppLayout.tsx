@@ -3,17 +3,16 @@ import { Icon } from '../components/ui/Icon'
 import TopBar from '../components/topbar/TopBar'
 import UserMenu from '../components/topbar/UserMenu'
 import { useState, useEffect } from 'react'
-import type { Profile } from '../types/user'
-import { supabase } from '../lib/supabaseClient'
 import { ChevronDown } from 'lucide-react'
 import { useI18n } from '../lib/i18n'
+import { useAuth } from '@/contexts/AuthContext'
 
 // Utilisation de l'instance centralisée de Supabase
 
 export default function AppLayout(){
   const location = useLocation()
   const { t } = useI18n()
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const { profile } = useAuth()
   
   // Initialiser les menus ouverts en fonction de l'URL actuelle
   const getInitialOpenMenus = () => {
@@ -119,59 +118,6 @@ export default function AppLayout(){
     })
   }
 
-  useEffect(() => {
-    // Écouter les changements d'authentification
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const uid = session?.user?.id;
-      if (!uid) {
-        setProfile(null);
-        return;
-      }
-      
-      // Charger le profil depuis la table profiles
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, role, company_id')
-        .eq('id', uid)
-        .single();
-      
-      if (data && !error) {
-        setProfile(data as Profile);
-      }
-    });
-
-    // Charger le profil initial
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const uid = session?.user?.id;
-      if (!uid) {
-        // Mock profile pour dev si pas d'authentification
-        setProfile({
-          id: '1',
-          full_name: 'Jean Dupont',
-          avatar_url: null,
-          role: 'admin',
-          company_id: null
-        });
-        return;
-      }
-      
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, role, company_id')
-        .eq('id', uid)
-        .single();
-      
-      if (data) {
-        setProfile(data as Profile);
-      }
-    })();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [])
-
   return (
     <div className="h-screen flex">
       {/* Sidebar */}
@@ -194,7 +140,7 @@ export default function AppLayout(){
             {openMenus.artistes && (
               <div className="ml-4 mt-0.5 space-y-0.5">
                 <Link to="/app/artistes" className={`sidebar-item text-sm ${location.pathname === '/app/artistes' ? 'active' : ''}`}>
-                  <Icon name="List" size={16}/> {t('list')}
+                  <Icon name="Music" size={16}/> Artistes
                 </Link>
                 <Link to="/app/artistes/stats" className={`sidebar-item text-sm ${location.pathname === '/app/artistes/stats' ? 'active' : ''}`}>
                   <Icon name="BarChart3" size={16}/> Stats artistes
@@ -223,7 +169,7 @@ export default function AppLayout(){
                   <Icon name="ListMusic" size={16}/> Lineup / Timeline
                 </button>
                 <Link to="/app/booking/offres" className={`sidebar-item text-sm ${location.pathname === '/app/booking/offres' ? 'active' : ''}`}>
-                  <Icon name="FileText" size={16}/> {t('offers')}
+                  <Icon name="FileCheck" size={16}/> Booking
                 </Link>
                 <Link to="/app/booking/budget-artistique" className={`sidebar-item text-sm ${location.pathname === '/app/booking/budget-artistique' ? 'active' : ''}`}>
                   <Icon name="DollarSign" size={16}/> {t('artistic_budget')}

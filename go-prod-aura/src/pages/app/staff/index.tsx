@@ -11,8 +11,9 @@ import {
   Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { PageHeader } from '@/components/aura/PageHeader';
 import { Input } from '@/components/ui/Input';
-import Modal from '@/components/ui/Modal';
+import { Modal } from '@/components/aura/Modal';
 import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
 import { PhoneInput } from '@/components/aura/PhoneInput';
 import { formatPhoneNumber } from '@/utils/phoneUtils';
@@ -152,18 +153,16 @@ export default function StaffPage() {
   return (
     <div className="p-6">
       {/* En-tête */}
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Users className="w-5 h-5 text-violet-400" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            STAFF • BÉNÉVOLES
-          </h1>
-        </div>
-        <Button variant="primary" onClick={handleAdd}>
-          <Plus className="w-4 h-4 mr-2" />
-          Ajouter un bénévole
-        </Button>
-      </header>
+      <PageHeader
+        icon={Users}
+        title="STAFF BENEVOLES"
+        actions={
+          <Button variant="primary" onClick={handleAdd}>
+            <Plus className="w-4 h-4 mr-2" />
+            Ajouter un bénévole
+          </Button>
+        }
+      />
 
       {/* Barre de recherche & filtres */}
       <div className="flex items-center gap-4 mb-6">
@@ -362,7 +361,7 @@ export default function StaffPage() {
 
       {/* Modal CRUD Bénévole */}
       <Modal
-        isOpen={isModalOpen}
+        open={isModalOpen}
         onClose={() => !saving && setIsModalOpen(false)}
         title={
           editingVolunteer ? 'Modifier le bénévole' : 'Nouveau bénévole'

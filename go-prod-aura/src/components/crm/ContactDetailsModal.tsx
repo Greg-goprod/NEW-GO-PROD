@@ -34,7 +34,7 @@ export function ContactDetailsModal({ contact, open, onClose }: ContactDetailsMo
         open={open}
         onClose={onClose}
         title="Détails du contact"
-        widthClass="max-w-2xl"
+        size="md"
       >
         <div className="space-y-6">
           {/* En-tête avec photo et nom */}

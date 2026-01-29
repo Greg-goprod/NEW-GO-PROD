@@ -5,6 +5,10 @@ import { LandingPage } from './pages/public/LandingPage'
 import { ToastProvider } from './components/aura/ToastProvider'
 import { useEventStore } from './store/useEventStore'
 import { useEffect } from 'react'
+import { AuthProvider } from './contexts/AuthContext'
+import { RequireAuth } from './components/auth/RequireAuth'
+import { SignInPage } from './pages/auth/SignInPage'
+import { AcceptInvitationPage } from './pages/auth/AcceptInvitationPage'
 
 // Dashboard
 import DashboardPage from './pages/app/dashboard'
@@ -13,7 +17,6 @@ import DashboardPage from './pages/app/dashboard'
 import ArtistesPage from './pages/app/artistes'
 import ArtistDetailPage from './pages/app/artistes/detail'
 import ArtistStatsPage from './pages/app/artistes/stats'
-import LineupPage from './pages/app/artistes/lineup'
 
 // Timeline
 import LineupTimelinePage from './pages/LineupTimelinePage'
@@ -30,6 +33,9 @@ import { SettingsProductionPage } from './pages/settings/SettingsProductionPage'
 import { SettingsPressePage } from './pages/settings/SettingsPressePage'
 import { SettingsContactsPage } from './pages/settings/SettingsContactsPage'
 import { SettingsPermissionsPage } from './pages/settings/SettingsPermissionsPage'
+import { SettingsEventsPage } from './pages/settings/SettingsEventsPage'
+import { SettingsHospitalityPage } from './pages/settings/SettingsHospitalityPage'
+import { SettingsGroundPage } from './pages/settings/SettingsGroundPage'
 
 // Production
 import ProductionPage from './pages/app/production'
@@ -60,8 +66,6 @@ import ContratsPage from './pages/app/administration/contrats'
 import FinancesPage from './pages/app/administration/finances'
 import VentesPage from './pages/app/administration/ventes'
 
-// Booking
-import BookingPage from './pages/BookingPage'
 
 // Settings
 import SettingsIndexPage from './pages/app/settings'
@@ -97,8 +101,9 @@ export default function App(){
   }, [hydrateFromLocalStorage]);
 
   return (
-    <ToastProvider>
-      <Routes>
+    <AuthProvider>
+      <ToastProvider>
+        <Routes>
       {/* Redirect root to app */}
       <Route path="/" element={<Navigate to="/app" replace />} />
 
@@ -108,12 +113,20 @@ export default function App(){
       </Route>
 
       {/* Timeline - FULL WIDTH (sans sidebar) */}
-      <Route path="/app/booking/timeline" element={<LineupTimelinePage/>}/>
+      <Route path="/app/booking/timeline" element={
+        <RequireAuth>
+          <LineupTimelinePage/>
+        </RequireAuth>
+      }/>
       {/* Ancienne route maintenue pour compatibilité */}
       <Route path="/app/lineup/timeline" element={<Navigate to="/app/booking/timeline" replace />}/>
 
       {/* App Routes */}
-      <Route path="/app" element={<AppLayout/>}>
+      <Route path="/app" element={
+        <RequireAuth>
+          <AppLayout/>
+        </RequireAuth>
+      }>
         {/* Dashboard */}
         <Route index element={<DashboardPage/>}/>
         
@@ -180,6 +193,9 @@ export default function App(){
           <Route path="contacts" element={<SettingsContactsPage/>}/>
           <Route path="staff" element={<SettingsStaffPage/>}/>
           <Route path="permissions" element={<SettingsPermissionsPage/>}/>
+          <Route path="events" element={<SettingsEventsPage/>}/>
+          <Route path="hospitality" element={<SettingsHospitalityPage/>}/>
+          <Route path="ground" element={<SettingsGroundPage/>}/>
         </Route>
 
 
@@ -218,10 +234,11 @@ export default function App(){
 
       {/* Auth Routes (placeholders) */}
       <Route path="/auth">
-        <Route path="signin" element={<div className="min-h-screen bg-night-900 flex items-center justify-center text-white"><div className="text-center"><h1 className="text-3xl font-bold mb-4">Connexion</h1><p className="text-gray-400">Page de connexion à implémenter</p></div></div>} />
-        <Route path="signup" element={<div className="min-h-screen bg-night-900 flex items-center justify-center text-white"><div className="text-center"><h1 className="text-3xl font-bold mb-4">Inscription</h1><p className="text-gray-400">Page d'inscription à implémenter</p></div></div>} />
+        <Route path="signin" element={<SignInPage />} />
+        <Route path="invite" element={<AcceptInvitationPage />} />
       </Route>
     </Routes>
-    </ToastProvider>
+      </ToastProvider>
+    </AuthProvider>
   )
 }

@@ -124,6 +124,7 @@ function SortableClause({
             size="sm"
             variant="ghost"
             onClick={onDelete}
+            className="text-red-500 hover:text-red-600"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -215,6 +216,7 @@ function SortableExclusivity({
             size="sm"
             variant="ghost"
             onClick={onDelete}
+            className="text-red-500 hover:text-red-600"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -323,7 +325,7 @@ const [clausesSortable, setClausesSortable] = useState(false);
 const [exclusivitySortable, setExclusivitySortable] = useState(false);
 
 // États pour les accordéons
-const [accordionOffersOpen, setAccordionOffersOpen] = useState(true);
+const [accordionOffersOpen, setAccordionOffersOpen] = useState(false);
 const [accordionMailsOpen, setAccordionMailsOpen] = useState(false);
 
 const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: boolean) => {
@@ -1130,132 +1132,109 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
 
             {/* Contenu accordéon */}
             {accordionOffersOpen && (
-              <div className="px-5 pb-5 space-y-6 border-t" style={{ borderColor: 'var(--border-default)' }}>
-                {/* Section Modele Word d'offre */}
-                <Card className="mt-5">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30">
-                  <FileType className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    Modele Word d'offre
-                  </h3>
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                    Importez un document Word (.docx) avec des placeholders {'{'}variable{'}'}
-                  </p>
-                </div>
-              </div>
-              {templateConfig && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-red-500 hover:text-red-600"
-                  onClick={handleDeleteTemplate}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              )}
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-4">
-                {/* Template existant */}
-                {templateConfig && (
-                  <div className="flex items-center justify-between p-4 rounded-lg" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-lg" style={{ background: 'rgba(34, 197, 94, 0.2)' }}>
-                        <FileType className="w-8 h-8" style={{ color: 'var(--success)' }} />
+              <div className="px-5 pb-5 border-t" style={{ borderColor: 'var(--border-default)' }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-5">
+                  {/* Section Modele Word d'offre */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center gap-2">
+                        <FileType className="w-5 h-5 text-violet-400" />
+                        <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                          Modele Word
+                        </h3>
                       </div>
-                      <div>
-                        <p className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                          {templateConfig.file_name || 'Modele Word'}
-                        </p>
-                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                          {templateFields.length} placeholders detectes
-                        </p>
+                      {templateConfig && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-500 hover:text-red-600"
+                          onClick={handleDeleteTemplate}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </CardHeader>
+                    <CardBody>
+                      <div className="space-y-3">
+                        {/* Template existant */}
+                        {templateConfig && (
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
+                            <FileType className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--success)' }} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                                {templateConfig.file_name || 'Modele Word'}
+                              </p>
+                              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                {templateFields.length} placeholders
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={handleDownloadTemplate}
+                              disabled={downloadingTemplate}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {/* Zone de glisser-deposer */}
+                        <div 
+                          className="flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors"
+                          style={{ borderColor: 'var(--border-default)' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--primary)';
+                            e.currentTarget.style.background = 'rgba(113, 61, 255, 0.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--border-default)';
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.style.borderColor = 'var(--primary)';
+                            e.currentTarget.style.background = 'rgba(113, 61, 255, 0.1)';
+                          }}
+                          onDragLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--border-default)';
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                          onDrop={async (e) => {
+                            e.preventDefault();
+                            e.currentTarget.style.borderColor = 'var(--border-default)';
+                            e.currentTarget.style.background = 'transparent';
+                            const file = e.dataTransfer?.files?.[0];
+                            if (file && (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
+                              await handleWordTemplateUpload(file);
+                            } else {
+                              toastError('Veuillez deposer un fichier Word (.docx)');
+                            }
+                          }}
+                          onClick={() => document.getElementById('word-template-upload')?.click()}
+                        >
+                          <UploadCloud className="w-8 h-8 mb-2" style={{ color: 'var(--text-muted)' }} />
+                          <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+                            {templateConfig ? 'Remplacer' : 'Glissez .docx'}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={handleDownloadTemplate}
-                        disabled={downloadingTemplate}
-                      >
-                        <Download className="w-4 h-4 mr-1" />
-                        {downloadingTemplate ? '...' : 'Telecharger'}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Zone de glisser-deposer (toujours visible) */}
-                <div 
-                  className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl cursor-pointer transition-colors"
-                  style={{ borderColor: 'var(--border-default)' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--primary)';
-                    e.currentTarget.style.background = 'rgba(113, 61, 255, 0.05)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-default)';
-                    e.currentTarget.style.background = 'transparent';
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.style.borderColor = 'var(--primary)';
-                    e.currentTarget.style.background = 'rgba(113, 61, 255, 0.1)';
-                  }}
-                  onDragLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-default)';
-                    e.currentTarget.style.background = 'transparent';
-                  }}
-                  onDrop={async (e) => {
-                    e.preventDefault();
-                    e.currentTarget.style.borderColor = 'var(--border-default)';
-                    e.currentTarget.style.background = 'transparent';
-                    const file = e.dataTransfer?.files?.[0];
-                    if (file && (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
-                      await handleWordTemplateUpload(file);
-                    } else {
-                      toastError('Veuillez deposer un fichier Word (.docx)');
-                    }
-                  }}
-                  onClick={() => document.getElementById('word-template-upload')?.click()}
-                >
-                  <UploadCloud className="w-12 h-12 mb-3" style={{ color: 'var(--text-muted)' }} />
-                  <p className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
-                    {templateConfig ? 'Remplacer le modele Word' : 'Glissez-deposez votre modele Word ici'}
-                  </p>
-                  <p className="text-sm text-center max-w-md" style={{ color: 'var(--text-muted)' }}>
-                    {templateConfig 
-                      ? 'Glissez un nouveau fichier .docx ou cliquez pour selectionner'
-                      : <>ou cliquez pour selectionner un fichier .docx avec des placeholders comme {'{'}artist_name{'}'}, {'{'}amount_net{'}'}, {'{'}amount_gross{'}'}</>
-                    }
-                  </p>
-                </div>
-              </div>
-              
-              <input
-                id="word-template-upload"
-                type="file"
-                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    await handleWordTemplateUpload(file);
-                  }
-                  e.target.value = '';
-                }}
-              />
-            </CardBody>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Colonne EXTRAS */}
-            <div>
+                      
+                      <input
+                        id="word-template-upload"
+                        type="file"
+                        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await handleWordTemplateUpload(file);
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                    </CardBody>
+                  </Card>
             {/* Extras */}
             <Card>
               <CardHeader>
@@ -1366,11 +1345,8 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
                 </div>
               </CardBody>
             </Card>
-          </div>
 
-          {/* Colonne CLAUSES D'EXCLUSIVITÉ */}
-          <div>
-            {/* Clauses d'exclusivité */}
+            {/* Clauses d'exclusivite */}
             <Card>
               <CardHeader>
                 <div>
@@ -1480,10 +1456,9 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
                 </div>
               </CardBody>
             </Card>
-          </div>
 
           {/* Bandeau Parametres de l'offre avec bouton Sauver */}
-          <div className="col-span-1 lg:col-span-2 flex items-center justify-between py-4 px-1">
+          <div className="col-span-1 md:col-span-2 lg:col-span-3 flex items-center justify-between py-4 px-1">
             <div>
               <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                 Parametres de l'offre
@@ -1503,301 +1478,250 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
           </div>
 
           {/* Transports Locaux */}
-          <div>
-            <Card>
-              <CardHeader>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Truck className="w-5 h-5 text-violet-400" />
-                    <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Transports Locaux</h3>
-                  </div>
-                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Navettes et vehicules fournis par le festival</p>
+          <Card>
+            <CardHeader>
+              <div>
+                <div className="flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-violet-400" />
+                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Transports</h3>
                 </div>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
-                      Note d'introduction
-                    </label>
-                    <textarea
-                      value={settingsForm.transport_note}
-                      onChange={(e) => updateSettingsField('transport_note', e.target.value)}
-                      rows={2}
-                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                      placeholder="Ex: Les transports locaux suivants sont fournis par le festival:"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
-                      Contenu (une ligne par element)
-                    </label>
-                    <textarea
-                      value={settingsForm.transport_content}
-                      onChange={(e) => updateSettingsField('transport_content', e.target.value)}
-                      rows={5}
-                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
-                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                      placeholder="- Navette aeroport/hotel&#10;- Vehicule avec chauffeur&#10;- Transport hotel/site"
-                    />
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-          </div>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Navettes festival</p>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <div className="space-y-2">
+                <textarea
+                  value={settingsForm.transport_note}
+                  onChange={(e) => updateSettingsField('transport_note', e.target.value)}
+                  rows={2}
+                  className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                  placeholder="Note d'intro..."
+                />
+                <textarea
+                  value={settingsForm.transport_content}
+                  onChange={(e) => updateSettingsField('transport_content', e.target.value)}
+                  rows={3}
+                  className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                  placeholder="- Navette aeroport&#10;- Vehicule..."
+                />
+              </div>
+            </CardBody>
+          </Card>
 
           {/* Conditions de Paiement */}
-          <div>
-            <Card>
-              <CardHeader>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Receipt className="w-5 h-5 text-violet-400" />
-                    <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Conditions de Paiement</h3>
-                  </div>
-                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Modalites et echeances de paiement</p>
-                </div>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
-                      Note d'introduction
-                    </label>
-                    <textarea
-                      value={settingsForm.payment_note}
-                      onChange={(e) => updateSettingsField('payment_note', e.target.value)}
-                      rows={2}
-                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                      placeholder="Ex: CONDITIONS DE PAIEMENT, NON NEGOTIABLES"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
-                      Contenu (une ligne par condition)
-                    </label>
-                    <textarea
-                      value={settingsForm.payment_content}
-                      onChange={(e) => updateSettingsField('payment_content', e.target.value)}
-                      rows={5}
-                      className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
-                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                      placeholder="- 50% a la signature&#10;- 50% restant 30 jours avant"
-                    />
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-          </div>
-
-          {/* Validite de l'offre */}
-          <div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-violet-400" />
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Validite de l'offre</h3>
-                </div>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Texte concernant la duree de validite</p>
-              </CardHeader>
-              <CardBody>
-                <textarea
-                  value={settingsForm.validity_text}
-                  onChange={(e) => updateSettingsField('validity_text', e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                  placeholder="Ex: Cette offre est valable jusqu'au {validity_date}."
-                />
-              </CardBody>
-            </Card>
-          </div>
-
-          {/* Stage PA & Lights */}
-          <div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Volume2 className="w-5 h-5 text-violet-400" />
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Stage PA & Lights</h3>
-                </div>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Equipements son et lumiere fournis</p>
-              </CardHeader>
-              <CardBody>
-                <textarea
-                  value={settingsForm.stage_pa_lights}
-                  onChange={(e) => updateSettingsField('stage_pa_lights', e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                  placeholder="- Systeme PA selon rider&#10;- Eclairage standard festival"
-                />
-              </CardBody>
-            </Card>
-          </div>
-
-          {/* Ecrans */}
-          <div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Monitor className="w-5 h-5 text-violet-400" />
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Ecrans</h3>
-                </div>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Ecrans LED et affichage video</p>
-              </CardHeader>
-              <CardBody>
-                <textarea
-                  value={settingsForm.screens}
-                  onChange={(e) => updateSettingsField('screens', e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                  placeholder="- Ecrans LED lateraux&#10;- Resolution: 1920x1080"
-                />
-              </CardBody>
-            </Card>
-          </div>
-
-          {/* Merchandising */}
-          <div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5 text-violet-400" />
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Merchandising</h3>
-                </div>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Vente de produits derives</p>
-              </CardHeader>
-              <CardBody>
-                <textarea
-                  value={settingsForm.merchandising}
-                  onChange={(e) => updateSettingsField('merchandising', e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                  placeholder="- Stand disponible&#10;- Commission: 20%"
-                />
-              </CardBody>
-            </Card>
-          </div>
-
-          {/* Impots a la source */}
-          <div>
-            <Card>
-              <CardHeader>
+          <Card>
+            <CardHeader>
+              <div>
                 <div className="flex items-center gap-2">
                   <Receipt className="w-5 h-5 text-violet-400" />
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Impots a la source</h3>
+                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Paiement</h3>
                 </div>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Retenues fiscales applicables</p>
-              </CardHeader>
-              <CardBody>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Conditions</p>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <div className="space-y-2">
                 <textarea
-                  value={settingsForm.withholding_taxes}
-                  onChange={(e) => updateSettingsField('withholding_taxes', e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                  value={settingsForm.payment_note}
+                  onChange={(e) => updateSettingsField('payment_note', e.target.value)}
+                  rows={2}
+                  className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500"
                   style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                  placeholder="- Taux: 15% sur le brut&#10;- Attestation requise"
+                  placeholder="Note d'intro..."
                 />
-              </CardBody>
-            </Card>
-          </div>
+                <textarea
+                  value={settingsForm.payment_content}
+                  onChange={(e) => updateSettingsField('payment_content', e.target.value)}
+                  rows={3}
+                  className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                  placeholder="- 50% signature&#10;- 50% J-30"
+                />
+              </div>
+            </CardBody>
+          </Card>
+
+          {/* Validite de l'offre */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-violet-400" />
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Validite</h3>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <textarea
+                value={settingsForm.validity_text}
+                onChange={(e) => updateSettingsField('validity_text', e.target.value)}
+                rows={3}
+                className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                placeholder="Offre valable jusqu'au..."
+              />
+            </CardBody>
+          </Card>
+
+          {/* Stage PA & Lights */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Volume2 className="w-5 h-5 text-violet-400" />
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>PA & Lights</h3>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <textarea
+                value={settingsForm.stage_pa_lights}
+                onChange={(e) => updateSettingsField('stage_pa_lights', e.target.value)}
+                rows={3}
+                className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                placeholder="- PA selon rider&#10;- Eclairage..."
+              />
+            </CardBody>
+          </Card>
+
+          {/* Ecrans */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Monitor className="w-5 h-5 text-violet-400" />
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Ecrans</h3>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <textarea
+                value={settingsForm.screens}
+                onChange={(e) => updateSettingsField('screens', e.target.value)}
+                rows={3}
+                className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                placeholder="- LED lateraux&#10;- 1920x1080"
+              />
+            </CardBody>
+          </Card>
+
+          {/* Merchandising */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-violet-400" />
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Merch</h3>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <textarea
+                value={settingsForm.merchandising}
+                onChange={(e) => updateSettingsField('merchandising', e.target.value)}
+                rows={3}
+                className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                placeholder="- Stand&#10;- Commission 20%"
+              />
+            </CardBody>
+          </Card>
+
+          {/* Impots a la source */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-violet-400" />
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Impots</h3>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <textarea
+                value={settingsForm.withholding_taxes}
+                onChange={(e) => updateSettingsField('withholding_taxes', e.target.value)}
+                rows={3}
+                className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                placeholder="- Taux 15%&#10;- Attestation"
+              />
+            </CardBody>
+          </Card>
 
           {/* Limitation Decibels */}
-          <div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Volume2 className="w-5 h-5 text-violet-400" />
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Limitation Decibels (dB)</h3>
-                </div>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Contraintes sonores du site</p>
-              </CardHeader>
-              <CardBody>
-                <textarea
-                  value={settingsForm.decibel_limit}
-                  onChange={(e) => updateSettingsField('decibel_limit', e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                  placeholder="- Limite: 102 dB(A)&#10;- Couvre-feu: 02h00"
-                />
-              </CardBody>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Volume2 className="w-5 h-5 text-violet-400" />
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Decibels</h3>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <textarea
+                value={settingsForm.decibel_limit}
+                onChange={(e) => updateSettingsField('decibel_limit', e.target.value)}
+                rows={3}
+                className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                placeholder="- 102 dB(A)&#10;- Couvre-feu 02h"
+              />
+            </CardBody>
+          </Card>
 
           {/* Tour Bus */}
-          <div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Bus className="w-5 h-5 text-violet-400" />
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Assortiments Tour Bus</h3>
-                </div>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Parking et branchements tour bus</p>
-              </CardHeader>
-              <CardBody>
-                <textarea
-                  value={settingsForm.tour_bus}
-                  onChange={(e) => updateSettingsField('tour_bus', e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                  placeholder="- Parking securise&#10;- Branchement 32A"
-                />
-              </CardBody>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Bus className="w-5 h-5 text-violet-400" />
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Tour Bus</h3>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <textarea
+                value={settingsForm.tour_bus}
+                onChange={(e) => updateSettingsField('tour_bus', e.target.value)}
+                rows={3}
+                className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                placeholder="- Parking&#10;- 32A"
+              />
+            </CardBody>
+          </Card>
 
           {/* Catering / Repas */}
-          <div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <UtensilsCrossed className="w-5 h-5 text-violet-400" />
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Catering / Repas</h3>
-                </div>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Restauration et hospitalite</p>
-              </CardHeader>
-              <CardBody>
-                <textarea
-                  value={settingsForm.catering_meals}
-                  onChange={(e) => updateSettingsField('catering_meals', e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                  placeholder="- Repas chauds inclus&#10;- Options vegan disponibles"
-                />
-              </CardBody>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <UtensilsCrossed className="w-5 h-5 text-violet-400" />
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Catering</h3>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <textarea
+                value={settingsForm.catering_meals}
+                onChange={(e) => updateSettingsField('catering_meals', e.target.value)}
+                rows={3}
+                className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                placeholder="- Repas chauds&#10;- Vegan OK"
+              />
+            </CardBody>
+          </Card>
 
           {/* Affiche / Artwork */}
-          <div>
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Image className="w-5 h-5 text-violet-400" />
-                  <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Affiche / Artwork</h3>
-                </div>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Communication et visuels</p>
-              </CardHeader>
-              <CardBody>
-                <textarea
-                  value={settingsForm.artwork}
-                  onChange={(e) => updateSettingsField('artwork', e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
-                  placeholder="- Validation requise&#10;- Delai: 14 jours"
-                />
-              </CardBody>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Image className="w-5 h-5 text-violet-400" />
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Artwork</h3>
+              </div>
+            </CardHeader>
+            <CardBody>
+              <textarea
+                value={settingsForm.artwork}
+                onChange={(e) => updateSettingsField('artwork', e.target.value)}
+                rows={3}
+                className="w-full rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                placeholder="- Validation&#10;- Delai 14j"
+              />
+            </CardBody>
+          </Card>
         </div>
               </div>
             )}
@@ -1817,7 +1741,7 @@ const handlePdfMappingSave = async (file: File, mapping: Record<string, string>)
               type="button"
               onClick={() => setAccordionMailsOpen(!accordionMailsOpen)}
               className="w-full px-5 py-4 flex items-center justify-between transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
-              style={{ background: accordionMailsOpen ? 'rgba(59, 130, 246, 0.05)' : 'transparent' }}
+              style={{ background: accordionMailsOpen ? 'rgba(113, 61, 255, 0.05)' : 'transparent' }}
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">

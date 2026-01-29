@@ -619,7 +619,7 @@ export function SendContractToArtistModal({
   // Affichage du loader
   if (loading) {
     return (
-      <Modal open={open} onClose={onClose} title="Envoyer à l'artiste" widthClass="max-w-2xl">
+      <Modal open={open} onClose={onClose} title="Envoyer à l'artiste" size="md">
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
         </div>
@@ -628,7 +628,7 @@ export function SendContractToArtistModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Envoyer à l'artiste" widthClass="max-w-2xl">
+    <Modal open={open} onClose={onClose} title="Envoyer à l'artiste" size="md">
       <div className="space-y-5">
         {/* Résumé du contrat */}
         <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-200 dark:border-green-800">
@@ -897,7 +897,7 @@ export function SendContractToArtistModal({
           open={pdfPreviewOpen} 
           onClose={closePdfPreview} 
           title="Aperçu du contrat"
-          widthClass="max-w-5xl"
+          size="xl"
         >
           <div className="h-[75vh]">
             <iframe

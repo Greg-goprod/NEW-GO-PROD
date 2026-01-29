@@ -10,7 +10,8 @@ import {
   buildPermissionKey,
 } from '@/config/permissionsMatrix';
 
-const RBAC_MODE = import.meta.env.VITE_RBAC_MODE ?? 'local';
+const RBAC_MODE =
+  import.meta.env.VITE_RBAC_MODE ?? (import.meta.env.DEV ? 'local' : 'supabase');
 const isSupabaseMode = RBAC_MODE === 'supabase';
 
 type DevTenantState = {

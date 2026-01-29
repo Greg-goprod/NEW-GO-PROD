@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, Music, ExternalLink } from "lucide-react";
-import Modal, { ModalFooter, ModalButton } from "@/components/ui/Modal";
+import { Modal } from "@/components/aura/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
@@ -79,17 +79,14 @@ export default function SpotifySearchModal({ isOpen, onClose, onSelect, searchQu
 
   return (
     <Modal
-      isOpen={isOpen}
+      open={isOpen}
       onClose={onClose}
       title="Rechercher sur Spotify"
       size="lg"
-      draggable={true}
       footer={
-        <ModalFooter>
-          <ModalButton variant="secondary" onClick={onClose}>
-            Annuler
-          </ModalButton>
-        </ModalFooter>
+        <Button variant="secondary" onClick={onClose}>
+          Annuler
+        </Button>
       }
     >
       <div className="space-y-4">

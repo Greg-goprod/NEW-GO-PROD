@@ -69,7 +69,7 @@ export function ClauseFormModal({ open, onClose, onSave, editingClause }: Clause
       open={open}
       onClose={onClose}
       title={editingClause ? "Modifier la clause" : "Ajouter une clause"}
-      widthClass="max-w-2xl"
+      size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">

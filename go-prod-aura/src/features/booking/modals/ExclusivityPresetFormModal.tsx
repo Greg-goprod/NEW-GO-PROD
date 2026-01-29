@@ -68,7 +68,7 @@ export function ExclusivityPresetFormModal({ open, onClose, onSave, editingPrese
       open={open}
       onClose={onClose}
       title={editingPreset ? "Modifier le preset d'exclusivité" : "Ajouter un preset d'exclusivité"}
-      widthClass="max-w-2xl"
+      size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

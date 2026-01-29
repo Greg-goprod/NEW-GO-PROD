@@ -185,10 +185,17 @@ export function OffersListView({
               const timeDisplay = normalizeTime(o.performance_time || o.date_time) || "—";
               const statusDisplay = o.status || o.booking_status || "—";
 
+              // Déterminer si l'offre est acceptée pour le style de fond
+              const isAccepted = statusDisplay === "accepted";
+              
               return (
                 <div
                   key={o.id}
-                  className="px-5 py-3 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                  className={`px-5 py-3 flex items-center gap-4 transition-colors ${
+                    isAccepted 
+                      ? 'bg-green-50/70 hover:bg-green-100/70 dark:bg-green-900/20 dark:hover:bg-green-900/30' 
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                  }`}
                 >
                   {/* Heure */}
                   <div className="w-14 flex-shrink-0">
@@ -265,29 +272,31 @@ export function OffersListView({
                         
                         {/* Version badge si > 1 */}
                         {o.version && o.version > 1 && (
-                          <span className="px-2 py-0.5 text-xs font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mr-1">
+                          <span className="px-2.5 py-0.5 text-sm font-bold rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mr-1">
                             V{o.version}
                           </span>
                         )}
                         
-                        {/* Bouton Modifier - versioning uniquement si sent/accepted/rejected */}
-                        <button 
-                          onClick={() => onModify(o)}
-                          title={
-                            statusDisplay === "sent" || statusDisplay === "accepted" || statusDisplay === "rejected"
-                              ? "Modifier l'offre (crée une nouvelle version)"
-                              : "Modifier l'offre"
-                          }
-                          className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1 hover:opacity-80"
-                          style={{
-                            backgroundColor: STATUS_COLORS[statusDisplay]?.bg || '#6B7280',
-                            color: STATUS_COLORS[statusDisplay]?.text || '#FFFFFF',
-                            border: `1px solid ${STATUS_COLORS[statusDisplay]?.border || '#6B7280'}`,
-                          }}
-                        >
-                          <Edit className="w-4 h-4" />
-                          Modifier
-                        </button>
+                        {/* Bouton Modifier - masqué si accepté */}
+                        {statusDisplay !== "accepted" && (
+                          <button 
+                            onClick={() => onModify(o)}
+                            title={
+                              statusDisplay === "sent" || statusDisplay === "rejected"
+                                ? "Modifier l'offre (crée une nouvelle version)"
+                                : "Modifier l'offre"
+                            }
+                            className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1 hover:opacity-80"
+                            style={{
+                              backgroundColor: STATUS_COLORS[statusDisplay]?.bg || '#6B7280',
+                              color: STATUS_COLORS[statusDisplay]?.text || '#FFFFFF',
+                              border: `1px solid ${STATUS_COLORS[statusDisplay]?.border || '#6B7280'}`,
+                            }}
+                          >
+                            <Edit className="w-4 h-4" />
+                            Modifier
+                          </button>
+                        )}
                         
                         {/* Bouton Valider - vert (accepted) - UNIQUEMENT si statut = sent */}
                         {statusDisplay === "sent" && onValidateOffer && (
@@ -325,8 +334,8 @@ export function OffersListView({
                           </button>
                         )}
                         
-                        {/* Bouton Envoyer - couleur "Prêt à envoyer" (violet) - seulement si pas déjà rejeté */}
-                        {statusDisplay !== "rejected" && (
+                        {/* Bouton Envoyer - couleur "Prêt à envoyer" (violet) - masqué si rejeté ou accepté */}
+                        {statusDisplay !== "rejected" && statusDisplay !== "accepted" && (
                           <button 
                             onClick={() => onSendOffer(o)}
                             title="Envoyer l'offre"

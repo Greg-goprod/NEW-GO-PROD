@@ -6,6 +6,7 @@ import { fetchTouringPartyByEvent, upsertTouringParty, fetchTouringPartyStats } 
 import { fetchEventArtists } from '@/api/eventsApi';
 import type { ArtistTouringPartyWithDay, VehicleCount, TouringPartyStats } from '@/types/production';
 import { Button } from '@/components/aura/Button';
+import { PageHeader } from '@/components/aura/PageHeader';
 import { Input } from '@/components/aura/Input';
 
 const VEHICLE_TYPES = [
@@ -254,18 +255,16 @@ export default function TouringPartyPage() {
   return (
     <div className="p-6">
       {/* Header */}
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Users2 className="w-5 h-5 text-violet-400" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            TOURING PARTY
-          </h1>
-        </div>
-        <Button variant="secondary" onClick={loadData}>
-          <Save className="w-4 h-4 mr-1" />
-          Rafraîchir
-        </Button>
-      </header>
+      <PageHeader
+        icon={Users2}
+        title="TOURING PARTY"
+        actions={
+          <Button variant="secondary" onClick={loadData}>
+            <Save className="w-4 h-4 mr-1" />
+            Rafraîchir
+          </Button>
+        }
+      />
 
       {/* Dashboard Statistiques */}
       {stats && (

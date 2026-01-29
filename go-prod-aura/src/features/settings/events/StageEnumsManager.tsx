@@ -6,6 +6,24 @@ import { Input } from '@/components/aura/Input';
 import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
 import { useToast } from '@/components/aura/ToastProvider';
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   fetchStageTypes,
   fetchStageSpecificities,
   createStageType,
@@ -14,10 +32,97 @@ import {
   updateStageSpecificity,
   deleteStageType,
   deleteStageSpecificity,
+  updateStageTypesOrder,
+  updateStageSpecificitiesOrder,
   initializeStageEnumsForCompany,
   type StageType,
   type StageSpecificity,
 } from '@/api/stageEnumsApi';
+
+// Composant pour un item draggable
+function SortableItem({
+  item,
+  isEditing,
+  editingLabel,
+  onEdit,
+  onSave,
+  onCancel,
+  onDelete,
+  onLabelChange,
+}: {
+  item: { id: string; label: string };
+  isEditing: boolean;
+  editingLabel: string;
+  onEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onDelete: () => void;
+  onLabelChange: (value: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+      >
+        <GripVertical className="w-5 h-5" />
+      </div>
+
+      {isEditing ? (
+        <>
+          <Input
+            value={editingLabel}
+            onChange={(e) => onLabelChange(e.target.value)}
+            className="flex-1"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onSave();
+              if (e.key === 'Escape') onCancel();
+            }}
+          />
+          <Button size="sm" variant="primary" onClick={onSave}>
+            OK
+          </Button>
+          <Button size="sm" variant="secondary" onClick={onCancel}>
+            X
+          </Button>
+        </>
+      ) : (
+        <>
+          <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">
+            {item.label}
+          </span>
+          <Button size="sm" variant="ghost" onClick={onEdit}>
+            <Edit2 className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onDelete} className="text-red-500 hover:text-red-600">
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
 
 interface StageEnumsManagerProps {
   companyId: string;
@@ -46,12 +151,22 @@ export function StageEnumsManager({ companyId }: StageEnumsManagerProps) {
   const [editingSpecId, setEditingSpecId] = useState<string | null>(null);
   const [editingSpecLabel, setEditingSpecLabel] = useState('');
 
+  // Drag & Drop
+  const [activeType, setActiveType] = useState<StageType | null>(null);
+  const [activeSpec, setActiveSpec] = useState<StageSpecificity | null>(null);
+
   // Confirmation de suppression unifiée
   const [deleteConfirm, setDeleteConfirm] = useState<{
     type: 'stageType' | 'stageSpec';
     id: string;
     name: string;
   } | null>(null);
+
+  // Sensors pour le drag & drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   // Charger les données
   const loadData = async () => {
@@ -184,15 +299,74 @@ export function StageEnumsManager({ companyId }: StageEnumsManagerProps) {
     setShowSpecForm(false);
   };
 
+  // Drag & Drop handlers pour les types
+  const handleTypeDragStart = (event: DragStartEvent) => {
+    const item = stageTypes.find((t) => t.id === event.active.id);
+    setActiveType(item || null);
+  };
+
+  const handleTypeDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveType(null);
+
+    if (over && active.id !== over.id) {
+      const oldIndex = stageTypes.findIndex((t) => t.id === active.id);
+      const newIndex = stageTypes.findIndex((t) => t.id === over.id);
+      const newOrder = arrayMove(stageTypes, oldIndex, newIndex);
+      setStageTypes(newOrder);
+
+      try {
+        await updateStageTypesOrder(newOrder.map((t) => t.id));
+      } catch (err: any) {
+        console.error('Erreur reorder types:', err);
+        toastError('Erreur lors du reordonnancement');
+        loadData();
+      }
+    }
+  };
+
+  const handleTypeDragCancel = () => {
+    setActiveType(null);
+  };
+
+  // Drag & Drop handlers pour les specificites
+  const handleSpecDragStart = (event: DragStartEvent) => {
+    const item = stageSpecificities.find((s) => s.id === event.active.id);
+    setActiveSpec(item || null);
+  };
+
+  const handleSpecDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveSpec(null);
+
+    if (over && active.id !== over.id) {
+      const oldIndex = stageSpecificities.findIndex((s) => s.id === active.id);
+      const newIndex = stageSpecificities.findIndex((s) => s.id === over.id);
+      const newOrder = arrayMove(stageSpecificities, oldIndex, newIndex);
+      setStageSpecificities(newOrder);
+
+      try {
+        await updateStageSpecificitiesOrder(newOrder.map((s) => s.id));
+      } catch (err: any) {
+        console.error('Erreur reorder specs:', err);
+        toastError('Erreur lors du reordonnancement');
+        loadData();
+      }
+    }
+  };
+
+  const handleSpecDragCancel = () => {
+    setActiveSpec(null);
+  };
+
   if (loading) {
     return <div className="text-sm text-gray-500">Chargement...</div>;
   }
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Container Types de scènes */}
-        <Card>
+      {/* Container Types de scènes */}
+      <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -220,7 +394,7 @@ export function StageEnumsManager({ companyId }: StageEnumsManagerProps) {
             <div className="space-y-2">
               {/* Formulaire d'ajout */}
               {showTypeForm && (
-                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                   <Input
                     value={newTypeLabel}
                     onChange={(e) => setNewTypeLabel(e.target.value)}
@@ -246,57 +420,44 @@ export function StageEnumsManager({ companyId }: StageEnumsManagerProps) {
                   Aucune option définie. Cliquez sur "Ajouter" pour en créer.
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {stageTypes.map((type) => (
-                    <div
-                      key={type.id}
-                      className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
-                    >
-                      <div className="text-gray-400">
-                        <GripVertical className="w-5 h-5" />
-                      </div>
-
-                      {editingTypeId === type.id ? (
-                        <>
-                          <Input
-                            value={editingTypeLabel}
-                            onChange={(e) => setEditingTypeLabel(e.target.value)}
-                            className="flex-1"
-                            autoFocus
-                          />
-                          <Button size="sm" variant="primary" onClick={() => handleSaveType(type.id)}>
-                            ✓
-                          </Button>
-                          <Button size="sm" variant="secondary" onClick={handleCancelEditType}>
-                            ✗
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">
-                            {type.label}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEditType(type)}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() =>
-                              setDeleteConfirm({ type: 'stageType', id: type.id, name: type.label })
-                            }
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleTypeDragStart}
+                  onDragEnd={handleTypeDragEnd}
+                  onDragCancel={handleTypeDragCancel}
+                >
+                  <SortableContext
+                    items={stageTypes.map((t) => t.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {stageTypes.map((type) => (
+                        <SortableItem
+                          key={type.id}
+                          item={type}
+                          isEditing={editingTypeId === type.id}
+                          editingLabel={editingTypeLabel}
+                          onEdit={() => handleEditType(type)}
+                          onSave={() => handleSaveType(type.id)}
+                          onCancel={handleCancelEditType}
+                          onDelete={() => setDeleteConfirm({ type: 'stageType', id: type.id, name: type.label })}
+                          onLabelChange={setEditingTypeLabel}
+                        />
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                  <DragOverlay>
+                    {activeType ? (
+                      <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border-2 border-violet-500 shadow-xl">
+                        <GripVertical className="w-5 h-5 text-gray-400" />
+                        <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 font-medium">
+                          {activeType.label}
+                        </span>
+                      </div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
               )}
             </div>
           </CardBody>
@@ -331,7 +492,7 @@ export function StageEnumsManager({ companyId }: StageEnumsManagerProps) {
             <div className="space-y-2">
               {/* Formulaire d'ajout */}
               {showSpecForm && (
-                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                   <Input
                     value={newSpecLabel}
                     onChange={(e) => setNewSpecLabel(e.target.value)}
@@ -357,62 +518,48 @@ export function StageEnumsManager({ companyId }: StageEnumsManagerProps) {
                   Aucune option définie. Cliquez sur "Ajouter" pour en créer.
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {stageSpecificities.map((spec) => (
-                    <div
-                      key={spec.id}
-                      className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
-                    >
-                      <div className="text-gray-400">
-                        <GripVertical className="w-5 h-5" />
-                      </div>
-
-                      {editingSpecId === spec.id ? (
-                        <>
-                          <Input
-                            value={editingSpecLabel}
-                            onChange={(e) => setEditingSpecLabel(e.target.value)}
-                            className="flex-1"
-                            autoFocus
-                          />
-                          <Button size="sm" variant="primary" onClick={() => handleSaveSpec(spec.id)}>
-                            ✓
-                          </Button>
-                          <Button size="sm" variant="secondary" onClick={handleCancelEditSpec}>
-                            ✗
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">
-                            {spec.label}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEditSpec(spec)}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() =>
-                              setDeleteConfirm({ type: 'stageSpec', id: spec.id, name: spec.label })
-                            }
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleSpecDragStart}
+                  onDragEnd={handleSpecDragEnd}
+                  onDragCancel={handleSpecDragCancel}
+                >
+                  <SortableContext
+                    items={stageSpecificities.map((s) => s.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {stageSpecificities.map((spec) => (
+                        <SortableItem
+                          key={spec.id}
+                          item={spec}
+                          isEditing={editingSpecId === spec.id}
+                          editingLabel={editingSpecLabel}
+                          onEdit={() => handleEditSpec(spec)}
+                          onSave={() => handleSaveSpec(spec.id)}
+                          onCancel={handleCancelEditSpec}
+                          onDelete={() => setDeleteConfirm({ type: 'stageSpec', id: spec.id, name: spec.label })}
+                          onLabelChange={setEditingSpecLabel}
+                        />
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                  <DragOverlay>
+                    {activeSpec ? (
+                      <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-700 rounded-lg border-2 border-violet-500 shadow-xl">
+                        <GripVertical className="w-5 h-5 text-gray-400" />
+                        <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 font-medium">
+                          {activeSpec.label}
+                        </span>
+                      </div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
               )}
             </div>
           </CardBody>
         </Card>
-      </div>
 
       {/* Confirmation de suppression */}
       <ConfirmDialog

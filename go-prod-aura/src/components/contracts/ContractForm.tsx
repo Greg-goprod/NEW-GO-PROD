@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, X } from 'lucide-react';
-import Modal from '../ui/Modal';
+import { Modal } from '../aura/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Combobox } from '../ui/Combobox';
@@ -122,7 +122,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
 
   return (
     <Modal
-      isOpen={isOpen}
+      open={isOpen}
       onClose={onClose}
       title="Nouveau contrat"
       size="lg"

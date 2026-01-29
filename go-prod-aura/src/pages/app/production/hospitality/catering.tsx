@@ -10,6 +10,7 @@ import {
 import { fetchAllArtists } from '@/api/artistsApi';
 import type { CateringRequirementWithArtist, MealType } from '@/types/production';
 import { Button } from '@/components/aura/Button';
+import { PageHeader } from '@/components/aura/PageHeader';
 import { Input } from '@/components/aura/Input';
 import { Modal } from '@/components/aura/Modal';
 
@@ -122,16 +123,16 @@ export default function CateringPage() {
 
   return (
     <div className="p-6">
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <UtensilsCrossed className="w-5 h-5 text-violet-400" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">CATERING</h1>
-        </div>
-        <Button variant="primary" onClick={handleOpenModal}>
-          <Plus className="w-4 h-4 mr-1" />
-          Nouveau besoin
-        </Button>
-      </header>
+      <PageHeader
+        icon={UtensilsCrossed}
+        title="CATERING"
+        actions={
+          <Button variant="primary" onClick={handleOpenModal}>
+            <Plus className="w-4 h-4 mr-1" />
+            Nouveau besoin
+          </Button>
+        }
+      />
 
       <div className="mb-6">
         <div className="relative">
@@ -205,7 +206,7 @@ export default function CateringPage() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title="Nouveau besoin catering"
-        widthClass="max-w-2xl"
+        size="md"
       >
         <div className="p-6 space-y-4">
           <div>

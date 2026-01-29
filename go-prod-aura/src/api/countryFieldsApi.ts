@@ -76,7 +76,12 @@ export async function fetchAllCountryFields(): Promise<{ [countryCode: string]: 
  * Précharge les champs pour les pays principaux
  */
 export async function preloadMainCountriesFields(): Promise<void> {
-  const mainCountries = ['CH', 'FR', 'GB', 'US', 'DE', 'BE'];
+  const mainCountries = [
+    'CH', 'FR', 'GB', 'US', 'CA', 'AU',  // Pays prioritaires
+    'DE', 'BE', 'NL', 'AT', 'LU', 'IT', 'ES', 'PT',  // Europe de l'Ouest
+    'DK', 'SE', 'NO', 'FI', 'IE',  // Pays nordiques + Irlande
+    'PL', 'CZ'  // Europe de l'Est
+  ];
   
   await Promise.all(
     mainCountries.map(async (code) => {

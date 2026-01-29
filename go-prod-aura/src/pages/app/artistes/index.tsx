@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Music, Search, Plus, Grid3x3, List, Edit2, Trash2 } from "lucide-react";
 import { useI18n } from "../../../lib/i18n";
 import { Button } from "../../../components/ui/Button";
+import { PageHeader } from "@/components/aura/PageHeader";
 import { Input } from "../../../components/ui/Input";
 import { getCurrentCompanyId } from "../../../lib/tenant";
 // import { triggerSpotifySync } from "../../../lib/spotifySync"; // Temporairement désactivé
@@ -298,17 +299,15 @@ export default function ArtistesPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <header className="flex items-center gap-2">
-          <Music className="w-5 h-5 text-violet-400" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">{t('artists').toUpperCase()}</h1>
-        </header>
-        <div className="flex items-center gap-2">
+      <PageHeader
+        icon={Music}
+        title={t('artists').toUpperCase()}
+        actions={
           <Button leftIcon={<Plus size={16} />} onClick={() => setShowAdd(true)}>
             {t('artists.addArtist')}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Status de synchronisation - Temporairement désactivé */}
       {/* {syncMsg && (
@@ -641,7 +640,7 @@ export default function ArtistesPage() {
                               e.stopPropagation();
                               handleDeleteArtist(artist);
                             }}
-                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            className="p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                             title="Supprimer l'artiste"
                           >
                             <Trash2 className="w-4 h-4" />

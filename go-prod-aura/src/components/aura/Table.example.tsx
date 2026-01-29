@@ -203,7 +203,7 @@ export const FullFeaturedTable: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleDelete(contact.id)}
-                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                  className="p-2 text-red-500 hover:text-red-600 transition-colors"
                   title="Supprimer"
                 >
                   <Trash2 className="w-4 h-4" />

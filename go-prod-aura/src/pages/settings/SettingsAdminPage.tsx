@@ -1,113 +1,185 @@
-import React, { useState } from 'react';
-import { Shield, Download, Upload, Key, Mail, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Wallet, Plus, Trash2, Edit2, GripVertical } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/aura/Card';
 import { Button } from '@/components/aura/Button';
 import { Input } from '@/components/aura/Input';
-import { Badge } from '@/components/aura/Badge';
 import { useToast } from '@/components/aura/ToastProvider';
-import { useEventContext } from '@/hooks/useEventContext';
-import { sendEmail } from '@/services/emailService';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import { supabase } from '@/lib/supabaseClient';
+import { getCurrentCompanyId } from '@/lib/tenant';
+
+interface InvoiceCategory {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
 
 export function SettingsAdminPage() {
-  const [testEmail, setTestEmail] = useState('');
-  const [testingEmail, setTestingEmail] = useState(false);
-  const [emailTestResult, setEmailTestResult] = useState<'success' | 'error' | null>(null);
   const { success: toastSuccess, error: toastError } = useToast();
-  const { companyId: contextCompanyId } = useEventContext();
 
+  // Categories de factures
+  const [categories, setCategories] = useState<InvoiceCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [companyId, setCompanyId] = useState<string | null>(null);
 
-  const handleTestEmail = async () => {
-    if (!testEmail) {
-      toastError('Veuillez entrer une adresse email');
+  // Formulaire d'ajout
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  // Edition inline
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+
+  // Confirmation de suppression
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; category: InvoiceCategory | null }>({
+    open: false,
+    category: null
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Recuperer le company_id
+  useEffect(() => {
+    getCurrentCompanyId(supabase).then(setCompanyId).catch(console.error);
+  }, []);
+
+  // Charger les categories
+  const loadCategories = useCallback(async () => {
+    if (!companyId) {
+      setCategoriesLoading(false);
       return;
     }
+    
+    setCategoriesLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('invoice_categories')
+        .select('id, name, is_active')
+        .eq('company_id', companyId)
+        .order('name');
+      
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (err: any) {
+      console.error('Erreur chargement categories:', err);
+      toastError('Erreur chargement des categories');
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, [companyId, toastError]);
 
-    setTestingEmail(true);
-    setEmailTestResult(null);
+  useEffect(() => {
+    if (companyId) {
+      loadCategories();
+    }
+  }, [companyId, loadCategories]);
+
+  // Ajouter une categorie
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim() || !companyId) return;
 
     try {
-      const result = await sendEmail({
-        to: testEmail,
-        subject: 'Test Go-Prod - Configuration Email',
-        html: `
-          <div style="font-family: sans-serif; padding: 20px;">
-            <h2 style="color: #667eea;">✅ Test réussi !</h2>
-            <p>Votre configuration d'envoi d'emails via Resend fonctionne correctement.</p>
-            <p style="color: #666; font-size: 12px;">Envoyé depuis Go-Prod le ${new Date().toLocaleString('fr-FR')}</p>
-          </div>
-        `,
-      });
+      const { error } = await supabase
+        .from('invoice_categories')
+        .insert({
+          company_id: companyId,
+          name: newCategoryName.trim().toUpperCase(),
+          is_active: true,
+        });
 
-      if (result.success) {
-        setEmailTestResult('success');
-        toastSuccess('Email de test envoyé avec succès !');
-      } else {
-        setEmailTestResult('error');
-        toastError(result.error || 'Erreur lors de l\'envoi');
-      }
+      if (error) throw error;
+      
+      setNewCategoryName('');
+      setShowAddForm(false);
+      toastSuccess('Categorie ajoutee');
+      loadCategories();
     } catch (err: any) {
-      setEmailTestResult('error');
-      toastError(err.message || 'Erreur lors du test');
-    } finally {
-      setTestingEmail(false);
+      console.error('Erreur ajout categorie:', err);
+      toastError(err.message || 'Erreur lors de l\'ajout');
     }
   };
 
-  const handleExport = () => {
-    const data = {
-      settings: {
-        general: localStorage.getItem('app_lang'),
-        theme: localStorage.getItem('theme'),
-        artist: localStorage.getItem('artist_settings'),
-        contact: localStorage.getItem('contact_settings'),
-        ground: localStorage.getItem('ground_settings'),
-        hospitality: localStorage.getItem('hospitality_settings'),
-        admin: localStorage.getItem('admin_settings'),
-      },
-      timestamp: new Date().toISOString(),
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `settings-export-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    toastSuccess('Configuration exportée');
+  // Commencer l'edition
+  const handleEditCategory = (category: InvoiceCategory) => {
+    setEditingCategoryId(category.id);
+    setEditCategoryName(category.name);
   };
 
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  // Sauvegarder l'edition
+  const handleSaveCategory = async () => {
+    if (!editingCategoryId || !editCategoryName.trim()) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target?.result as string);
-        
-        if (data.settings) {
-          Object.entries(data.settings).forEach(([key, value]) => {
-            if (value) {
-              localStorage.setItem(key, value as string);
-            }
-          });
-        }
-        
-        toastSuccess('Configuration importée avec succès');
-        window.location.reload();
-      } catch (error) {
-        console.error('Erreur import:', error);
-        toastError('Erreur lors de l\'import de la configuration');
-      }
-    };
-    reader.readAsText(file);
+    try {
+      const { error } = await supabase
+        .from('invoice_categories')
+        .update({ name: editCategoryName.trim().toUpperCase() })
+        .eq('id', editingCategoryId);
+
+      if (error) throw error;
+      
+      setEditingCategoryId(null);
+      setEditCategoryName('');
+      toastSuccess('Categorie modifiee');
+      loadCategories();
+    } catch (err: any) {
+      console.error('Erreur modification categorie:', err);
+      toastError(err.message || 'Erreur lors de la modification');
+    }
+  };
+
+  // Annuler l'edition
+  const handleCancelEdit = () => {
+    setEditingCategoryId(null);
+    setEditCategoryName('');
+  };
+
+  // Ouvrir la confirmation de suppression
+  const handleDeleteCategory = (category: InvoiceCategory) => {
+    setDeleteConfirm({ open: true, category });
+  };
+
+  // Confirmer la suppression
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm.category) return;
+    
+    setDeleteLoading(true);
+    try {
+      const { error } = await supabase
+        .from('invoice_categories')
+        .delete()
+        .eq('id', deleteConfirm.category.id);
+
+      if (error) throw error;
+      
+      toastSuccess('Categorie supprimee');
+      setDeleteConfirm({ open: false, category: null });
+      loadCategories();
+    } catch (err: any) {
+      console.error('Erreur suppression categorie:', err);
+      toastError(err.message || 'Erreur lors de la suppression');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Toggle actif/inactif
+  const handleToggleActive = async (category: InvoiceCategory) => {
+    try {
+      const { error } = await supabase
+        .from('invoice_categories')
+        .update({ is_active: !category.is_active })
+        .eq('id', category.id);
+
+      if (error) throw error;
+      loadCategories();
+    } catch (err: any) {
+      console.error('Erreur toggle categorie:', err);
+      toastError(err.message || 'Erreur');
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* En-tête */}
+      {/* En-tete */}
       <div>
         <h2 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
           Options Administration
@@ -117,176 +189,146 @@ export function SettingsAdminPage() {
         </p>
       </div>
 
-      {/* SECTION EXPORT/IMPORT */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Download className="w-5 h-5 text-violet-400" />
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Export/Import
-            </h2>
-          </div>
-        </CardHeader>
-        <CardBody>
-          <div className="flex gap-4">
+      {/* Grille 3 colonnes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Categories de factures */}
+        <Card>
+          <CardHeader>
+            <div>
+              <div className="flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-violet-400" />
+                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Categories de factures
+                </h3>
+              </div>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                Types de paiements
+              </p>
+            </div>
             <Button
-              variant="secondary"
-              onClick={handleExport}
-              className="flex items-center gap-2"
+              size="sm"
+              variant="primary"
+              onClick={() => setShowAddForm(!showAddForm)}
             >
-              <Download className="w-4 h-4" />
-              Exporter la configuration
+              <Plus size={16} />
             </Button>
-            
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                className="hidden"
-              />
-              <Button
-                variant="secondary"
-                className="flex items-center gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                Importer la configuration
-              </Button>
-            </label>
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* Configuration Email (Resend) */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Mail className="w-5 h-5 text-violet-400" />
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Configuration Email (Resend)
-            </h2>
-          </div>
-        </CardHeader>
-        <CardBody>
-          <div className="space-y-4">
-            <div 
-              className="p-4 rounded-xl"
-              style={{ background: 'var(--bg-surface)' }}
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-violet-500/20 flex items-center justify-center flex-shrink-0">
-                  <Mail className="w-5 h-5 text-violet-400" />
-                </div>
-                <div>
-                  <h3 className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                    Service d'envoi : Resend
-                  </h3>
-                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                    Les emails sont envoyés via Resend (Edge Function Supabase).<br />
-                    La clé API <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">RESEND_API_KEY</code> doit être configurée dans les secrets Supabase.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                Tester l'envoi d'email
-              </label>
-              <div className="flex gap-2">
-                <Input
-                  type="email"
-                  value={testEmail}
-                  onChange={(e) => setTestEmail(e.target.value)}
-                  placeholder="votre@email.com"
-                  className="flex-1"
-                />
-                <Button
-                  variant="secondary"
-                  onClick={handleTestEmail}
-                  disabled={testingEmail}
-                  className="flex items-center gap-2"
-                >
-                  {testingEmail ? (
-                    <>
-                      <span className="animate-spin">⏳</span>
-                      Envoi...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="w-4 h-4" />
-                      Envoyer un test
-                    </>
-                  )}
-                </Button>
-              </div>
-              
-              {emailTestResult === 'success' && (
-                <div className="mt-2 flex items-center gap-2 text-green-500">
-                  <CheckCircle className="w-4 h-4" />
-                  <span className="text-sm">Email envoyé avec succès !</span>
+          </CardHeader>
+          <CardBody>
+            <div className="space-y-2">
+              {/* Formulaire d'ajout */}
+              {showAddForm && (
+                <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <Input
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Nouveau label..."
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleAddCategory();
+                      if (e.key === 'Escape') setShowAddForm(false);
+                    }}
+                    autoFocus
+                  />
+                  <Button size="sm" variant="primary" onClick={handleAddCategory}>
+                    Ajouter
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)}>
+                    Annuler
+                  </Button>
                 </div>
               )}
-              
-              {emailTestResult === 'error' && (
-                <div className="mt-2 flex items-center gap-2 text-red-500">
-                  <XCircle className="w-4 h-4" />
-                  <span className="text-sm">Erreur lors de l'envoi. Vérifiez la configuration.</span>
+
+              {/* Liste des categories */}
+              {categoriesLoading ? (
+                <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                  Chargement...
+                </p>
+              ) : categories.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
+                  Aucune option definie. Cliquez sur "Ajouter" pour en creer.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {categories.map((category) => (
+                    <div
+                      key={category.id}
+                      className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600"
+                    >
+                      {/* Grip icon (decoratif - pas de sort_order en DB) */}
+                      <div className="text-gray-400">
+                        <GripVertical className="w-5 h-5" />
+                      </div>
+
+                      {/* Toggle actif/inactif */}
+                      <button
+                        onClick={() => handleToggleActive(category)}
+                        className={`w-3 h-3 rounded-full flex-shrink-0 transition-colors ${
+                          category.is_active ? 'bg-green-500' : 'bg-gray-400'
+                        }`}
+                        title={category.is_active ? 'Actif - cliquez pour desactiver' : 'Inactif - cliquez pour activer'}
+                      />
+
+                      {editingCategoryId === category.id ? (
+                        <>
+                          <Input
+                            value={editCategoryName}
+                            onChange={(e) => setEditCategoryName(e.target.value)}
+                            className="flex-1"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveCategory();
+                              if (e.key === 'Escape') handleCancelEdit();
+                            }}
+                          />
+                          <Button size="sm" variant="primary" onClick={handleSaveCategory}>
+                            OK
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={handleCancelEdit}>
+                            X
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <span 
+                            className={`flex-1 text-sm text-gray-700 dark:text-gray-300 ${!category.is_active ? 'opacity-50 line-through' : ''}`}
+                          >
+                            {category.name}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditCategory(category)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteCategory(category)}
+                            className="text-red-500 hover:text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
+      </div>
 
-      {/* Contrôles multi-tenant */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-violet-400" />
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Controles multi-tenant
-            </h2>
-          </div>
-        </CardHeader>
-        <CardBody>
-          <div className="space-y-4">
-            <div 
-              className="flex items-center justify-between p-4 rounded-xl"
-              style={{ background: 'var(--bg-surface)' }}
-            >
-              <div>
-                <h3 className="font-medium" style={{ color: 'var(--text-primary)' }}>Company ID</h3>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Identifiant de l'organisation</p>
-              </div>
-              <Badge color="blue">{contextCompanyId || 'Non defini'}</Badge>
-            </div>
-
-            <div 
-              className="flex items-center justify-between p-4 rounded-xl"
-              style={{ background: 'var(--bg-surface)' }}
-            >
-              <div>
-                <h3 className="font-medium" style={{ color: 'var(--text-primary)' }}>Statut RLS</h3>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Row Level Security active</p>
-              </div>
-              <Badge color="green">Actif</Badge>
-            </div>
-
-            <div 
-              className="flex items-center justify-between p-4 rounded-xl"
-              style={{ background: 'var(--bg-surface)' }}
-            >
-              <div>
-                <h3 className="font-medium" style={{ color: 'var(--text-primary)' }}>Buckets Storage</h3>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Acces aux fichiers</p>
-              </div>
-              <Badge color="green">Configure</Badge>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-
+      {/* Modal de confirmation de suppression */}
+      <ConfirmDeleteModal
+        isOpen={deleteConfirm.open}
+        onClose={() => setDeleteConfirm({ open: false, category: null })}
+        onConfirm={handleConfirmDelete}
+        title="Supprimer la categorie"
+        message="Etes-vous sur de vouloir supprimer cette categorie ?"
+        itemName={deleteConfirm.category?.name}
+        loading={deleteLoading}
+      />
     </div>
   );
 }

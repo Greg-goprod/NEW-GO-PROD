@@ -555,7 +555,7 @@ export function SendOfferModal({ open, onClose, offer, onSuccess }: SendOfferMod
 
   if (loading) {
     return (
-      <Modal open={open} onClose={onClose} title="Envoyer l'offre" widthClass="max-w-2xl">
+      <Modal open={open} onClose={onClose} title="Envoyer l'offre" size="md">
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
         </div>
@@ -564,7 +564,7 @@ export function SendOfferModal({ open, onClose, offer, onSuccess }: SendOfferMod
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Envoyer l'offre" widthClass="max-w-2xl">
+    <Modal open={open} onClose={onClose} title="Envoyer l'offre" size="md">
       <div className="space-y-5">
         {/* Résumé de l'offre */}
         <div className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
@@ -868,7 +868,7 @@ export function SendOfferModal({ open, onClose, offer, onSuccess }: SendOfferMod
         open={pdfPreviewOpen}
         onClose={closePdfPreview}
         title={`Prévisualisation - ${offer.artist_name || "Offre"}`}
-        widthClass="max-w-5xl"
+        size="xl"
         zIndex={1200}
       >
         <div className="h-[75vh]">

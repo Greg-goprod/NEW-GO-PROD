@@ -10,6 +10,7 @@ import {
 } from '@/api/vehiclesApi';
 import type { Vehicle, VehicleFormData } from '@/types/production';
 import { Button } from '@/components/aura/Button';
+import { PageHeader } from '@/components/aura/PageHeader';
 import { Input } from '@/components/aura/Input';
 import { Modal } from '@/components/aura/Modal';
 import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
@@ -117,16 +118,16 @@ export default function VehiculesPage() {
 
   return (
     <div className="p-6">
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Bus className="w-5 h-5 text-violet-400" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">VÉHICULES</h1>
-        </div>
-        <Button variant="primary" onClick={() => handleOpenModal()}>
-          <Plus className="w-4 h-4 mr-1" />
-          Nouveau véhicule
-        </Button>
-      </header>
+      <PageHeader
+        icon={Bus}
+        title="VÉHICULES"
+        actions={
+          <Button variant="primary" onClick={() => handleOpenModal()}>
+            <Plus className="w-4 h-4 mr-1" />
+            Nouveau véhicule
+          </Button>
+        }
+      />
 
       <div className="mb-6">
         <div className="relative">
@@ -190,7 +191,7 @@ export default function VehiculesPage() {
                     </button>
                     <button
                       onClick={() => setDeleteId(vehicle.id)}
-                      className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                      className="p-1 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                       title="Supprimer"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -207,7 +208,7 @@ export default function VehiculesPage() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         title={editingVehicle ? 'Modifier le véhicule' : 'Nouveau véhicule'}
-        widthClass="max-w-2xl"
+        size="md"
       >
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-3 gap-4">

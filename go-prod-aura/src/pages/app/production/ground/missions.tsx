@@ -14,8 +14,10 @@ import { fetchAvailableDrivers } from '@/api/driversApi';
 import { fetchAvailableVehicles } from '@/api/vehiclesApi';
 import type { Mission, MissionWithRelations } from '@/types/production';
 import { Button } from '@/components/aura/Button';
+import { PageHeader } from '@/components/aura/PageHeader';
 import { Input } from '@/components/aura/Input';
 import { Modal } from '@/components/aura/Modal';
+import { DateTimePickerPopup } from '@/components/ui/pickers/DateTimePickerPopup';
 
 export default function MissionsPage() {
   const { currentEvent } = useCurrentEvent();
@@ -296,32 +298,29 @@ export default function MissionsPage() {
 
   return (
     <div className="p-6">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-violet-400" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            MISSIONS
-          </h1>
-        </div>
-        <Button
-          variant="primary"
-          onClick={handleSync}
-          disabled={isSyncing}
-        >
-          {isSyncing ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              Synchronisation...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="w-4 h-4 mr-1" />
-              Synchroniser travels
-            </>
-          )}
-        </Button>
-      </header>
+      <PageHeader
+        icon={MapPin}
+        title="MISSIONS"
+        actions={
+          <Button
+            variant="primary"
+            onClick={handleSync}
+            disabled={isSyncing}
+          >
+            {isSyncing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                Synchronisation...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Synchroniser travels
+              </>
+            )}
+          </Button>
+        }
+      />
 
       {/* 2 colonnes */}
       <div className="grid grid-cols-2 gap-6">
@@ -497,7 +496,7 @@ export default function MissionsPage() {
         open={planningMission !== null}
         onClose={handleClosePlanning}
         title="Planifier la mission"
-        widthClass="max-w-4xl"
+        size="lg"
       >
         {planningMission && (
           <div className="p-6 space-y-4">
@@ -561,27 +560,17 @@ export default function MissionsPage() {
 
             {/* Datetime */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  Date/heure départ
-                </label>
-                <Input
-                  type="datetime-local"
-                  value={planningFormData.pickup_datetime ? new Date(planningFormData.pickup_datetime).toISOString().slice(0, 16) : ''}
-                  onChange={(e) => setPlanningFormData({ ...planningFormData, pickup_datetime: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                  Date/heure arrivée (estimée)
-                </label>
-                <Input
-                  type="datetime-local"
-                  value={planningFormData.dropoff_datetime ? new Date(planningFormData.dropoff_datetime).toISOString().slice(0, 16) : ''}
-                  onChange={(e) => setPlanningFormData({ ...planningFormData, dropoff_datetime: e.target.value })}
-                  disabled
-                />
-              </div>
+              <DateTimePickerPopup
+                label="Date/heure départ"
+                value={planningFormData.pickup_datetime ? new Date(planningFormData.pickup_datetime) : null}
+                onChange={(date) => setPlanningFormData({ ...planningFormData, pickup_datetime: date ? date.toISOString() : '' })}
+              />
+              <DateTimePickerPopup
+                label="Date/heure arrivée (estimée)"
+                value={planningFormData.dropoff_datetime ? new Date(planningFormData.dropoff_datetime) : null}
+                onChange={(date) => setPlanningFormData({ ...planningFormData, dropoff_datetime: date ? date.toISOString() : '' })}
+                disabled
+              />
             </div>
 
             {/* Calculate */}
@@ -635,7 +624,7 @@ export default function MissionsPage() {
         open={dispatchingMission !== null}
         onClose={handleCloseDispatch}
         title="Dispatcher la mission"
-        widthClass="max-w-3xl"
+        size="lg"
       >
         {dispatchingMission && (
           <div className="p-6 space-y-6">
