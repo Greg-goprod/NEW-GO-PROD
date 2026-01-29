@@ -81,7 +81,7 @@ export function useTableSort<T extends Record<string, any>>(
    * @param column - Nom de la colonne à trier
    * @param customSortFn - Fonction de tri personnalisée (optionnelle)
    */
-  const handleSort = (column: string, customSortFn?: (a: T, b: T) => number) => {
+  const handleSort = (column: string, _customSortFn?: (a: T, b: T) => number) => {
     if (sortColumn === column) {
       // Toggle direction si même colonne
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');

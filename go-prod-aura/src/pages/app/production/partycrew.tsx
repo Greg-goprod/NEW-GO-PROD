@@ -15,7 +15,7 @@ import { Modal } from '@/components/aura/Modal';
 import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
 
 export default function PartyCrewPage() {
-  const { t } = useI18n();
+  useI18n(); // Required for locale reactivity
   
   const [crew, setCrew] = useState<PartyCrew[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -188,7 +188,7 @@ export default function PartyCrewPage() {
       )}
 
       <Modal
-        isOpen={isModalOpen}
+        open={isModalOpen}
         onClose={handleCloseModal}
         title={editingCrew ? 'Modifier le membre' : 'Nouveau membre'}
         size="md"
@@ -277,7 +277,7 @@ export default function PartyCrewPage() {
       </Modal>
 
       <ConfirmDialog
-        isOpen={deleteId !== null}
+        open={deleteId !== null}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Supprimer le membre"

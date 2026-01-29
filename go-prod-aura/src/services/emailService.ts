@@ -69,7 +69,7 @@ export const AVAILABLE_SENDERS: Sender[] = DEFAULT_SENDERS;
 export async function sendEmail(params: SendEmailParams): Promise<SendEmailResponse> {
   try {
     // Récupérer le companyId si non fourni
-    const companyId = params.companyId || getCurrentCompanyId();
+    const companyId = params.companyId || getCurrentCompanyId(supabase);
     
     if (!companyId) {
       return {

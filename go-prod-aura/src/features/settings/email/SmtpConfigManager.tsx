@@ -3,7 +3,7 @@
  * Interface simple : serveur SMTP + identifiants + expéditeur
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Mail, Save, Send, CheckCircle, Eye, EyeOff, Trash2, Server, Plus, Edit2, Star } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/aura/Card';
 import { Button } from '@/components/aura/Button';
@@ -19,7 +19,6 @@ import {
   deleteSmtpConfig,
   testSmtpConfig,
   setDefaultSmtpConfig,
-  SMTP_PRESETS,
   type SmtpConfig,
 } from '@/api/smtpConfigApi';
 

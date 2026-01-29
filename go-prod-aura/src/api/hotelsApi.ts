@@ -170,11 +170,18 @@ export async function deleteReservation(id: string) {
 }
 
 export async function confirmReservation(id: string) {
-  const updates = {
-    status: 'confirmed' as const,
-    confirmed_at: new Date().toISOString()
-  };
+  // Update directly since status and confirmed_at are not part of HotelReservationFormData
+  const { data, error } = await supabase
+    .from('hotel_reservations')
+    .update({
+      status: 'confirmed',
+      confirmed_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single();
 
-  return updateReservation(id, updates);
+  if (error) throw error;
+  return data as HotelReservation;
 }
 

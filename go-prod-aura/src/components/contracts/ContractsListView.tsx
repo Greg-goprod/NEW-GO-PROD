@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, Upload, Mail, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Eye, Upload, Mail, Trash2 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import type { Contract, ContractStatus } from '@/types/contracts';
 import { Table } from '../aura/Table';
@@ -26,13 +26,13 @@ const statusLabels: Record<ContractStatus, string> = {
 };
 
 // Configuration des couleurs de badges par statut
-const statusVariants: Record<ContractStatus, 'default' | 'success' | 'warning' | 'error'> = {
-  to_receive: 'default',
-  review: 'warning',
-  internal_sign: 'default',
-  internal_signed: 'success',
-  external_sign: 'warning',
-  finalized: 'success',
+const statusVariants: Record<ContractStatus, 'gray' | 'green' | 'yellow' | 'red'> = {
+  to_receive: 'gray',
+  review: 'yellow',
+  internal_sign: 'gray',
+  internal_signed: 'green',
+  external_sign: 'yellow',
+  finalized: 'green',
 };
 
 /**
@@ -138,7 +138,7 @@ export const ContractsListView: React.FC<ContractsListViewProps> = ({
                     {contract.contract_title}
                   </span>
                   {contract.virtual && (
-                    <Badge variant="default" className="text-xs">
+                    <Badge color="gray" className="text-xs">
                       Virtuel
                     </Badge>
                   )}
@@ -147,7 +147,7 @@ export const ContractsListView: React.FC<ContractsListViewProps> = ({
               <Table.Cell>{contract.artist_name || 'N/A'}</Table.Cell>
               <Table.Cell>{contract.event_name || '-'}</Table.Cell>
               <Table.Cell>
-                <Badge variant={statusVariants[contract.status]}>
+                <Badge color={statusVariants[contract.status]}>
                   {statusLabels[contract.status]}
                 </Badge>
               </Table.Cell>

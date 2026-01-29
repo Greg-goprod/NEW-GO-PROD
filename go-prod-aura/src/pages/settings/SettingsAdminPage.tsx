@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Wallet, Plus, Trash2, Edit2, GripVertical } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/aura/Card';
 import { Button } from '@/components/aura/Button';

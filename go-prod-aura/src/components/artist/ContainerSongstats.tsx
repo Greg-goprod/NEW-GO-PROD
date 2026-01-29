@@ -114,7 +114,6 @@ export function ContainerSongstats({ companyId, artistId }: { companyId: string;
   const [activities, setActivities] = useState<ActivityEntry[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [concerts, setConcerts] = useState<ConcertEvent[]>([]);
-  const [loadingConcerts, setLoadingConcerts] = useState(false);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 

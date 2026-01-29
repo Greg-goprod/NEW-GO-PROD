@@ -61,7 +61,7 @@ export const ContractColumn: React.FC<ContractColumnProps> = ({
   status,
   title,
   contracts,
-  color,
+  color: _color,
   onView,
   onUpload,
   onSendEmail,

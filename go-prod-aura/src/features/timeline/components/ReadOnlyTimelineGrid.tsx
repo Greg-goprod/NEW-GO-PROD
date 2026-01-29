@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { ReadOnlyPerformanceCard } from "./ReadOnlyPerformanceCard";
 import type { EventDay, EventStage, Performance } from "../timelineApi";
 
@@ -9,7 +9,6 @@ interface ReadOnlyTimelineGridProps {
 }
 
 const STAGE_COLUMN_WIDTH = 240;
-const ROW_HEIGHT = 110;
 
 export function ReadOnlyTimelineGrid({
   days,

@@ -37,7 +37,6 @@ import {
   createInvoice,
   updateInvoice,
   deleteInvoice,
-  createInvoiceCategory,
 } from '@/features/finance/financeApi';
 
 import {
@@ -238,7 +237,7 @@ export default function FinancesPage() {
 
   // === HANDLERS FOURNISSEURS ===
 
-  const handleCreateSupplier = useCallback((formData: any, rawData: any) => {
+  const handleCreateSupplier = useCallback((formData: any) => {
     console.log('[finances] handleCreateSupplier - Ouverture modal avec donnees:', formData);
     // Ouvrir le modal de création d'entreprise par-dessus le modal facture
     setCompanyPrefillData(formData);
@@ -246,7 +245,7 @@ export default function FinancesPage() {
     setShowCompanyModal(true);
   }, []);
 
-  const handleUpdateSupplier = useCallback((supplierId: string, formData: any, rawData: any) => {
+  const handleUpdateSupplier = useCallback((supplierId: string, formData: any) => {
     console.log('[finances] handleUpdateSupplier - Ouverture modal pour ID:', supplierId);
     // Ouvrir le modal de modification d'entreprise par-dessus le modal facture
     setCompanyPrefillData(formData);
@@ -260,7 +259,7 @@ export default function FinancesPage() {
     // Recharger les options (fournisseurs) pour mettre à jour la liste dans le modal facture
     if (companyId && eventId) {
       try {
-        const newOptions = await fetchSelectOptions(companyId, eventId);
+        const newOptions = await fetchSelectOptions({ companyId, eventId });
         setOptions(newOptions);
         // Selectionner automatiquement le nouveau fournisseur dans le modal facture
         setNewSupplierId(newCompanyId);
@@ -465,7 +464,7 @@ export default function FinancesPage() {
 
       {/* Confirmation suppression facture */}
       <ConfirmDeleteModal
-        open={showDeleteConfirm}
+        isOpen={showDeleteConfirm}
         onClose={() => {
           setShowDeleteConfirm(false);
           setDeletingInvoice(null);
@@ -477,7 +476,7 @@ export default function FinancesPage() {
 
       {/* Confirmation suppression paiement */}
       <ConfirmDeleteModal
-        open={showDeletePaymentConfirm}
+        isOpen={showDeletePaymentConfirm}
         onClose={() => {
           setShowDeletePaymentConfirm(false);
           setDeletingPayment(null);

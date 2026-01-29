@@ -1,12 +1,10 @@
-import { useState, useEffect, useCallback, useRef, type ChangeEvent, type DragEvent } from 'react';
-import { FileText, Calendar, Plus, Edit2, Trash2, GripVertical, UploadCloud, Download, Settings2, Truck, CreditCard, Save, Volume2, Bus, UtensilsCrossed, Image, Monitor, ShoppingBag, Receipt, Clock, FileType, ChevronDown } from 'lucide-react';
-import { PDFDocument } from 'pdf-lib';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { FileText, Calendar, Plus, Edit2, Trash2, GripVertical, UploadCloud, Download, Truck, Save, Volume2, Bus, UtensilsCrossed, Image, Monitor, ShoppingBag, Receipt, Clock, FileType, ChevronDown } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/aura/Card';
 import { Button } from '@/components/aura/Button';
 import { Input } from '@/components/aura/Input';
 import { useToast } from '@/components/aura/ToastProvider';
 import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
-import { Accordion } from '@/components/ui/Accordion';
 import { getCurrentCompanyId } from '@/lib/tenant';
 import { supabase } from '@/lib/supabaseClient';
 import {
@@ -34,9 +32,7 @@ import {
   type OfferClause, type ExclusivityPreset
 } from "@/features/booking/advancedBookingApi";
 import type { OfferTemplateRecord } from '@/features/booking/offerTemplateApi';
-import { fetchOfferTemplate, upsertOfferTemplate, updateOfferTemplateMapping, deleteOfferTemplate } from '@/features/booking/offerTemplateApi';
-import { OFFER_TEMPLATE_FIELDS, type OfferTemplateFieldKey } from '@/features/booking/offerTemplateConstants';
-import { PdfMappingModal } from '@/features/booking/components/PdfMappingModal';
+import { fetchOfferTemplate, upsertOfferTemplate, deleteOfferTemplate } from '@/features/booking/offerTemplateApi';
 import { fetchOfferSettings, upsertOfferSettings, type OfferSettings } from '@/features/booking/offerSettingsApi';
 import { EmailAttachmentsManager } from '@/features/booking/components/EmailAttachmentsManager';
 import { SimpleHtmlEditor } from '@/components/ui/SimpleHtmlEditor';
@@ -286,15 +282,12 @@ export function SettingsBookingPage() {
   // États pour le template PDF
   const [templateConfig, setTemplateConfig] = useState<OfferTemplateRecord | null>(null);
   const [templateFields, setTemplateFields] = useState<string[]>([]);
-  const [templateMapping, setTemplateMapping] = useState<Record<string, string>>({});
-  const [uploadingTemplate, setUploadingTemplate] = useState(false);
-  const [savingTemplateMapping, setSavingTemplateMapping] = useState(false);
+  const [, setTemplateMapping] = useState<Record<string, string>>({});
+  const [, setUploadingTemplate] = useState(false);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [showPdfMappingModal, setShowPdfMappingModal] = useState(false);
 
   // États pour les parametres d'offre (offer_settings)
-  const [offerSettings, setOfferSettings] = useState<OfferSettings | null>(null);
+  const [, setOfferSettings] = useState<OfferSettings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsForm, setSettingsForm] = useState({
     // Notes pour Extras et Exclusivite
@@ -597,200 +590,6 @@ const getNextSortOrder = (items: { sort_order?: number | null }[], enabled: bool
     setEditExclData({ name: '', description: '' });
   };
 
-const detectPdfFields = async (file: File): Promise<string[]> => {
-  const buffer = await file.arrayBuffer();
-  const pdfDoc = await PDFDocument.load(buffer);
-  const form = pdfDoc.getForm();
-  return form
-    .getFields()
-    .map((field) => field.getName())
-    .filter((name): name is string => !!name);
-};
-
-const FINANCIAL_KEYS: OfferTemplateFieldKey[] = [
-  "amount_display",
-  "amount_net",
-  "amount_gross",
-  "currency",
-  "amount_is_net_label",
-  "prod_fee_amount",
-  "backline_fee_amount",
-  "buyout_hotel_amount",
-  "buyout_meal_amount",
-  "flight_contribution_amount",
-  "technical_fee_amount",
-];
-
-const EXTRAS_KEYS: OfferTemplateFieldKey[] = [
-  "extras_summary",
-  "clauses_summary",
-];
-
-const guessFieldForName = (
-  fieldName: string,
-): OfferTemplateFieldKey | null => {
-  const normalized = fieldName.toLowerCase();
-  if (
-    normalized.includes("event") ||
-    normalized.includes("evenement") ||
-    normalized.includes("évènement")
-  ) {
-    return "event_name";
-  }
-  if (normalized.includes("artist") || normalized.includes("artiste")) {
-    return "artist_name";
-  }
-  if (normalized.includes("scene") || normalized.includes("stage")) {
-    return "stage_name";
-  }
-  if (normalized.includes("date")) {
-    return normalized.includes("iso")
-      ? "performance_date_iso"
-      : "performance_date_long";
-  }
-  if (normalized.includes("heure") || normalized.includes("time")) {
-    return "performance_time";
-  }
-  if (
-    normalized.includes("durée") ||
-    normalized.includes("duree") ||
-    normalized.includes("duration")
-  ) {
-    return "duration_minutes";
-  }
-  if (
-    normalized.includes("montant") ||
-    normalized.includes("amount") ||
-    normalized.includes("cachet")
-  ) {
-    return "amount_display";
-  }
-  if (normalized.includes("net")) {
-    return "amount_net";
-  }
-  if (normalized.includes("brut") || normalized.includes("gross")) {
-    return "amount_gross";
-  }
-  if (normalized.includes("prod")) {
-    return "prod_fee_amount";
-  }
-  if (normalized.includes("backline")) {
-    return "backline_fee_amount";
-  }
-  if (normalized.includes("hotel")) {
-    return "buyout_hotel_amount";
-  }
-  if (normalized.includes("repas") || normalized.includes("meal")) {
-    return "buyout_meal_amount";
-  }
-  if (normalized.includes("flight") || normalized.includes("vol")) {
-    return "flight_contribution_amount";
-  }
-  if (normalized.includes("tech")) {
-    return "technical_fee_amount";
-  }
-  if (normalized.includes("extra")) {
-    return "extras_summary";
-  }
-  if (normalized.includes("clause") || normalized.includes("exclu")) {
-    return "clauses_summary";
-  }
-  if (normalized.includes("currency") || normalized.includes("devise")) {
-    return "currency";
-  }
-  if (normalized.includes("net")) {
-    return "amount_is_net_label";
-  }
-  if (normalized.includes("note") || normalized.includes("remarque")) {
-    return "notes";
-  }
-  if (normalized.includes("offre") && normalized.includes("id")) {
-    return "offer_id";
-  }
-  if (normalized.includes("company")) {
-    return "company_id";
-  }
-  return null;
-};
-
-const buildSmartMapping = (fields: string[]) => {
-  const mapping: Record<string, string> = {};
-  fields.forEach((field) => {
-    const guess = guessFieldForName(field);
-    if (guess) {
-      mapping[field] = guess;
-    }
-  });
-  return mapping;
-};
-
-const getFieldGroup = (
-  fieldName: string,
-  mappedValue?: OfferTemplateFieldKey | null,
-): "base" | "financial" | "extras" => {
-  const key = mappedValue ?? guessFieldForName(fieldName);
-  if (key && FINANCIAL_KEYS.includes(key)) return "financial";
-  if (key && EXTRAS_KEYS.includes(key)) return "extras";
-  return "base";
-};
-
-const handleTemplateUpload = async (file: File) => {
-  if (!companyId) {
-    toastError("Entreprise inconnue");
-    return;
-  }
-  if (file.type !== "application/pdf") {
-    toastError("Veuillez sélectionner un fichier PDF");
-    return;
-  }
-  setUploadingTemplate(true);
-  try {
-    const detectedFields = await detectPdfFields(file);
-    if (!detectedFields.length) {
-      toastError("Aucun champ de formulaire détecté dans ce PDF");
-      return;
-    }
-    const storagePath = `${companyId}/offer_template_${Date.now()}.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from(TEMPLATE_BUCKET)
-      .upload(storagePath, file, { upsert: true });
-    if (uploadError) throw uploadError;
-
-    const { data: userData } = await supabase.auth.getUser();
-    const defaultMapping = buildSmartMapping(detectedFields);
-
-    const template = await upsertOfferTemplate({
-      company_id: companyId,
-      storage_path: storagePath,
-      file_name: file.name,
-      file_size: file.size,
-      detected_fields: detectedFields,
-      fields_mapping: defaultMapping,
-      uploaded_by: userData.user?.id ?? null,
-    });
-
-    setTemplateConfig(template);
-    setTemplateFields(template.detected_fields ?? []);
-    setTemplateMapping(template.fields_mapping ?? {});
-    toastSuccess("Modèle importé avec succès");
-  } catch (error: unknown) {
-    const err = error as { message?: string };
-    console.error("Erreur import template:", error);
-    toastError(err?.message || "Erreur lors de l'import du modèle");
-  } finally {
-    setUploadingTemplate(false);
-  }
-};
-
-const handleTemplateFileChange = async (
-  event: ChangeEvent<HTMLInputElement>,
-) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  await handleTemplateUpload(file);
-  event.target.value = "";
-};
-
 // Upload d'un modele Word (.docx)
 const handleWordTemplateUpload = async (file: File) => {
   if (!companyId) {
@@ -861,40 +660,6 @@ const handleWordTemplateUpload = async (file: File) => {
   }
 };
 
-const handleTemplateDrop = async (event: DragEvent<HTMLDivElement>) => {
-  event.preventDefault();
-  if (uploadingTemplate) return;
-  setIsDragOver(false);
-  const file = event.dataTransfer?.files?.[0];
-  if (!file) return;
-  await handleTemplateUpload(file);
-};
-
-const handleTemplateZoneClick = () => {
-  if (uploadingTemplate) return;
-  document.getElementById("offer-template-upload")?.click();
-};
-
-const handleMappingChange = (fieldName: string, value: string) => {
-  setTemplateMapping((prev) => ({ ...prev, [fieldName]: value }));
-};
-
-const handleSaveTemplateMapping = async () => {
-  if (!templateConfig) return;
-  setSavingTemplateMapping(true);
-  try {
-    await updateOfferTemplateMapping(templateConfig.id, templateMapping);
-    toastSuccess("Mapping enregistré");
-    loadOfferTemplate();
-  } catch (error: unknown) {
-    const err = error as { message?: string };
-    console.error("Erreur sauvegarde mapping:", error);
-    toastError(err?.message || "Impossible d'enregistrer le mapping");
-  } finally {
-    setSavingTemplateMapping(false);
-  }
-};
-
 const handleDownloadTemplate = async () => {
   if (!templateConfig?.storage_path) return;
   setDownloadingTemplate(true);
@@ -920,49 +685,6 @@ const handleDeleteTemplate = () => {
     id: templateConfig.id,
     name: templateConfig.file_name || 'Modèle PDF',
   });
-};
-
-const mappingChanged = templateConfig
-  ? JSON.stringify(templateMapping ?? {}) !==
-    JSON.stringify(templateConfig.fields_mapping ?? {})
-  : Object.keys(templateMapping).length > 0;
-
-// Handler pour sauvegarder depuis le modal de mapping PDF
-const handlePdfMappingSave = async (file: File, mapping: Record<string, string>) => {
-  if (!companyId) {
-    throw new Error("Entreprise inconnue");
-  }
-  
-  // Detecter les champs du PDF
-  const buffer = await file.arrayBuffer();
-  const pdfDoc = await PDFDocument.load(buffer);
-  const form = pdfDoc.getForm();
-  const detectedFields = form.getFields().map(f => f.getName()).filter((n): n is string => !!n);
-  
-  // Upload du fichier
-  const storagePath = `${companyId}/offer_template_${Date.now()}.pdf`;
-  const { error: uploadError } = await supabase.storage
-    .from(TEMPLATE_BUCKET)
-    .upload(storagePath, file, { upsert: true });
-  if (uploadError) throw uploadError;
-
-  const { data: userData } = await supabase.auth.getUser();
-
-  // Sauvegarder le template avec le mapping
-  const template = await upsertOfferTemplate({
-    company_id: companyId,
-    storage_path: storagePath,
-    file_name: file.name,
-    file_size: file.size,
-    detected_fields: detectedFields,
-    fields_mapping: mapping,
-    uploaded_by: userData.user?.id ?? null,
-  });
-
-  setTemplateConfig(template);
-  setTemplateFields(template.detected_fields ?? []);
-  setTemplateMapping(template.fields_mapping ?? {});
-  toastSuccess("Modele PDF configure avec succes");
 };
 
   // Handlers Drag & Drop pour Clauses

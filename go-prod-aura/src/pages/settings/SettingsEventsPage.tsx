@@ -143,7 +143,7 @@ export function SettingsEventsPage() {
 
       {/* Evenement actuel (si defini) */}
       {currentEvent && (
-        <Card className="p-6" style={{ border: '2px solid var(--primary)' }}>
+        <Card className="p-6 border-2 border-[var(--primary)]">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
               <div
@@ -155,7 +155,7 @@ export function SettingsEventsPage() {
                   <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
                     {currentEvent.name}
                   </h3>
-                  <Badge color="primary">Evenement actuel</Badge>
+                  <Badge color="violet">Evenement actuel</Badge>
                 </div>
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                   {formatDate(currentEvent.start_date)} - {formatDate(currentEvent.end_date)}

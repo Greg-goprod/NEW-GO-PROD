@@ -4,8 +4,7 @@ import { useI18n } from '@/lib/i18n';
 import { useCurrentEvent } from '@/hooks/useCurrentEvent';
 import {
   fetchCateringRequirementsByEvent,
-  createCateringRequirement,
-  deleteCateringRequirement
+  createCateringRequirement
 } from '@/api/cateringApi';
 import { fetchAllArtists } from '@/api/artistsApi';
 import type { CateringRequirementWithArtist, MealType } from '@/types/production';
@@ -23,7 +22,7 @@ const MEAL_TYPES: { value: MealType; label: string }[] = [
 ];
 
 export default function CateringPage() {
-  const { t } = useI18n();
+  useI18n(); // Required for locale reactivity
   const { currentEvent } = useCurrentEvent();
   
   const [requirements, setRequirements] = useState<CateringRequirementWithArtist[]>([]);
@@ -203,7 +202,7 @@ export default function CateringPage() {
       )}
 
       <Modal
-        isOpen={isModalOpen}
+        open={isModalOpen}
         onClose={handleCloseModal}
         title="Nouveau besoin catering"
         size="md"

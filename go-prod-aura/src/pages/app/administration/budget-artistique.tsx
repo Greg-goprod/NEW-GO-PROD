@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
-import { DollarSign, Users, TrendingUp, AlertCircle, Edit2, Trash2, RefreshCw } from "lucide-react";
+import { DollarSign, TrendingUp, AlertCircle, Edit2, Trash2, RefreshCw } from "lucide-react";
 import { useI18n } from "../../../lib/i18n";
 import { useCurrentEvent } from "../../../hooks/useCurrentEvent";
-import { Card, CardHeader, CardBody } from "../../../components/aura/Card";
+import { Card, CardBody } from "../../../components/aura/Card";
 import { EmptyState } from "../../../components/aura/EmptyState";
 import { Button } from "../../../components/aura/Button";
 import { PageHeader } from "../../../components/aura/PageHeader";
@@ -14,11 +14,9 @@ import { getCurrentCompanyId } from "../../../lib/tenant";
 import { supabase } from "../../../lib/supabaseClient";
 import {
   fetchEventDays,
-  fetchEventStages,
   fetchPerformances,
   deletePerformance,
   type EventDay,
-  type EventStage,
   type Performance,
 } from "../../../features/timeline/timelineApi";
 import {
@@ -91,7 +89,6 @@ export default function BudgetArtistiquePage() {
   
   // Données
   const [days, setDays] = useState<EventDay[]>([]);
-  const [stages, setStages] = useState<EventStage[]>([]);
   const [performances, setPerformances] = useState<Performance[]>([]);
   
   // Modal et suppression
@@ -103,7 +100,6 @@ export default function BudgetArtistiquePage() {
   // Taux de change
   const [currencyRates, setCurrencyRates] = useState<CurrencyRates | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
-  const [loadingRates, setLoadingRates] = useState(true);
 
   // Récupération du company_id
   useEffect(() => {
@@ -121,8 +117,6 @@ export default function BudgetArtistiquePage() {
   useEffect(() => {
     const fetchExchangeRates = async () => {
       try {
-        setLoadingRates(true);
-        
         // Vérifier le cache LocalStorage
         const cachedRates = localStorage.getItem('exchangeRates_budget');
         const cachedTime = localStorage.getItem('exchangeRatesTime_budget');
@@ -137,7 +131,6 @@ export default function BudgetArtistiquePage() {
             console.log('✅ Utilisation du cache des taux de change (< 24h)');
             setCurrencyRates(JSON.parse(cachedRates));
             setLastUpdate(cachedUpdate);
-            setLoadingRates(false);
             return;
           }
         }
@@ -178,8 +171,6 @@ export default function BudgetArtistiquePage() {
           GBP: 0.926
         });
         console.log('⚠️ Utilisation des taux fixes (fallback)');
-      } finally {
-        setLoadingRates(false);
       }
     };
 
@@ -190,21 +181,18 @@ export default function BudgetArtistiquePage() {
   const loadData = async () => {
     if (!hasEvent || demoMode) {
       setDays([]);
-      setStages([]);
       setPerformances([]);
       return;
     }
 
     setLoading(true);
     try {
-      const [daysData, stagesData, performancesData] = await Promise.all([
+      const [daysData, performancesData] = await Promise.all([
         fetchEventDays(eventId),
-        fetchEventStages(eventId),
         fetchPerformances(eventId),
       ]);
 
       setDays(daysData);
-      setStages(stagesData);
       setPerformances(performancesData);
     } catch (error) {
       console.error("Erreur chargement données budget:", error);

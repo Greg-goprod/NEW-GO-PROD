@@ -14,7 +14,7 @@ import {
 import { Card, CardBody } from '@/components/aura/Card';
 import { Badge } from '@/components/aura/Badge';
 import type { FinanceKpis as FinanceKpisType, CurrencyCode } from '../financeTypes';
-import { formatCurrency, formatMultiCurrency } from '../currencyUtils';
+import { formatMultiCurrency } from '../currencyUtils';
 
 interface FinanceKpisProps {
   kpis: FinanceKpisType | null;

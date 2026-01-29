@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Upload, X, FileText, Loader2, Sparkles, CheckCircle, AlertCircle, Building2, UserPlus, RefreshCw } from 'lucide-react';
+import { Upload, X, FileText, Loader2, CheckCircle, AlertCircle, Building2, UserPlus, RefreshCw } from 'lucide-react';
 import { Modal } from '@/components/aura/Modal';
 import { Button } from '@/components/aura/Button';
 import { Input } from '@/components/aura/Input';
@@ -20,7 +20,7 @@ import type {
   InvoiceStatus,
 } from '../financeTypes';
 import { CURRENCIES, INVOICE_STATUS_LABELS } from '../financeTypes';
-import { extractInvoiceData, isFileSupported, type ExtractedInvoiceData, type SupplierData } from '../invoiceExtractApi';
+import { extractInvoiceData, isFileSupported, type SupplierData } from '../invoiceExtractApi';
 import { mapSupplierToCompanyForm, type CompanyFormData } from '../supplierDataMapper';
 
 // Type pour le resultat de detection fournisseur

@@ -4,11 +4,11 @@
  */
 
 import { 
-  ListMusic, Trophy, Radio, Share2, Eye, ThumbsUp, MessageCircle,
-  TrendingUp, ExternalLink, Calendar, MapPin, Users, Heart
+  ListMusic, Trophy, Radio, Share2, Eye, MessageCircle,
+  TrendingUp, MapPin, Users, Heart
 } from "lucide-react";
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import type { PlaylistEntry, ChartEntry, RadioPlay, SocialStats, StatsHistoryPoint } from "../../lib/songstats/api";
+import { Bar, Line } from 'react-chartjs-2';
+import type { PlaylistEntry, ChartEntry, RadioPlay, SocialStats, StatsHistoryPoint } from "../../../lib/songstats/api";
 
 // ========================================================================
 // PLAYLISTS SECTION

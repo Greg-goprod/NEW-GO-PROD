@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { PerformanceCard } from "./PerformanceCard";
 import type { EventDay, EventStage, Performance } from "../timelineApi";
-import { minutesSinceOpen, calculateDayDuration, snapTo5, minToHHMM } from "../timelineApi";
+import { calculateDayDuration, snapTo5, minToHHMM } from "../timelineApi";
 
 interface TimelineGridProps {
   days: EventDay[];
@@ -10,7 +10,6 @@ interface TimelineGridProps {
   onCellCreate: (data: { event_day_id: string; stage_id: string; default_time: string; default_duration: number }) => void;
   onCardEdit: (performance: Performance) => void;
   onCardDelete: (performance: Performance) => void;
-  onCardDrop: (data: { id: string; event_day_id: string; event_stage_id: string; performance_time: string }) => void;
   onOpenTimePicker: (performance: Performance) => void;
 }
 
@@ -25,10 +24,8 @@ export function TimelineGrid({
   onCellCreate,
   onCardEdit,
   onCardDelete,
-  onCardDrop,
   onOpenTimePicker,
 }: TimelineGridProps) {
-  const [activeId, setActiveId] = React.useState<string | null>(null);
 
   // Calculer les heures d'affichage pour chaque jour
   const dayHours = useMemo(() => {
@@ -133,7 +130,7 @@ export function TimelineGrid({
       <div className="flex">
         {/* Colonne scènes */}
         <div className="w-48 border-r border-gray-200 dark:border-gray-700">
-          {stages.map((stage, index) => (
+          {stages.map((stage) => (
             <div
               key={stage.id}
               className="h-18 border-b border-gray-200 dark:border-gray-700 flex items-center px-3 text-sm font-medium text-gray-700 dark:text-gray-300"

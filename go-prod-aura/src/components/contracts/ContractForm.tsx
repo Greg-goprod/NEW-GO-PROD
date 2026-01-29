@@ -6,8 +6,6 @@ import { Input } from '../ui/Input';
 import { Combobox } from '../ui/Combobox';
 import type { ComboboxOption } from '../ui/Combobox';
 import { supabase } from '../../lib/supabaseClient';
-import type { Artist, Event } from '@/types';
-
 export interface ContractFormData {
   artist_id: string;
   event_id?: string;
@@ -23,13 +21,17 @@ interface ContractFormProps {
   onSubmit: (data: ContractFormData) => Promise<void>;
 }
 
+// Simple types for select options
+interface ArtistOption { id: string; name: string; }
+interface EventOption { id: string; name: string; }
+
 export const ContractForm: React.FC<ContractFormProps> = ({
   isOpen,
   onClose,
   onSubmit,
 }) => {
-  const [artists, setArtists] = useState<Artist[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [artists, setArtists] = useState<ArtistOption[]>([]);
+  const [events, setEvents] = useState<EventOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 

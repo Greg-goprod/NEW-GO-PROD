@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Coffee, Hotel, Users, FileText } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/aura/Card';
 import { Button } from '@/components/aura/Button';
-import { Input } from '@/components/aura/Input';
 import { useToast } from '@/components/aura/ToastProvider';
 import { TimePickerPopup } from '@/components/ui/pickers/TimePickerPopup';
 

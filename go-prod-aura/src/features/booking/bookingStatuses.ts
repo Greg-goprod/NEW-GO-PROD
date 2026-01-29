@@ -42,7 +42,7 @@ export interface StatusConfig {
   key: UnifiedStatus;
   label: string;
   /** Couleur semantique basee sur la charte graphique AURA */
-  color: "gray" | "mandarine" | "violet-aura" | "saphir" | "menthe" | "framboise" | "orange" | "purple";
+  color: "gray" | "mandarine" | "violet-aura" | "saphir" | "menthe" | "framboise" | "violet" | "eminence";
   /** Disponible dans le selecteur de performance */
   availableForPerformance: boolean;
   /** Disponible dans le selecteur d'offre */
@@ -98,7 +98,7 @@ export const UNIFIED_STATUSES: StatusConfig[] = [
   {
     key: "negotiating",
     label: "En negociation",
-    color: "purple",
+    color: "eminence",
     availableForPerformance: false,
     availableForOffer: true,
     sortOrder: 6,
@@ -106,7 +106,7 @@ export const UNIFIED_STATUSES: StatusConfig[] = [
   {
     key: "legal_review",
     label: "Revue juridique",
-    color: "purple",
+    color: "eminence",
     availableForPerformance: false,
     availableForOffer: true,
     sortOrder: 7,
@@ -114,7 +114,7 @@ export const UNIFIED_STATUSES: StatusConfig[] = [
   {
     key: "management_review",
     label: "Revue management",
-    color: "purple",
+    color: "eminence",
     availableForPerformance: false,
     availableForOffer: true,
     sortOrder: 8,

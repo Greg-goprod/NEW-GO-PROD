@@ -39,6 +39,7 @@ export interface EventCore {
   start_date: string | null;
   end_date: string | null;
   notes?: string | null;
+  logo_url?: string | null;
   contact_artist_id?: string | null;
   contact_tech_id?: string | null;
   contact_press_id?: string | null;

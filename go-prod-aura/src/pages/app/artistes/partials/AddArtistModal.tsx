@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Music, Search, Loader2 } from "lucide-react";
+import { Music, Search } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/aura/Modal";

@@ -96,7 +96,7 @@ export async function preloadMainCountriesFields(): Promise<void> {
  * Valide les données spécifiques d'un pays
  */
 export function validateCountryData(
-  countryCode: string,
+  _countryCode: string,
   data: { [key: string]: string },
   fields: CountryFieldConfig[]
 ): { isValid: boolean; errors: string[] } {

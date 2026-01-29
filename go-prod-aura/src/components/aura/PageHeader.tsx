@@ -44,7 +44,7 @@ export function PageHeader({
   icon: Icon,
   subtitle,
   actions,
-  showEventBadge = false,
+  showEventBadge: _showEventBadge = false,
   className = "",
 }: PageHeaderProps) {
   return (

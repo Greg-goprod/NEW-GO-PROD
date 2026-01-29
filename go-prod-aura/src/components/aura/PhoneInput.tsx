@@ -8,7 +8,6 @@ import {
   validatePhoneNumber,
   formatPhoneNumber,
   detectCountry,
-  getCountryFlag,
   getCountryName,
   PRIMARY_COUNTRIES,
 } from '@/utils/phoneUtils';

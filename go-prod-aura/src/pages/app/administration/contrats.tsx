@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Plus, Search, AlertCircle, Upload, Pencil, Download, RefreshCw, Send, Inbox, Edit3, SendHorizontal, CheckCircle } from 'lucide-react';
+import { FileText, Plus, Search, AlertCircle, Upload, Download, RefreshCw, Send, Inbox, Edit3, SendHorizontal, CheckCircle } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import type { Contract, ContractStatus } from '../../../types/contracts';
 import { Button } from '../../../components/ui/Button';
@@ -7,7 +7,6 @@ import { Input } from '../../../components/ui/Input';
 import { Modal } from '../../../components/aura/Modal';
 import { PageHeader } from '../../../components/aura/PageHeader';
 // import { ContractsKanbanAura } from '../../../components/contracts/ContractsKanbanAura'; // TEMPORAIRE: Kanban supprimé
-import { ContractsListView } from '../../../components/contracts/ContractsListView';
 import { ContractForm } from '../../../components/contracts/ContractForm';
 import type { ContractFormData } from '../../../components/contracts/ContractForm';
 import { SignatureEmailModal } from '../../../components/contracts/SignatureEmailModal';
@@ -282,65 +281,6 @@ export default function ContratsPage() {
       console.error('Erreur création contrat:', err);
       throw err;
     }
-  };
-
-  // Changer le statut (drag & drop)
-  const handleStatusChange = async (contractId: string, newStatus: ContractStatus) => {
-    try {
-      if (contractId.startsWith('virtual-')) {
-        console.log('Carte virtuelle : utiliser "Nouveau contrat"');
-        return;
-      }
-
-      const { error } = await supabase
-        .from('contracts')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', contractId);
-
-      if (error) throw error;
-      await fetchContracts();
-    } catch (err) {
-      console.error('Erreur changement statut:', err);
-      setError(err instanceof Error ? err.message : 'Erreur changement statut');
-    }
-  };
-
-  // Envoyer email
-  const handleSendEmail = async (contract: Contract) => {
-    if (['internal_sign', 'internal_signed'].includes(contract.status)) {
-      setSelectedContract(contract);
-      if (contract.status === 'internal_signed') {
-        setShowExternalEmailModal(true);
-      } else {
-        setShowSignatureEmailModal(true);
-      }
-    }
-  };
-
-  // Supprimer
-  const handleDeleteContract = async (contract: Contract) => {
-    if (!confirm(`Supprimer "${contract.contract_title}" ?`)) return;
-
-    try {
-      const { error } = await supabase
-        .from('contracts')
-        .delete()
-        .eq('id', contract.id);
-
-      if (error) throw error;
-      await fetchContracts();
-    } catch (err) {
-      console.error('Erreur suppression:', err);
-      setError(err instanceof Error ? err.message : 'Erreur suppression');
-    }
-  };
-
-  const handleUpload = (contract: Contract) => {
-    setSelectedContract(contract);
-    setShowUploadModal(true);
   };
 
   const handleView = (contract: Contract) => {

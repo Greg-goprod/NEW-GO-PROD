@@ -2,8 +2,37 @@
  * Module Finance - Exports
  */
 
-// Types
-export * from './financeTypes';
+// Types (renamed to avoid conflict with FinanceKpis component)
+export type { FinanceKpis as FinanceKpisData } from './financeTypes';
+export {
+  type CurrencyCode,
+  type InvoiceStatus,
+  type ExternalInvoiceStatus,
+  type PaymentType,
+  type TaxTreatment,
+  type InvoiceFileKind,
+  type InvoiceAction,
+  type InvoiceCategory,
+  type Invoice,
+  type InvoiceWithRelations,
+  type Payment,
+  type InvoiceFile,
+  type InvoiceActivityLog,
+  type InvoiceFormData,
+  type PaymentFormData,
+  type InvoiceCategoryFormData,
+  type DailyFinanceKpis,
+  type FinanceSelectOptions,
+  type InvoiceFilters,
+  type InvoiceSort,
+  CURRENCIES,
+  CURRENCY_SYMBOLS,
+  INVOICE_STATUS_LABELS,
+  INVOICE_STATUS_COLORS,
+  PAYMENT_TYPE_LABELS,
+  TAX_TREATMENT_LABELS,
+  FILE_KIND_LABELS,
+} from './financeTypes';
 
 // API Factures
 export {

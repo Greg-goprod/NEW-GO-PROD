@@ -13,9 +13,9 @@ export function EventSelector() {
   const [loading, setLoading] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { error: toastError } = useToast();
   
-  const { currentEvent, eventId, setCurrentEvent } = useCurrentEvent();
+  const { eventId, setCurrentEvent } = useCurrentEvent();
 
   // Récupérer le company_id au montage
   useEffect(() => {

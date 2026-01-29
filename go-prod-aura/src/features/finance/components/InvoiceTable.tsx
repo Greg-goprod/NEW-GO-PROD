@@ -24,10 +24,8 @@ import { Input } from '@/components/aura/Input';
 import { Card, CardBody } from '@/components/aura/Card';
 import type {
   InvoiceWithRelations,
-  InvoiceFilters,
   InvoiceSort,
   InvoiceStatus,
-  CurrencyCode,
   FinanceSelectOptions,
 } from '../financeTypes';
 import {
@@ -48,17 +46,6 @@ interface InvoiceTableProps {
   onViewPayments: (invoice: InvoiceWithRelations) => void;
   onCreateFromVirtual?: (invoice: InvoiceWithRelations) => void;
 }
-
-// Mapping des couleurs de status vers les couleurs Badge
-const STATUS_BADGE_COLORS: Record<string, "gray" | "blue" | "green" | "yellow" | "red" | "violet"> = {
-  gray: 'gray',
-  yellow: 'yellow',
-  blue: 'blue',
-  orange: 'mandarine' as any,
-  purple: 'violet',
-  green: 'green',
-  red: 'red',
-};
 
 /**
  * Badge de statut de facture

@@ -13,9 +13,6 @@ import DashboardPage from './pages/app/dashboard'
 import ArtistesPage from './pages/app/artistes'
 import ArtistDetailPage from './pages/app/artistes/detail'
 import ArtistStatsPage from './pages/app/artistes/stats'
-import LineupPage from './pages/app/artistes/lineup'
-
-// Timeline
 import LineupTimelinePage from './pages/LineupTimelinePage'
 
 // Administration
@@ -61,7 +58,7 @@ import FinancesPage from './pages/app/administration/finances'
 import VentesPage from './pages/app/administration/ventes'
 
 // Booking
-import BookingPage from './pages/BookingPage'
+// import BookingPage from './pages/BookingPage' // Fichier n'existe plus
 
 // Settings
 import SettingsIndexPage from './pages/app/settings'

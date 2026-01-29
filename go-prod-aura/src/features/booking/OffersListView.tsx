@@ -1,6 +1,5 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import type { Offer } from "./bookingTypes";
-import { Button } from "@/components/aura/Button";
 import { Badge } from "@/components/aura/Badge";
 import { getStatusConfig } from "./bookingStatuses";
 import { Send, Edit, CheckCircle, XCircle } from "lucide-react";
@@ -32,8 +31,6 @@ export function OffersListView({
   onDownloadWord,
   onSendOffer,
   onModify,
-  onMove,
-  onDelete,
   onCreateOffer,
   onValidateOffer,
   onRejectOffer,
@@ -44,8 +41,6 @@ export function OffersListView({
   onDownloadWord?: (offer: Offer) => void;
   onSendOffer: (offer: Offer) => void;
   onModify: (offer: Offer) => void;
-  onMove: (offerId: string, newStatus: any) => void;
-  onDelete: (offer: Offer) => void;
   onCreateOffer?: (performanceData: any) => void;
   onValidateOffer?: (offer: Offer) => void;
   onRejectOffer?: (offer: Offer) => void;
@@ -144,7 +139,19 @@ export function OffersListView({
 
   const getStatusBadge = (status: string) => {
     const config = getStatusConfig(status);
-    return <Badge color={config.color}>{config.label}</Badge>;
+    // Map status colors to Badge-compatible colors
+    const badgeColorMap: Record<string, "gray"|"blue"|"green"|"yellow"|"red"|"violet"|"mandarine"|"saphir"|"menthe"|"framboise"|"violet-aura"> = {
+      "gray": "gray",
+      "mandarine": "mandarine",
+      "violet-aura": "violet-aura",
+      "saphir": "saphir",
+      "menthe": "menthe",
+      "framboise": "framboise",
+      "violet": "violet",
+      "eminence": "violet",
+    };
+    const badgeColor = badgeColorMap[config.color] || "gray";
+    return <Badge color={badgeColor}>{config.label}</Badge>;
   };
 
   // Si pas de jours ET pas d'offres, afficher le message vide

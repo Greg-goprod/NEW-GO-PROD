@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Hotel, Plus, Edit2, Trash2, Search, Calendar } from 'lucide-react';
+import { Hotel, Plus, Edit2, Trash2, Search } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useCurrentEvent } from '@/hooks/useCurrentEvent';
 import {
@@ -21,7 +21,7 @@ import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
 import { DatePickerPopup } from '@/components/ui/pickers/DatePickerPopup';
 
 export default function HotelsPage() {
-  const { t } = useI18n();
+  useI18n(); // Required for locale reactivity
   const { currentEvent } = useCurrentEvent();
   
   const [reservations, setReservations] = useState<HotelReservationWithRelations[]>([]);
@@ -248,7 +248,7 @@ export default function HotelsPage() {
       )}
 
       <Modal
-        isOpen={isModalOpen}
+        open={isModalOpen}
         onClose={handleCloseModal}
         title={editingReservation ? 'Modifier la réservation' : 'Nouvelle réservation'}
         size="md"
@@ -363,7 +363,7 @@ export default function HotelsPage() {
       </Modal>
 
       <ConfirmDialog
-        isOpen={deleteId !== null}
+        open={deleteId !== null}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Supprimer la réservation"

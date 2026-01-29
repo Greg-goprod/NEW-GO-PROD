@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Plane, Plus, Edit2, Trash2, ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { Plane, Plus, Trash2, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useCurrentEvent } from '@/hooks/useCurrentEvent';
 import { 
   fetchTravelsByEvent, 
   createTravel, 
-  updateTravel, 
   deleteTravel 
 } from '@/api/travelsApi';
 import { fetchAllArtists } from '@/api/artistsApi';
 import { fetchCRMContacts } from '@/api/crmContactsApi';
-import type { Travel, TravelWithRelations, TravelType, TravelFormData } from '@/types/production';
+import type { TravelWithRelations, TravelType, TravelFormData } from '@/types/production';
 import { Button } from '@/components/aura/Button';
 import { PageHeader } from '@/components/aura/PageHeader';
 import { Input } from '@/components/aura/Input';
@@ -33,7 +32,7 @@ const TRAVEL_TYPES: { value: TravelType; label: string; isVehicle: boolean }[] =
 ];
 
 export default function TravelPage() {
-  const { t } = useI18n();
+  useI18n(); // Required for locale reactivity
   const { currentEvent } = useCurrentEvent();
   
   const [travels, setTravels] = useState<TravelWithRelations[]>([]);
@@ -44,7 +43,6 @@ export default function TravelPage() {
   // Modal Stepper
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [editingTravel, setEditingTravel] = useState<Travel | null>(null);
   
   // Form data
   const [selectedType, setSelectedType] = useState<TravelType | null>(null);
@@ -92,7 +90,6 @@ export default function TravelPage() {
     setSelectedContact(null);
     setIsArrival(true);
     setFormData({});
-    setEditingTravel(null);
   };
 
   const handleOpenModal = () => {
@@ -184,7 +181,6 @@ export default function TravelPage() {
   const canProceedStep2 = 
     (selectedPersonType === 'artist' && selectedArtists.length > 0) ||
     (selectedPersonType === 'contact' && selectedContact !== null);
-  const canProceedStep3 = true; // Direction toujours OK
   const canSubmit = formData.scheduled_datetime !== undefined;
 
   const selectedTypeConfig = TRAVEL_TYPES.find(t => t.value === selectedType);
@@ -318,7 +314,7 @@ export default function TravelPage() {
 
       {/* Modal Stepper */}
       <Modal
-        isOpen={isModalOpen}
+        open={isModalOpen}
         onClose={handleCloseModal}
         title="Nouveau voyage"
         size="lg"
@@ -618,7 +614,7 @@ export default function TravelPage() {
 
       {/* Delete confirmation */}
       <ConfirmDialog
-        isOpen={deleteId !== null}
+        open={deleteId !== null}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Supprimer le voyage"

@@ -47,7 +47,9 @@ export interface Offer {
   agency_contact_id?: string | null;
 
   pdf_storage_path?: string | null;
+  word_storage_path?: string | null;
   rejection_reason?: string | null;
+  ready_to_send_at?: string | null;
 
   created_at?: string;
   updated_at?: string;

@@ -151,8 +151,8 @@ export async function generateContractPdfWithClauses(
     yPosition -= lineHeight;
   }
   
-  if (offer.performance_date) {
-    const formattedDate = new Date(offer.performance_date).toLocaleDateString('fr-FR', {
+  if (offer.date_time) {
+    const formattedDate = new Date(offer.date_time).toLocaleDateString('fr-FR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -182,11 +182,11 @@ export async function generateContractPdfWithClauses(
   });
   yPosition -= lineHeight + 5;
   
-  if (offer.fee_amount && offer.fee_currency) {
+  if (offer.amount_display && offer.currency) {
     const formattedAmount = new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: offer.fee_currency,
-    }).format(offer.fee_amount);
+      currency: offer.currency,
+    }).format(offer.amount_display);
     
     addText(`Montant total: ${formattedAmount}`, leftMargin + 10, yPosition, {
       font: boldFont,
@@ -195,8 +195,8 @@ export async function generateContractPdfWithClauses(
     yPosition -= lineHeight;
   }
   
-  if (offer.commission_percentage) {
-    addText(`Commission: ${offer.commission_percentage}%`, leftMargin + 10, yPosition);
+  if (offer.agency_commission_pct) {
+    addText(`Commission: ${offer.agency_commission_pct}%`, leftMargin + 10, yPosition);
     yPosition -= lineHeight;
   }
   
@@ -220,7 +220,7 @@ export async function generateContractPdfWithClauses(
       if (payment.amount) {
         const formattedAmount = new Intl.NumberFormat('fr-FR', {
           style: 'currency',
-          currency: offer.fee_currency || 'EUR',
+          currency: offer.currency || 'EUR',
         }).format(payment.amount);
         addText(`   Montant: ${formattedAmount}`, leftMargin + 15, yPosition);
         yPosition -= lineHeight;
@@ -346,7 +346,7 @@ export async function generateContractPdfWithClauses(
  * Télécharge un PDF généré
  */
 export function downloadPDF(pdfBytes: Uint8Array, filename: string) {
-  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

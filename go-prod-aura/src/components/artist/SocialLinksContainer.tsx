@@ -141,7 +141,7 @@ export function SocialLinksContainer({ artistId }: { artistId: string }) {
           .eq("artist_id", artistId),
         supabase
           .from("artist_links_songstats")
-          .select("source, url")
+          .select("id, source, url")
           .eq("artist_id", artistId),
       ]);
       

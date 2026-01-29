@@ -348,7 +348,8 @@ export async function deleteInvoice(params: {
   companyId: string;
   eventId: string;
 }): Promise<void> {
-  const { invoiceId, companyId, eventId } = params;
+  const { invoiceId, companyId, eventId: _eventId } = params;
+  void _eventId; // Parameter kept for API consistency
 
   // Récupérer les fichiers avant suppression
   const { data: files } = await supabase
@@ -681,7 +682,7 @@ export async function fetchDailyFinanceKpis(params: {
   if (!event) return [];
 
   // Récupérer les factures avec artiste
-  const { data: invoices } = await supabase
+  const { data: _invoices } = await supabase
     .from('invoices')
     .select(`
       id,

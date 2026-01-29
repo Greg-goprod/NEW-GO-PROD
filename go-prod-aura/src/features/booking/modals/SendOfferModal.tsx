@@ -6,7 +6,7 @@
  * - PDF attaché automatiquement
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Send, FileText, Plus, X, Paperclip, User, Mail, Users, Eye, CheckSquare, Square } from "lucide-react";
 import { Modal } from "@/components/aura/Modal";
 import { Button } from "@/components/aura/Button";
@@ -14,7 +14,7 @@ import { Badge } from "@/components/aura/Badge";
 import { useToast } from "@/components/aura/ToastProvider";
 import { supabase } from "@/lib/supabaseClient";
 import { sendOfferEmail } from "@/services/emailService";
-import { moveOffer, createSignedOfferPdfUrl } from "../bookingApi";
+import { moveOffer } from "../bookingApi";
 import {
   listEmailOfferAttachments,
   downloadAttachmentContent,

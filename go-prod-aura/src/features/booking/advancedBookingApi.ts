@@ -281,61 +281,9 @@ export async function markOfferPaymentAsPaid(id: string): Promise<OfferPayment> 
 // FONCTIONS UTILITAIRES
 // =====================================================
 
-/**
- * Applique un preset d'échéancier de paiement à une offre
- * @param offerId ID de l'offre
- * @param presetId ID du preset
- * @param totalAmount Montant total de l'offre
- * @param performanceDate Date de la performance (pour calculer les due_date)
- */
-export async function applyPaymentSchedulePresetToOffer(
-  offerId: string,
-  presetId: string,
-  totalAmount: number,
-  performanceDate?: string
-): Promise<OfferPayment[]> {
-  // 1. Récupérer le preset
-  const preset = await getPaymentSchedulePreset(presetId);
-
-  // 2. Supprimer les paiements existants
-  const { error: deleteError } = await supabase
-    .from('offer_payments')
-    .delete()
-    .eq('offer_id', offerId);
-  
-  if (deleteError) throw deleteError;
-
-  // 3. Créer les nouveaux paiements
-  const payments: OfferPayment[] = [];
-  
-  for (const item of preset.items) {
-    const amount = item.percentage 
-      ? Math.round(totalAmount * (item.percentage / 100) * 100) / 100
-      : item.amount || 0;
-    
-    let dueDate: string | null = null;
-    if (performanceDate && item.due_offset_days !== undefined) {
-      const date = new Date(performanceDate);
-      date.setDate(date.getDate() + item.due_offset_days);
-      dueDate = date.toISOString().split('T')[0];
-    }
-
-    const payment = await createOfferPayment(offerId, {
-      label: item.label,
-      due_offset_days: item.due_offset_days,
-      due_date: dueDate,
-      amount,
-      percentage: item.percentage || null,
-      is_milestone: item.is_milestone,
-      status: 'pending',
-      paid_at: null,
-    });
-
-    payments.push(payment);
-  }
-
-  return payments;
-}
+// NOTE: applyPaymentSchedulePresetToOffer has been removed as getPaymentSchedulePreset
+// function was never implemented. If needed, implement the payment_schedule_presets
+// table and corresponding CRUD functions first.
 
 /**
  * Applique un preset d'exclusivité à une offre

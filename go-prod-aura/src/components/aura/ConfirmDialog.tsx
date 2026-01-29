@@ -11,6 +11,7 @@ interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   variant?: 'danger' | 'warning' | 'info';
+  loading?: boolean;
 }
 
 export function ConfirmDialog({
@@ -21,7 +22,8 @@ export function ConfirmDialog({
   message,
   confirmText = 'Confirmer',
   cancelText = 'Annuler',
-  variant = 'danger'
+  variant = 'danger',
+  loading = false
 }: ConfirmDialogProps) {
   const handleConfirm = () => {
     onConfirm();
@@ -70,14 +72,15 @@ export function ConfirmDialog({
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
             {cancelText}
           </Button>
           <button
             onClick={handleConfirm}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${styles.button}`}
+            disabled={loading}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 ${styles.button}`}
           >
-            {confirmText}
+            {loading ? 'Chargement...' : confirmText}
           </button>
         </div>
       </div>

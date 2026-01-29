@@ -166,8 +166,8 @@ export function SettingsGeneralPage() {
     localStorage.setItem('app_lang', newLanguage);
     
     // Appliquer la langue si i18n est disponible
-    if (window.i18n) {
-      window.i18n.changeLanguage(newLanguage);
+    if ((window as any).i18n) {
+      (window as any).i18n.changeLanguage(newLanguage);
     }
     
     toastSuccess(`Langue changée vers ${newLanguage === 'fr' ? 'Français' : 'English'}`);
@@ -301,18 +301,12 @@ export function SettingsGeneralPage() {
                     className="hidden"
                     disabled={uploading}
                   />
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={uploading}
-                    className="w-full"
-                    asChild
+                  <span
+                    className={`inline-flex items-center justify-center rounded-md font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 text-sm px-3 py-1.5 w-full bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-400 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}
                   >
-                    <span className="flex items-center justify-center gap-2">
-                      <Upload className="w-4 h-4" />
-                      {uploading ? 'Upload...' : 'Uploader'}
-                    </span>
-                  </Button>
+                    <Upload className="w-4 h-4 mr-2" />
+                    {uploading ? 'Upload...' : 'Uploader'}
+                  </span>
                 </label>
 
                 {/* Galerie des logos */}

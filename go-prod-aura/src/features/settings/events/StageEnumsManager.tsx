@@ -34,7 +34,6 @@ import {
   deleteStageSpecificity,
   updateStageTypesOrder,
   updateStageSpecificitiesOrder,
-  initializeStageEnumsForCompany,
   type StageType,
   type StageSpecificity,
 } from '@/api/stageEnumsApi';
@@ -138,12 +137,10 @@ export function StageEnumsManager({ companyId }: StageEnumsManagerProps) {
   // Formulaire type
   const [showTypeForm, setShowTypeForm] = useState(false);
   const [newTypeLabel, setNewTypeLabel] = useState('');
-  const [savingType, setSavingType] = useState(false);
 
   // Formulaire spécificité
   const [showSpecForm, setShowSpecForm] = useState(false);
   const [newSpecLabel, setNewSpecLabel] = useState('');
-  const [savingSpec, setSavingSpec] = useState(false);
 
   // Édition en ligne
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
@@ -201,7 +198,6 @@ export function StageEnumsManager({ companyId }: StageEnumsManagerProps) {
       toastError('Le label est obligatoire');
       return;
     }
-    setSavingType(true);
     try {
       await createStageType(companyId, newTypeLabel.trim(), newTypeLabel.trim());
       toastSuccess(`Type "${newTypeLabel}" ajouté`);
@@ -211,8 +207,6 @@ export function StageEnumsManager({ companyId }: StageEnumsManagerProps) {
     } catch (err: any) {
       console.error('Erreur ajout type:', err);
       toastError(err.message || "Erreur lors de l'ajout du type");
-    } finally {
-      setSavingType(false);
     }
   };
 
@@ -253,7 +247,6 @@ export function StageEnumsManager({ companyId }: StageEnumsManagerProps) {
       toastError('Le label est obligatoire');
       return;
     }
-    setSavingSpec(true);
     try {
       await createStageSpecificity(companyId, newSpecLabel.trim(), newSpecLabel.trim());
       toastSuccess(`Spécificité "${newSpecLabel}" ajoutée`);
@@ -263,8 +256,6 @@ export function StageEnumsManager({ companyId }: StageEnumsManagerProps) {
     } catch (err: any) {
       console.error('Erreur ajout spécificité:', err);
       toastError(err.message || "Erreur lors de l'ajout de la spécificité");
-    } finally {
-      setSavingSpec(false);
     }
   };
 

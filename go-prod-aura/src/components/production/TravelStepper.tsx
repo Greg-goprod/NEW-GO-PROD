@@ -1,4 +1,3 @@
-import { ChevronRight } from 'lucide-react';
 
 interface Step {
   id: number;

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Newspaper } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/aura/Card';
 

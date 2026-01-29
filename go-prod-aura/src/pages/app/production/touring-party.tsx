@@ -21,7 +21,7 @@ const VEHICLE_TYPES = [
 ] as const;
 
 export default function TouringPartyPage() {
-  const { t } = useI18n();
+  useI18n(); // Required for locale reactivity
   const { currentEvent } = useCurrentEvent();
   
   const [artists, setArtists] = useState<ArtistTouringPartyWithDay[]>([]);

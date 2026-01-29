@@ -178,7 +178,7 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
     });
 
     // Vérifier si une synchronisation est nécessaire
-    const currentDates = currentDaysSnapshot.map((d) => d.date).filter(Boolean);
+    const currentDates = currentDaysSnapshot.map((d) => d.date).filter((d): d is string => d !== null && d !== '');
     const datesMatch = 
       expectedDates.length === currentDates.length &&
       expectedDates.every((date, i) => date === currentDates[i]);

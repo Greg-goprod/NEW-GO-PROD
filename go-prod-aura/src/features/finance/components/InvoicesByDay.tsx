@@ -15,7 +15,6 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
-  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/aura/Button';
 import { Input } from '@/components/aura/Input';
@@ -271,7 +270,6 @@ function ColumnHeaders() {
  */
 export function InvoicesByDay({
   invoices,
-  options,
   eventId,
   loading = false,
   onAddInvoice,

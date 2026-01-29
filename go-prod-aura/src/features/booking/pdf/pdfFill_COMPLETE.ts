@@ -1,6 +1,13 @@
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { supabase } from "../../../lib/supabaseClient";
-import { normalizeName, toHHMM, formatIsoDate } from "../../../services/date";
+import { normalizeName, formatIsoDate } from "../../../services/date";
+
+// Format time string (HH:MM:SS or HH:MM) to HH:MM
+function formatTimeStr(time: string | undefined): string {
+  if (!time) return "-";
+  const parts = time.split(":");
+  return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : time;
+}
 
 export type OfferPdfInput = {
   event_name?: string;
@@ -31,7 +38,7 @@ export async function generateOfferPdfAndUpload(input: OfferPdfInput): Promise<{
   draw(`Évènement: ${input.event_name || "-"}`, y); y -= 18;
   draw(`Artiste: ${input.artist_name || "-"}`, y); y -= 18;
   draw(`Scène: ${input.stage_name || "-"}`, y); y -= 18;
-  draw(`Date: ${formatIsoDate(input.performance_date)}  Heure: ${toHHMM(input.performance_time)}  Durée: ${input.duration || "-"}'`, y); y -= 18;
+  draw(`Date: ${formatIsoDate(input.performance_date ?? "") ?? "-"}  Heure: ${formatTimeStr(input.performance_time)}  Durée: ${input.duration ?? "-"}'`, y); y -= 18;
   draw(`Montant: ${input.amount_display ?? "-"} ${input.currency ?? ""}`, y); y -= 18;
   if (input.notes) { draw(`Notes: ${input.notes}`, y); y -= 18; }
   draw(`Offer ID: ${input.offer_id}`, y); y -= 18;
@@ -40,14 +47,14 @@ export async function generateOfferPdfAndUpload(input: OfferPdfInput): Promise<{
   const pdfBytes = await pdfDoc.save();
 
   // 2) Upload dans bucket 'offers'
-  const cleanEvent = normalizeName(input.event_name);
-  const cleanArtist = normalizeName(input.artist_name);
+  const cleanEvent = normalizeName(input.event_name || "");
+  const cleanArtist = normalizeName(input.artist_name || "");
   const base = `OFFRE_${cleanEvent || "EVENT"}_${cleanArtist || "ARTIST"}`;
   const fileName = `${base}.pdf`;
   const storagePath = `${input.event_id}/${input.offer_id}/${fileName}`; // offers/<event>/<offer>/OFFRE_...
 
   // overwrite = true
-  const { error: upErr } = await supabase.storage.from("offers").upload(storagePath, new Blob([pdfBytes], { type: "application/pdf" }), { upsert: true });
+  const { error: upErr } = await supabase.storage.from("offers").upload(storagePath, new Blob([pdfBytes as BlobPart], { type: "application/pdf" }), { upsert: true });
   if (upErr) throw upErr;
 
   return { storagePath };

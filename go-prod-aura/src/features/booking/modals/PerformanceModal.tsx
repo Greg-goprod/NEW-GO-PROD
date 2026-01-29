@@ -5,7 +5,7 @@ import { TimePickerPopup } from "../../../components/ui/pickers/TimePickerPopup"
 import { RejectOfferModal } from "./RejectOfferModal";
 import AddArtistModal from "../../../pages/app/artistes/partials/AddArtistModal";
 import { useToast } from "../../../components/aura/ToastProvider";
-import { FileText, CreditCard, Check } from "lucide-react";
+import { FileText, CreditCard } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 
 import {

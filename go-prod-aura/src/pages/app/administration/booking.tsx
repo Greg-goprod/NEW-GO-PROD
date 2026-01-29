@@ -8,7 +8,7 @@ import { Modal } from "@/components/aura/Modal";
 import { PageHeader } from "@/components/aura/PageHeader";
 import { useToast } from "@/components/aura/ToastProvider";
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
-import { Settings, Plus, Calendar, Eye, Send } from "lucide-react";
+import { Settings, Plus, Calendar, Eye } from "lucide-react";
 
 // import { OffersKanban } from "@/features/booking/OffersKanban"; // TEMPORAIRE: Kanban supprimé
 import { OffersListView } from "@/features/booking/OffersListView";
@@ -22,8 +22,8 @@ import {
   listOffers, moveOffer, getRejectedPerformances,
   prepareOfferPdfPath, createSignedOfferPdfUrl, deleteOffer, generateOfferPdfOnStatusChange
 } from "@/features/booking/bookingApi";
-import { listOfferClauses, listOfferPayments } from "@/features/booking/advancedBookingApi";
-import { generateContractPdfWithClauses, downloadPDF } from "@/features/booking/pdfGenerator";
+// import { listOfferClauses } from "@/features/booking/advancedBookingApi";
+// import { generateContractPdfWithClauses } from "@/features/booking/pdfGenerator";
 import { sendOfferEmail } from "@/services/emailService";
 import { getCurrentCompanyId } from "@/lib/tenant";
 import { supabase } from "@/lib/supabaseClient";
@@ -363,10 +363,6 @@ export default function AdminBookingPage() {
     return deduped;
   }, [offers, rejectedPerfItems]);
 
-  const closedOffers = useMemo(() => {
-    return [...acceptedOffers, ...rejectedOffers];
-  }, [acceptedOffers, rejectedOffers]);
-
   // Map event_day_id -> EventDay pour accéder à open_time
   const eventDaysMap = useMemo(() => {
     const map = new Map<string, EventDay>();
@@ -435,7 +431,7 @@ export default function AdminBookingPage() {
           stage_name: linkedOffer.stage_name || perf.stage_name,
           performance_time: linkedOffer.performance_time || perf.performance_time,
           duration: linkedOffer.duration ?? perf.duration,
-          booking_status: linkedOffer.booking_status || perf.booking_status,
+          booking_status: (linkedOffer as any).booking_status || perf.booking_status,
           event_day_date: rawDate,
           real_date: realDate,
           event_day_id: perf.event_day_id,
@@ -539,12 +535,7 @@ export default function AdminBookingPage() {
     }
   }
 
-  function handleDelete(offerId: string) {
-    const offer = offers.find(o => o.id === offerId);
-    if (offer) {
-      setDeletingOffer(offer);
-    }
-  }
+  void function _handleDelete(_offerId: string) { void _offerId; };
 
   async function handleConfirmDeleteOffer() {
     if (!deletingOffer) return;
@@ -647,53 +638,6 @@ export default function AdminBookingPage() {
     setShowComposer(true);
   }
 
-  async function handleExportContract(offer: Offer) {
-    if (demoMode) {
-      toastError("Export PDF indisponible en mode démo");
-      return;
-    }
-    
-    if (!companyId) {
-      toastError("Company ID manquant");
-      return;
-    }
-    
-    try {
-      toastSuccess("Génération du contrat...");
-      
-      // Charger les clauses et paiements
-      const [clauses, payments] = await Promise.all([
-        listOfferClauses(companyId),
-        listOfferPayments(offer.id),
-      ]);
-      
-      // Filtrer les clauses activées par défaut
-      const enabledClauses = clauses.filter(c => c.default_enabled);
-      
-      // Générer le PDF
-      const pdfBytes = await generateContractPdfWithClauses({
-        offer,
-        clauses: enabledClauses,
-        payments,
-        companyInfo: {
-          name: "Go-Prod HQ", // TODO: Récupérer depuis la base
-          address: "Votre adresse",
-          email: "contact@goprod.com",
-          phone: "+33 1 23 45 67 89",
-        },
-      });
-      
-      // Télécharger le PDF
-      const filename = `Contrat_${offer.artist_name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-      downloadPDF(pdfBytes, filename);
-      
-      toastSuccess("Contrat téléchargé !");
-    } catch (e: any) {
-      console.error("Erreur génération contrat:", e);
-      toastError(e?.message || "Erreur génération du contrat");
-    }
-  }
-
   // TODO: Implement email sending functionality
   // @ts-expect-error - Fonction TODO non utilisée pour le moment
   // eslint-disable-next-line no-unused-vars
@@ -734,16 +678,10 @@ ${data.sender.name}
       `.trim();
 
       await sendOfferEmail({
-        to: data.email,
+        toEmail: data.email,
         subject,
-        message,
-        pdfPath: selectedOffer.pdf_storage_path || '',
-        offerData: {
-          artist_name: selectedOffer.artist_name || 'Artiste',
-          stage_name: selectedOffer.stage_name || 'Stage',
-          amount_display: selectedOffer.amount_display ?? null,
-          currency: selectedOffer.currency ?? null,
-        },
+        customMessage: message,
+        artistName: selectedOffer.artist_name || 'Artiste',
       });
 
       // 4. Marquer comme envoyé
@@ -957,8 +895,6 @@ ${data.sender.name}
                     }
                     setShowComposer(true);
                   }}
-                  onMove={handleMove}
-                  onDelete={(o) => handleDelete(o.id)}
                   onCreateOffer={handleCreateOfferFromPerformance}
                   onValidateOffer={(offer) => handleMove(offer.id, "accepted")}
                   onRejectOffer={(offer) => handleRejectOfferModal(offer)}
@@ -1030,8 +966,6 @@ ${data.sender.name}
                     });
                     setShowComposer(true);
                   }}
-                  onMove={handleMove}
-                  onDelete={(o) => handleDelete(o.id)}
                   onCreateOffer={handleCreateOfferFromPerformance}
                   onValidateOffer={(offer) => handleMove(offer.id, "accepted")}
                   onRejectOffer={(offer) => handleRejectOfferModal(offer)}

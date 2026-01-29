@@ -1,14 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { BarChart3, Search, Music, Clock, X, User, ChevronDown, Share2, Activity, Users, Radio, Mic2, Disc3, ExternalLink, TrendingUp, Play, Camera, Headphones, List, Globe } from "lucide-react";
+import { BarChart3, Search, Music, Clock, X, ChevronDown, Share2, Activity, Users, Radio, Mic2, Disc3, ExternalLink, TrendingUp, Play, Camera, Headphones, List, Globe } from "lucide-react";
 import { PageHeader } from "../../../components/aura/PageHeader";
 import { supabase } from "../../../lib/supabaseClient";
 import { getCurrentCompanyId } from "../../../lib/tenant";
 // Composants de la page detail artiste - chargent depuis Supabase directement
-import { ArtistStatsOverview } from "../../../components/artist/ArtistStatsOverview";
 import { ArtistHistoryChart } from "../../../components/artist/ArtistHistoryChart";
 import { ArtistConcerts } from "../../../components/artist/ArtistConcerts";
-import { ContainerSongstats } from "../../../components/artist/ContainerSongstats";
 import { SocialLinksContainer } from "../../../components/artist/SocialLinksContainer";
 import { WorldMapAudience, EUROPEAN_COUNTRIES, LISTENER_SOURCES, FOLLOWER_SOURCES, STREAMS_SOURCES } from "../../../components/charts/WorldMapAudience";
 import type { MapMode, DataType } from "../../../components/charts/WorldMapAudience";
@@ -502,7 +500,7 @@ export default function ArtistStatsPage() {
                       <span>{enrichedData.activity_start} - {enrichedData.activity_end || 'present'}</span>
                     </>
                   )}
-                  {enrichedData.discogs_releases_count > 0 && (
+                  {(enrichedData.discogs_releases_count ?? 0) > 0 && (
                     <>
                       <span className="text-slate-300 dark:text-slate-600">•</span>
                       <span>{enrichedData.discogs_releases_count} releases</span>
@@ -682,75 +680,6 @@ const TIER_CONFIG: Record<number, { color: string; label: string }> = {
   3: { color: "bg-slate-400", label: "Standard" },
   4: { color: "bg-slate-300", label: "Mineur" },
 };
-
-// Fonction pour construire un lien de fallback selon la source et le type d'activite
-function buildFallbackUrl(activity: any): string | null {
-  const raw = activity.metadata?.raw;
-  const trackInfo = raw?.track_info;
-  const activityText = raw?.activity_text || activity.description || "";
-  const source = activity.source;
-  const activityType = activity.activity_type;
-
-  // Si activity_url existe, l'utiliser directement
-  if (raw?.activity_url) {
-    return raw.activity_url;
-  }
-
-  // Fallback: lien Songstats du track
-  if (trackInfo?.site_url) {
-    return trackInfo.site_url;
-  }
-
-  // Essayer d'extraire des IDs depuis le texte pour construire des liens
-  
-  // Spotify: extraire ID de playlist depuis l'URL mentionnee
-  if (source === "spotify" && activityText) {
-    const playlistMatch = activityText.match(/spotify\.com\/playlist\/([a-zA-Z0-9]+)/);
-    if (playlistMatch) {
-      return `https://open.spotify.com/playlist/${playlistMatch[1]}`;
-    }
-  }
-
-  // YouTube: extraire video ID
-  if (source === "youtube" && activityText) {
-    const ytMatch = activityText.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-    if (ytMatch) {
-      return `https://www.youtube.com/watch?v=${ytMatch[1]}`;
-    }
-  }
-
-  // TikTok: extraire video ID
-  if (source === "tiktok" && activityText) {
-    const tiktokMatch = activityText.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/);
-    if (tiktokMatch) {
-      return `https://www.tiktok.com/@/video/${tiktokMatch[1]}`;
-    }
-  }
-
-  // Shazam: lien vers la page Shazam charts
-  if (source === "shazam" && activityType?.includes("chart")) {
-    return "https://www.shazam.com/charts";
-  }
-
-  // Beatport: lien vers les charts
-  if (source === "beatport" && activityType?.includes("chart")) {
-    return "https://www.beatport.com/charts";
-  }
-
-  // Apple Music: lien vers Apple Music
-  if (source === "apple_music" || source === "itunes") {
-    if (activityType?.includes("chart")) {
-      return "https://music.apple.com/charts";
-    }
-  }
-
-  // Deezer: lien vers Deezer
-  if (source === "deezer") {
-    return "https://www.deezer.com/explore";
-  }
-
-  return null;
-}
 
 // Composant icone source avec fallback Lucide
 function SourceIcon({ source, config }: { source: string; config: { color: string; bgColor: string; icon: string } }) {
@@ -1234,7 +1163,6 @@ function AudiencesSection({ artistId }: { artistId: string }) {
 function RadioStatsSection({ artistId }: { artistId: string }) {
   const [radioStats, setRadioStats] = useState<Record<string, number>>({});
   const [rosterAvg, setRosterAvg] = useState<Record<string, number>>({});
-  const [artistName, setArtistName] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -1256,8 +1184,6 @@ function RadioStatsSection({ artistId }: { artistId: string }) {
         .single();
       
       if (artist) {
-        setArtistName(artist.name);
-        
         // Calculer la moyenne du roster
         const { data: rosterStats } = await supabase
           .from("artist_stats_current")
@@ -1500,117 +1426,6 @@ function RadioStatsSection({ artistId }: { artistId: string }) {
       </div>
     </div>
   );
-}
-
-// Plateformes principales a afficher (dans l'ordre)
-const MAIN_PLATFORMS = [
-  { key: "spotify", name: "Spotify" },
-  { key: "youtube", name: "YouTube" },
-  { key: "apple_music", name: "Apple Music" },
-  { key: "amazon_music", name: "Amazon Music" },
-  { key: "deezer", name: "Deezer" },
-  { key: "tidal", name: "Tidal" },
-  { key: "soundcloud", name: "SoundCloud" },
-];
-
-// Composant SVG pour chaque plateforme (fiable, pas de probleme d'image brisee)
-function PlatformIcon({ platform, isActive, className = "w-5 h-5" }: { platform: string; isActive: boolean; className?: string }) {
-  const fillColor = isActive ? undefined : "#9CA3AF";
-  
-  switch (platform) {
-    case "spotify":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill={fillColor || "#1DB954"}>
-          <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-        </svg>
-      );
-    case "youtube":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill={fillColor || "#FF0000"}>
-          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-        </svg>
-      );
-    case "apple_music":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill={fillColor || "#FA243C"}>
-          <path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026-.747.043-1.49.123-2.193.401-1.336.53-2.3 1.452-2.865 2.78-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.497 2.373.65 1.42 1.738 2.353 3.234 2.801.42.127.856.187 1.293.228.555.053 1.11.06 1.667.06h11.03a12.5 12.5 0 001.57-.1c.822-.106 1.596-.35 2.295-.81a5.046 5.046 0 001.88-2.207c.186-.42.293-.87.37-1.324.113-.675.138-1.358.137-2.04-.002-3.8 0-7.595-.003-11.393zm-6.423 3.99v5.712c0 .417-.058.827-.244 1.206-.29.59-.76.962-1.388 1.14-.35.1-.706.157-1.07.173-.95.042-1.785-.455-2.105-1.245-.38-.94.093-2.03 1.066-2.395.315-.118.65-.18.992-.223.478-.06.96-.104 1.436-.165.245-.03.4-.164.456-.41.01-.043.015-.088.015-.133V9.04c0-.18-.06-.294-.216-.323-.468-.086-.94-.158-1.41-.238l-3.86-.63c-.073-.01-.147-.02-.22-.02-.22.01-.336.11-.36.332-.006.065-.007.13-.007.195v7.98c0 .47-.052.933-.263 1.36-.3.61-.792.99-1.447 1.164-.343.09-.69.137-1.04.153-.95.04-1.772-.45-2.107-1.217-.4-.915.06-1.994 1.023-2.38.313-.125.643-.197.978-.246.494-.072.99-.127 1.486-.19.26-.033.418-.17.47-.427.012-.056.016-.113.016-.17V5.63c0-.156.017-.31.063-.46.09-.288.308-.44.59-.498.2-.042.4-.063.602-.09L17.07 3.77c.297-.043.596-.08.896-.104.18-.014.316.09.373.27.025.08.037.165.037.25v5.927z"/>
-        </svg>
-      );
-    case "amazon_music":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill={fillColor || "#00A8E1"}>
-          <path d="M19.64 18.36C17.65 19.81 14.66 20.67 12 20.67c-3.96 0-7.53-1.47-10.22-3.9-.21-.19-.02-.45.23-.3 2.91 1.69 6.51 2.71 10.23 2.71 2.51 0 5.27-.52 7.81-1.6.38-.16.7.25.39.48m1.12-1.27c-.29-.37-1.9-.17-2.63-.09-.22.03-.25-.17-.06-.31 1.29-.9 3.4-.64 3.65-.34.25.31-.07 2.43-1.27 3.44-.19.15-.36.07-.28-.13.27-.68.88-2.2.59-2.57"/>
-          <path d="M17.46 14.03v-.69c0-.1.08-.17.17-.17h3.02c.1 0 .18.07.18.17v.59c0 .1-.08.22-.23.43l-1.56 2.23c.58-.01 1.19.07 1.72.37.12.07.15.16.16.26v.73c0 .1-.11.22-.23.16-.94-.49-2.19-.55-3.23.01-.11.06-.22-.06-.22-.16v-.7c0-.11 0-.29.11-.45l1.81-2.59h-1.57c-.1 0-.18-.07-.18-.17m-6.7 3.42h-.92c-.09-.01-.16-.07-.17-.15V11.4c0-.1.08-.17.18-.17h.86c.09 0 .16.07.17.15v.78h.02c.23-.72.65-1.05 1.22-1.05.59 0 .95.33 1.22 1.05.23-.72.74-1.05 1.3-1.05.39 0 .82.16 1.08.53.29.41.23 1 .23 1.52v3.22c0 .1-.08.17-.18.17h-.91c-.1-.01-.17-.08-.17-.17v-2.71c0-.2.02-.71-.03-.89-.07-.3-.28-.38-.56-.38-.23 0-.47.15-.57.4-.1.24-.09.65-.09.88v2.71c0 .1-.08.17-.18.17h-.91c-.1-.01-.17-.08-.17-.17v-2.71c0-.54.09-1.33-.59-1.33-.69 0-.66.77-.66 1.33v2.71c0 .1-.08.17-.18.17m-3.3-6.16c1.35 0 2.08 1.16 2.08 2.64s-.81 2.56-2.08 2.56c-1.32 0-2.04-1.16-2.04-2.61 0-1.46.73-2.59 2.04-2.59m.77 2.64c0-.51-.04-1.12-.26-1.39-.19-.23-.49-.29-.69-.29-.2 0-.51.06-.69.29-.22.27-.26.88-.26 1.39 0 .51.02 1.16.26 1.42.19.23.51.26.69.26.19 0 .51-.03.69-.26.25-.27.26-.92.26-1.42m-5.46 3.52h-.92c-.09-.01-.17-.08-.17-.17V11.4a.18.18 0 01.18-.17h.85c.08 0 .15.06.17.13v.83h.02c.26-.73.63-1.08 1.27-1.08.42 0 .82.15 1.08.57.25.39.25 1.05.25 1.52v3.22c-.01.09-.09.16-.18.16h-.92c-.09-.01-.16-.07-.17-.16v-2.78c0-.54.06-1.31-.59-1.31-.23 0-.45.16-.55.39-.14.3-.16.59-.16.91v2.78c0 .1-.08.17-.18.17"/>
-        </svg>
-      );
-    case "deezer":
-      return (
-        <svg className={className} viewBox="0 0 24 24">
-          <path fill={fillColor || "#FF0092"} d="M18.81 11.62h3.68v1.7h-3.68z"/>
-          <path fill={fillColor || "#FEAA2D"} d="M18.81 8.87h3.68v1.7h-3.68z"/>
-          <path fill={fillColor || "#00C7F2"} d="M18.81 6.11h3.68v1.72h-3.68z"/>
-          <path fill={fillColor || "#3BC8A9"} d="M18.81 14.37h3.68v1.7h-3.68zM13.06 14.37h3.68v1.7h-3.68z"/>
-          <path fill={fillColor || "#9B83D4"} d="M18.81 17.12h3.68v1.72h-3.68zM13.06 17.12h3.68v1.72h-3.68zM7.32 17.12H11v1.72H7.32zM1.58 17.12h3.68v1.72H1.58z"/>
-          <path fill={fillColor || "#FF0092"} d="M13.06 11.62h3.68v1.7h-3.68zM7.32 11.62H11v1.7H7.32z"/>
-          <path fill={fillColor || "#FEAA2D"} d="M7.32 8.87H11v1.7H7.32z"/>
-          <path fill={fillColor || "#3BC8A9"} d="M7.32 14.37H11v1.7H7.32zM1.58 14.37h3.68v1.7H1.58z"/>
-        </svg>
-      );
-    case "tidal":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill={fillColor || "#000000"}>
-          <path d="M12.012 3.992L8.008 7.996 4.004 3.992 0 7.996 4.004 12l4.004-4.004L12.012 12l4.004-4.004L20.02 12l4.004-4.004-4.004-4.004-4.004 4.004-4.004-4.004z"/>
-          <path d="M12.012 12l-4.004 4.004L4.004 12 0 16.004l4.004 4.004 4.004-4.004 4.004 4.004 4.004-4.004L20.02 20.008l4.004-4.004L20.02 12l-4.004 4.004L12.012 12z"/>
-        </svg>
-      );
-    case "soundcloud":
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill={fillColor || "#FF5500"}>
-          <path d="M1.175 12.225c-.051 0-.094.046-.101.1l-.233 2.154.233 2.105c.007.058.05.098.101.098.05 0 .09-.04.099-.098l.255-2.105-.27-2.154c-.009-.06-.049-.1-.1-.1m-.899.828c-.06 0-.091.037-.104.094L0 14.479l.165 1.308c.014.057.045.094.09.094s.089-.037.099-.094l.19-1.308-.19-1.334c-.01-.057-.044-.094-.09-.094m1.83-1.229c-.061 0-.12.045-.12.104l-.21 2.563.225 2.458c0 .06.045.104.106.104.061 0 .12-.044.12-.104l.24-2.474-.24-2.563c0-.06-.06-.104-.12-.104m.945-.089c-.075 0-.135.06-.15.135l-.193 2.64.21 2.544c.016.077.075.138.149.138.075 0 .135-.061.15-.138l.24-2.544-.24-2.64c-.015-.075-.075-.135-.15-.135m1.065.202c-.09 0-.166.075-.18.165l-.18 2.46.195 2.55c.015.09.09.165.18.165.091 0 .166-.075.166-.165l.21-2.55-.21-2.46c0-.09-.076-.165-.166-.165m.99-.48c-.105 0-.195.09-.21.195l-.165 2.94.18 2.595c.015.105.105.18.21.18.105 0 .18-.09.195-.18l.195-2.595-.195-2.94c-.015-.105-.09-.195-.195-.195m1.005-.195c-.12 0-.21.089-.225.209l-.15 3.12.165 2.61c.015.12.105.21.225.21.12 0 .21-.09.21-.21l.18-2.61-.165-3.12c-.015-.12-.09-.21-.225-.21m1.065.195c-.135 0-.24.105-.255.24l-.135 2.925.15 2.625c.015.135.12.24.255.24.12 0 .24-.105.24-.24l.165-2.625-.165-2.925c-.015-.135-.105-.24-.24-.24m1.035-.495c-.15 0-.27.12-.285.27l-.12 3.42.135 2.61c.015.15.135.27.285.27.135 0 .255-.12.27-.27l.15-2.61-.15-3.42c-.015-.15-.12-.27-.27-.27m1.065.18c-.165 0-.3.135-.315.3l-.105 3.24.12 2.595c.015.165.15.3.315.3.149 0 .285-.135.285-.3l.135-2.595-.12-3.24c-.015-.165-.135-.3-.3-.3m1.065.285c-.165 0-.315.149-.33.33l-.09 2.955.105 2.595c.015.165.165.315.33.315.165 0 .315-.15.315-.315l.12-2.595-.105-2.955c-.015-.181-.165-.33-.33-.33m1.08.63c-.18 0-.33.165-.345.36l-.075 2.325.09 2.58c.015.18.165.345.345.345.18 0 .33-.165.33-.345l.105-2.58-.09-2.325c-.015-.195-.165-.36-.345-.36m1.095-.78c-.195 0-.36.18-.375.39l-.06 3.105.075 2.565c.015.195.18.36.375.36.18 0 .345-.165.36-.36l.09-2.565-.075-3.105c-.015-.21-.18-.39-.375-.39m1.095.195c-.21 0-.375.18-.39.405l-.06 2.895.075 2.565c.015.21.18.375.39.375.195 0 .36-.18.375-.375l.09-2.565-.075-2.895c-.015-.225-.18-.405-.39-.405m1.5.6c-.225 0-.405.195-.42.435l-.045 2.295.06 2.55c.015.225.195.405.42.405.21 0 .39-.18.405-.405l.075-2.55-.06-2.295c-.015-.24-.195-.435-.42-.435m1.095-.375c-.24 0-.42.195-.435.45l-.045 2.67.06 2.535c.015.24.21.42.435.42.225 0 .42-.195.42-.42l.075-2.535-.06-2.67c-.015-.255-.195-.45-.435-.45"/>
-        </svg>
-      );
-    default:
-      return (
-        <svg className={className} viewBox="0 0 24 24" fill="#6B7280">
-          <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
-        </svg>
-      );
-  }
-}
-
-// Aliases pour normaliser les noms de plateformes
-const PLATFORM_ALIASES: Record<string, string> = {
-  applemusic: "apple_music",
-  apple: "apple_music",
-  amazon: "amazon_music",
-  amazonmusic: "amazon_music",
-  youtube_music: "youtube",
-  youtubemusic: "youtube",
-};
-
-// Normaliser le nom de la plateforme
-function normalizePlatformKey(source: string): string {
-  const normalized = source.toLowerCase().replace(/[^a-z0-9]/g, "_");
-  return PLATFORM_ALIASES[normalized] || PLATFORM_ALIASES[source.toLowerCase()] || normalized;
-}
-
-
-// Obtenir les liens pour les 7 plateformes principales
-function getMainPlatformLinks(links: any[]): { platform: { key: string; name: string }, url: string | null }[] {
-  // Creer une map des liens par plateforme normalisee
-  const linksByPlatform = new Map<string, string>();
-  links.forEach(link => {
-    const normalizedKey = normalizePlatformKey(link.source);
-    if (!linksByPlatform.has(normalizedKey)) {
-      linksByPlatform.set(normalizedKey, link.url);
-    }
-  });
-  
-  // Retourner les 7 plateformes avec leur URL (ou null si pas de lien)
-  return MAIN_PLATFORMS.map(platform => ({
-    platform,
-    url: linksByPlatform.get(platform.key) || null
-  }));
 }
 
 // Section Discographie - Design AURA moderne (Albums & Singles Spotify uniquement)

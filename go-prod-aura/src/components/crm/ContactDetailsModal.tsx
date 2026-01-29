@@ -4,7 +4,7 @@
 
 import { Modal } from '@/components/aura/Modal';
 import { Button } from '@/components/aura/Button';
-import { Building2, Mail, Phone, User, Printer, X, Music, Moon, FileText, PenTool, Users, Briefcase } from 'lucide-react';
+import { Building2, Mail, Phone, User, Printer, X, Music, Moon, FileText, PenTool, Briefcase } from 'lucide-react';
 import { formatPhoneNumber, getWhatsAppLink } from '@/utils/phoneUtils';
 import type { CRMContactWithRelations } from '@/types/crm';
 

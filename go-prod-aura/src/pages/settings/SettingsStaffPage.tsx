@@ -8,26 +8,26 @@ import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
 import { useStaffLookups } from '@/hooks/useStaffLookups';
 import type {
   StaffVolunteerStatus,
-  StaffVolunteerGroup,
-  StaffVolunteerSkill,
+  StaffDepartment,
+  StaffSectorWithDepartment,
 } from '@/types/staff';
 
 export default function SettingsStaffPage() {
   const { success, error: toastError } = useToast();
   const {
     statuses,
-    groups,
-    skills,
+    departments,
+    sectors,
     loading,
     createStatus,
     updateStatus,
     deleteStatus,
-    createGroup,
-    updateGroup,
-    deleteGroup,
-    createSkill,
-    updateSkill,
-    deleteSkill,
+    createDepartment,
+    updateDepartment,
+    deleteDepartment,
+    createSector,
+    updateSector,
+    deleteSector,
   } = useStaffLookups();
 
   // États pour les statuts
@@ -35,15 +35,15 @@ export default function SettingsStaffPage() {
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
   const [statusForm, setStatusForm] = useState({ name: '', color: '#10b981' });
 
-  // États pour les groupes
-  const [showAddGroupForm, setShowAddGroupForm] = useState(false);
-  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
-  const [groupForm, setGroupForm] = useState({ name: '', description: '' });
+  // États pour les départements
+  const [showAddDepartmentForm, setShowAddDepartmentForm] = useState(false);
+  const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
+  const [departmentForm, setDepartmentForm] = useState({ name: '', description: '' });
 
-  // États pour les compétences
-  const [showAddSkillForm, setShowAddSkillForm] = useState(false);
-  const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
-  const [skillForm, setSkillForm] = useState({ name: '', description: '' });
+  // États pour les secteurs
+  const [showAddSectorForm, setShowAddSectorForm] = useState(false);
+  const [editingSectorId, setEditingSectorId] = useState<string | null>(null);
+  const [sectorForm, setSectorForm] = useState({ name: '', description: '', department_id: '' });
 
   // Confirmation de suppression
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string; name: string } | null>(null);
@@ -86,83 +86,88 @@ export default function SettingsStaffPage() {
   };
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Handlers Groupes
+  // Handlers Départements
   // ───────────────────────────────────────────────────────────────────────────
   
-  const handleEditGroup = (group: StaffVolunteerGroup) => {
-    setEditingGroupId(group.id);
-    setGroupForm({ name: group.name, description: group.description || '' });
+  const handleEditDepartment = (department: StaffDepartment) => {
+    setEditingDepartmentId(department.id);
+    setDepartmentForm({ name: department.name, description: department.description || '' });
   };
 
-  const handleSaveGroup = async () => {
-    if (!groupForm.name.trim()) {
+  const handleSaveDepartment = async () => {
+    if (!departmentForm.name.trim()) {
       toastError('Le nom est requis');
       return;
     }
 
     try {
-      if (editingGroupId) {
-        await updateGroup(editingGroupId, {
-          name: groupForm.name,
-          description: groupForm.description || null,
+      if (editingDepartmentId) {
+        await updateDepartment(editingDepartmentId, {
+          name: departmentForm.name,
+          description: departmentForm.description || null,
         });
-        success('Groupe mis à jour');
+        success('Département mis à jour');
       } else {
-        await createGroup(groupForm.name, groupForm.description);
-        success('Groupe créé');
+        await createDepartment(departmentForm.name, departmentForm.description);
+        success('Département créé');
       }
-      setEditingGroupId(null);
-      setShowAddGroupForm(false);
-      setGroupForm({ name: '', description: '' });
+      setEditingDepartmentId(null);
+      setShowAddDepartmentForm(false);
+      setDepartmentForm({ name: '', description: '' });
     } catch (err: any) {
       toastError(err.message || 'Erreur lors de la sauvegarde');
     }
   };
 
-  const handleCancelEditGroup = () => {
-    setEditingGroupId(null);
-    setShowAddGroupForm(false);
-    setGroupForm({ name: '', description: '' });
+  const handleCancelEditDepartment = () => {
+    setEditingDepartmentId(null);
+    setShowAddDepartmentForm(false);
+    setDepartmentForm({ name: '', description: '' });
   };
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Handlers Compétences
+  // Handlers Secteurs
   // ───────────────────────────────────────────────────────────────────────────
   
-  const handleEditSkill = (skill: StaffVolunteerSkill) => {
-    setEditingSkillId(skill.id);
-    setSkillForm({ name: skill.name, description: skill.description || '' });
+  const handleEditSector = (sector: StaffSectorWithDepartment) => {
+    setEditingSectorId(sector.id);
+    setSectorForm({ name: sector.name, description: sector.description || '', department_id: sector.department_id });
   };
 
-  const handleSaveSkill = async () => {
-    if (!skillForm.name.trim()) {
+  const handleSaveSector = async () => {
+    if (!sectorForm.name.trim()) {
       toastError('Le nom est requis');
+      return;
+    }
+    if (!sectorForm.department_id) {
+      toastError('Le département est requis');
       return;
     }
 
     try {
-      if (editingSkillId) {
-        await updateSkill(editingSkillId, {
-          name: skillForm.name,
-          description: skillForm.description || null,
+      if (editingSectorId) {
+        await updateSector(editingSectorId, {
+          name: sectorForm.name,
+          description: sectorForm.description || null,
+          department_id: sectorForm.department_id,
         });
-        success('Compétence mise à jour');
+        success('Secteur mis à jour');
       } else {
-        await createSkill(skillForm.name, skillForm.description);
-        success('Compétence créée');
+        await createSector(sectorForm.department_id, sectorForm.name, sectorForm.description);
+        success('Secteur créé');
       }
-      setEditingSkillId(null);
-      setShowAddSkillForm(false);
-      setSkillForm({ name: '', description: '' });
+      setEditingSectorId(null);
+      setShowAddSectorForm(false);
+      setSectorForm({ name: '', description: '', department_id: '' });
     } catch (err: any) {
       toastError(err.message || 'Erreur lors de la sauvegarde');
     }
   };
 
-  const handleCancelEditSkill = () => {
-    setEditingSkillId(null);
-    setShowAddSkillForm(false);
-    setSkillForm({ name: '', description: '' });
+  const handleCancelEditSector = () => {
+    setEditingSectorId(null);
+    setShowAddSectorForm(false);
+    setSectorForm({ name: '', description: '', department_id: '' });
   };
 
   return (
@@ -273,68 +278,68 @@ export default function SettingsStaffPage() {
             </CardBody>
           </Card>
 
-          {/* Groupes */}
+          {/* Départements */}
           <Card>
             <CardHeader>
               <div>
                 <div className="flex items-center gap-2">
                   <UsersRound className="w-5 h-5 text-violet-400" />
-                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Groupes</h3>
+                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Départements</h3>
                 </div>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Groupes de benevoles</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Départements des bénévoles</p>
               </div>
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => setShowAddGroupForm(!showAddGroupForm)}
+                onClick={() => setShowAddDepartmentForm(!showAddDepartmentForm)}
               >
                 <Plus size={16} />
               </Button>
             </CardHeader>
             <CardBody>
               <div className="space-y-1">
-                {showAddGroupForm && (
+                {showAddDepartmentForm && (
                   <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                     <Input
-                      value={groupForm.name}
-                      onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                      value={departmentForm.name}
+                      onChange={(e) => setDepartmentForm({ ...departmentForm, name: e.target.value })}
                       placeholder="Nom..."
                       className="text-sm"
                       autoFocus
                     />
-                    <Button size="sm" variant="primary" onClick={handleSaveGroup}>OK</Button>
-                    <Button size="sm" variant="ghost" onClick={handleCancelEditGroup}>X</Button>
+                    <Button size="sm" variant="primary" onClick={handleSaveDepartment}>OK</Button>
+                    <Button size="sm" variant="ghost" onClick={handleCancelEditDepartment}>X</Button>
                   </div>
                 )}
 
-                {!groups || groups.length === 0 ? (
+                {!departments || departments.length === 0 ? (
                   <p className="text-xs py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucune option
                   </p>
                 ) : (
                   <div className="space-y-1">
-                    {groups?.map((group) => (
-                      <div key={group.id} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                    {departments?.map((department) => (
+                      <div key={department.id} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                         <GripVertical className="w-4 h-4 text-gray-400" />
-                        {editingGroupId === group.id ? (
+                        {editingDepartmentId === department.id ? (
                           <>
                             <Input
-                              value={groupForm.name}
-                              onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                              value={departmentForm.name}
+                              onChange={(e) => setDepartmentForm({ ...departmentForm, name: e.target.value })}
                               className="flex-1 text-sm"
                               autoFocus
                             />
-                            <Button size="sm" variant="ghost" onClick={handleSaveGroup}>OK</Button>
+                            <Button size="sm" variant="ghost" onClick={handleSaveDepartment}>OK</Button>
                           </>
                         ) : (
                           <>
                             <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">
-                              {group.name}
+                              {department.name}
                             </span>
-                            <Button size="sm" variant="ghost" className="p-1" onClick={() => handleEditGroup(group)}>
+                            <Button size="sm" variant="ghost" className="p-1" onClick={() => handleEditDepartment(department)}>
                               <Edit2 className="w-3.5 h-3.5" />
                             </Button>
-                            <Button size="sm" variant="ghost" className="p-1 text-red-500 hover:text-red-600" onClick={() => setDeleteConfirm({ type: 'group', id: group.id, name: group.name })}>
+                            <Button size="sm" variant="ghost" className="p-1 text-red-500 hover:text-red-600" onClick={() => setDeleteConfirm({ type: 'department', id: department.id, name: department.name })}>
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </>
@@ -347,68 +352,85 @@ export default function SettingsStaffPage() {
             </CardBody>
           </Card>
 
-          {/* Competences */}
+          {/* Secteurs */}
           <Card>
             <CardHeader>
               <div>
                 <div className="flex items-center gap-2">
                   <Award className="w-5 h-5 text-violet-400" />
-                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Competences</h3>
+                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Secteurs</h3>
                 </div>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Skills des benevoles</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Secteurs des bénévoles</p>
               </div>
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => setShowAddSkillForm(!showAddSkillForm)}
+                onClick={() => setShowAddSectorForm(!showAddSectorForm)}
               >
                 <Plus size={16} />
               </Button>
             </CardHeader>
             <CardBody>
               <div className="space-y-1">
-                {showAddSkillForm && (
-                  <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                {showAddSectorForm && (
+                  <div className="flex flex-col gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                     <Input
-                      value={skillForm.name}
-                      onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
+                      value={sectorForm.name}
+                      onChange={(e) => setSectorForm({ ...sectorForm, name: e.target.value })}
                       placeholder="Nom..."
                       className="text-sm"
                       autoFocus
                     />
-                    <Button size="sm" variant="primary" onClick={handleSaveSkill}>OK</Button>
-                    <Button size="sm" variant="ghost" onClick={handleCancelEditSkill}>X</Button>
+                    <select
+                      value={sectorForm.department_id}
+                      onChange={(e) => setSectorForm({ ...sectorForm, department_id: e.target.value })}
+                      className="input text-sm"
+                    >
+                      <option value="">-- Département --</option>
+                      {departments?.map((dept) => (
+                        <option key={dept.id} value={dept.id}>{dept.name}</option>
+                      ))}
+                    </select>
+                    <div className="flex gap-2 justify-end">
+                      <Button size="sm" variant="primary" onClick={handleSaveSector}>OK</Button>
+                      <Button size="sm" variant="ghost" onClick={handleCancelEditSector}>X</Button>
+                    </div>
                   </div>
                 )}
 
-                {!skills || skills.length === 0 ? (
+                {!sectors || sectors.length === 0 ? (
                   <p className="text-xs py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                     Aucune option
                   </p>
                 ) : (
                   <div className="space-y-1">
-                    {skills?.map((skill) => (
-                      <div key={skill.id} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                    {sectors?.map((sector) => (
+                      <div key={sector.id} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                         <GripVertical className="w-4 h-4 text-gray-400" />
-                        {editingSkillId === skill.id ? (
+                        {editingSectorId === sector.id ? (
                           <>
                             <Input
-                              value={skillForm.name}
-                              onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
+                              value={sectorForm.name}
+                              onChange={(e) => setSectorForm({ ...sectorForm, name: e.target.value })}
                               className="flex-1 text-sm"
                               autoFocus
                             />
-                            <Button size="sm" variant="ghost" onClick={handleSaveSkill}>OK</Button>
+                            <Button size="sm" variant="ghost" onClick={handleSaveSector}>OK</Button>
                           </>
                         ) : (
                           <>
-                            <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">
-                              {skill.name}
-                            </span>
-                            <Button size="sm" variant="ghost" className="p-1" onClick={() => handleEditSkill(skill)}>
+                            <div className="flex-1">
+                              <span className="text-xs text-gray-700 dark:text-gray-300 truncate block">
+                                {sector.name}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-500">
+                                {sector.department?.name}
+                              </span>
+                            </div>
+                            <Button size="sm" variant="ghost" className="p-1" onClick={() => handleEditSector(sector)}>
                               <Edit2 className="w-3.5 h-3.5" />
                             </Button>
-                            <Button size="sm" variant="ghost" className="p-1 text-red-500 hover:text-red-600" onClick={() => setDeleteConfirm({ type: 'skill', id: skill.id, name: skill.name })}>
+                            <Button size="sm" variant="ghost" className="p-1 text-red-500 hover:text-red-600" onClick={() => setDeleteConfirm({ type: 'sector', id: sector.id, name: sector.name })}>
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </>
@@ -434,12 +456,12 @@ export default function SettingsStaffPage() {
             if (deleteConfirm.type === 'status') {
               await deleteStatus(deleteConfirm.id);
               success('Statut supprimé');
-            } else if (deleteConfirm.type === 'group') {
-              await deleteGroup(deleteConfirm.id);
-              success('Groupe supprimé');
-            } else if (deleteConfirm.type === 'skill') {
-              await deleteSkill(deleteConfirm.id);
-              success('Compétence supprimée');
+            } else if (deleteConfirm.type === 'department') {
+              await deleteDepartment(deleteConfirm.id);
+              success('Département supprimé');
+            } else if (deleteConfirm.type === 'sector') {
+              await deleteSector(deleteConfirm.id);
+              success('Secteur supprimé');
             }
             
             setDeleteConfirm(null);

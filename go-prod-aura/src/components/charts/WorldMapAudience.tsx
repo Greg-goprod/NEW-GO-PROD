@@ -434,7 +434,6 @@ export function WorldMapAudience({
   // Couleurs selon le type de donnees
   const primaryColor = dataType === "listeners" ? "#10b981" : dataType === "streams" ? "#1DB954" : "#8b5cf6"; // vert, vert spotify, ou violet
   const primaryColorDark = dataType === "listeners" ? "#059669" : dataType === "streams" ? "#1aa34a" : "#7c3aed";
-  const primaryColorLight = dataType === "listeners" ? "#34d399" : dataType === "streams" ? "#1ed760" : "#a78bfa";
 
   // Creer un map pour acces rapide (utilise les donnees deja filtrees/triees par le parent)
   const dataMap = useMemo(() => {

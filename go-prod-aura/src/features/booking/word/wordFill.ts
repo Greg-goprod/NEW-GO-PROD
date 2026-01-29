@@ -25,7 +25,7 @@ function mergeXmlRuns(xmlContent: string): string {
   const maxIterations = 100;
   
   while (iterations < maxIterations) {
-    const newMerged = merged.replace(fragmentedPattern, (match, openTag, textBefore, middleXml, textAfter) => {
+    const newMerged = merged.replace(fragmentedPattern, (_match, openTag, textBefore, middleXml, textAfter) => {
       // Extraire le texte des éléments <w:t> intermédiaires
       const middleTextMatches = middleXml.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
       let middleText = "";

@@ -24,8 +24,6 @@ import { PDFDocument } from "pdf-lib";
 const A3_LANDSCAPE_WIDTH = 1190.55; // points
 const A3_LANDSCAPE_HEIGHT = 841.89; // points
 const PDF_MARGIN = 18; // réduire pour maximiser la zone utile
-const PDF_AVAILABLE_WIDTH = A3_LANDSCAPE_WIDTH - PDF_MARGIN * 2;
-const PDF_AVAILABLE_HEIGHT = A3_LANDSCAPE_HEIGHT - PDF_MARGIN * 2;
 const EXPORT_CANVAS_WIDTH_GLOBAL = 2200;
 const EXPORT_CANVAS_WIDTH_DAY = 1600;
 
@@ -326,7 +324,7 @@ export default function LineupTimelinePage() {
         height: drawHeight,
       });
       const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       const normalizedEventName = (currentEvent?.name || "timeline").replace(/\s+/g, "_");
@@ -738,7 +736,6 @@ export default function LineupTimelinePage() {
             commission_percentage: performanceModalData.commission_percentage,
             booking_status: performanceModalData.booking_status,
             notes: performanceModalData.notes,
-            card_color: performanceModalData.card_color,
           } : {
             eventId: eventId,
             companyId: companyId || "",

@@ -10,8 +10,6 @@ import {
   Edit2,
   Trash2,
   Loader2,
-  FileText,
-  Image,
   ExternalLink,
 } from 'lucide-react';
 import { Modal } from '@/components/aura/Modal';

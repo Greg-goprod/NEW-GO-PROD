@@ -3,7 +3,7 @@ import { X, Upload, FileText, Check, ChevronDown, Search, AlertCircle, Loader2 }
 import { PDFDocument } from 'pdf-lib';
 import { Button } from '@/components/aura/Button';
 import { Input } from '@/components/aura/Input';
-import { OFFER_TEMPLATE_FIELDS, type OfferTemplateFieldKey } from '../offerTemplateConstants';
+import { OFFER_TEMPLATE_FIELDS } from '../offerTemplateConstants';
 
 interface PdfMappingModalProps {
   open: boolean;

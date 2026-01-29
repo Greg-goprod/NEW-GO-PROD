@@ -3,7 +3,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { Eye, Upload, Mail, Trash2, GripVertical } from 'lucide-react';
 import cn from 'classnames';
 import { Badge } from '../ui/Badge';
-import type { Contract, ContractStatus } from '@/types/contracts';
+import type { Contract } from '@/types/contracts';
 
 interface ContractCardProps {
   contract: Contract;
@@ -159,7 +159,7 @@ export const ContractCard: React.FC<ContractCardProps> = ({
       {/* File indicator */}
       {contract.current_version && (
         <div className="mb-3">
-          <Badge variant="default" className="text-xs">
+          <Badge color="gray" className="text-xs">
             {contract.current_version === 'original' && '📄 Original'}
             {contract.current_version === 'annotated' && '✏️ Annoté'}
             {contract.current_version === 'signed' && '✅ Signé'}

@@ -21,7 +21,6 @@ export function TimePickerPopup({
   error,
   disabled,
   className,
-  size = 'sm',
 }: TimePickerPopupProps) {
   const [isOpen, setIsOpen] = React.useState(false)
 

@@ -31,7 +31,7 @@ export async function listOffers(params: {
   const offers = (data ?? []) as Offer[];
   
   // Enrichir avec word_storage_path si la fonction RPC ne le retourne pas
-  const offerIds = offers.filter(o => o.type !== "performance" && !o.word_storage_path).map(o => o.id);
+  const offerIds = offers.filter(o => !o.word_storage_path).map(o => o.id);
   if (offerIds.length > 0) {
     const { data: wordPaths } = await supabase
       .from("offers")
@@ -39,7 +39,7 @@ export async function listOffers(params: {
       .in("id", offerIds);
     
     if (wordPaths) {
-      const pathMap = new Map(wordPaths.map(p => [p.id, p.word_storage_path]));
+      const pathMap = new Map(wordPaths.map((p: { id: string; word_storage_path: string | null }) => [p.id, p.word_storage_path]));
       offers.forEach(o => {
         if (pathMap.has(o.id)) {
           o.word_storage_path = pathMap.get(o.id) ?? undefined;

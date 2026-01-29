@@ -15,7 +15,7 @@ import { CountrySpecificFields } from '@/components/crm/CountrySpecificFields';
 import { useActiveCRMLookups } from '@/hooks/useCRMLookups';
 import { createCRMCompany, updateCRMCompany } from '@/api/crmCompaniesApi';
 import { useToast } from '@/components/aura/ToastProvider';
-import type { CRMCompanyInput } from '@/types/crm';
+import type { CRMCompanyInput, CRMLookup } from '@/types/crm';
 
 // Liste des pays ordonnée
 const COUNTRIES = [
@@ -94,7 +94,7 @@ export function CompanyFormModal({
   zIndex = 600,
 }: CompanyFormModalProps) {
   const { success: toastSuccess, error: toastError } = useToast();
-  const { companyTypes } = useActiveCRMLookups(companyId);
+  const { lookups: companyTypes } = useActiveCRMLookups('company_types');
   
   const isEdit = !!editingCompanyId;
   
@@ -138,34 +138,34 @@ export function CompanyFormModal({
       const dataToSave: CRMCompanyInput = {
         company_id: companyId,
         company_name: formData.company_name.trim(),
-        brand_name: formData.brand_name || null,
-        company_type_id: formData.company_type_id || null,
+        brand_name: formData.brand_name || undefined,
+        company_type_id: formData.company_type_id || undefined,
         is_supplier: formData.is_supplier ?? true,
         is_client: formData.is_client ?? false,
         status_label: formData.status_label || 'actif',
-        main_phone: formData.main_phone || null,
-        main_email: formData.main_email || null,
-        website_url: formData.website_url || null,
-        address_line1: formData.address_line1 || null,
-        address_line2: formData.address_line2 || null,
-        zip_code: formData.zip_code || null,
-        city: formData.city || null,
-        country: formData.country || null,
-        notes_access: formData.notes_access || null,
-        billing_name: formData.billing_name || null,
-        billing_address_line1: formData.billing_address_line1 || null,
-        billing_address_line2: formData.billing_address_line2 || null,
-        billing_zip_code: formData.billing_zip_code || null,
-        billing_city: formData.billing_city || null,
-        billing_country: formData.billing_country || null,
-        tax_id: formData.tax_id || null,
-        registration_number: formData.registration_number || null,
-        payment_terms: formData.payment_terms || null,
-        currency_preferred: formData.currency_preferred || null,
-        iban: formData.iban || null,
-        swift_bic: formData.swift_bic || null,
-        finance_email: formData.finance_email || null,
-        country_specific_data: formData.country_specific_data || null,
+        main_phone: formData.main_phone || undefined,
+        main_email: formData.main_email || undefined,
+        website_url: formData.website_url || undefined,
+        address_line1: formData.address_line1 || undefined,
+        address_line2: formData.address_line2 || undefined,
+        zip_code: formData.zip_code || undefined,
+        city: formData.city || undefined,
+        country: formData.country || undefined,
+        notes_access: formData.notes_access || undefined,
+        billing_name: formData.billing_name || undefined,
+        billing_address_line1: formData.billing_address_line1 || undefined,
+        billing_address_line2: formData.billing_address_line2 || undefined,
+        billing_zip_code: formData.billing_zip_code || undefined,
+        billing_city: formData.billing_city || undefined,
+        billing_country: formData.billing_country || undefined,
+        tax_id: formData.tax_id || undefined,
+        registration_number: formData.registration_number || undefined,
+        payment_terms: formData.payment_terms || undefined,
+        currency_preferred: formData.currency_preferred || undefined,
+        iban: formData.iban || undefined,
+        swift_bic: formData.swift_bic || undefined,
+        finance_email: formData.finance_email || undefined,
+        country_specific_data: formData.country_specific_data || undefined,
       };
 
       let resultId: string;
@@ -239,7 +239,7 @@ export function CompanyFormModal({
                         className="input"
                       >
                         <option value="">-</option>
-                        {(companyTypes || []).map((type) => (
+                        {(companyTypes || []).map((type: CRMLookup) => (
                           <option key={type.id} value={type.id}>{type.label}</option>
                         ))}
                       </select>

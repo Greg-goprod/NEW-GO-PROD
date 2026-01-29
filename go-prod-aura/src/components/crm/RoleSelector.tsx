@@ -8,7 +8,7 @@ interface RoleSelectorProps {
   onChange: (roleIds: string[]) => void;
 }
 
-export function RoleSelector({ companyId, selectedRoleIds, onChange }: RoleSelectorProps) {
+export function RoleSelector({ companyId: _companyId, selectedRoleIds, onChange }: RoleSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { lookups: roles, loading } = useActiveCRMLookups('contact_roles');

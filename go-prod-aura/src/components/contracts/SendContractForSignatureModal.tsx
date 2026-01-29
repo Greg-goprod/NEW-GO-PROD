@@ -8,7 +8,7 @@
  * Design identique à SendOfferModal
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Send, FileText, Plus, X, Mail, Eye, User, Users } from "lucide-react";
 import { Modal } from "@/components/aura/Modal";
 import { Button } from "@/components/aura/Button";

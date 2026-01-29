@@ -10,5 +10,17 @@ const variants: Record<Variant,string> = {
   danger:"bg-red-600 text-white hover:bg-red-700 focus:ring-red-600",
   success:"bg-green-600 text-white hover:bg-green-700 focus:ring-green-600",
 };
-export const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }> = ({ className="", variant="primary", size="md", ...props }) =>
-  <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...props} />;
+
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  size?: Size;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+};
+
+export const Button: React.FC<ButtonProps> = ({ className="", variant="primary", size="md", leftIcon, rightIcon, children, ...props }) =>
+  <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...props}>
+    {leftIcon && <span className="mr-2 flex items-center">{leftIcon}</span>}
+    {children}
+    {rightIcon && <span className="ml-2 flex items-center">{rightIcon}</span>}
+  </button>;

@@ -15,7 +15,7 @@ import { Modal } from '@/components/aura/Modal';
 import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
 
 export default function ChauffeursPage() {
-  const { t } = useI18n();
+  useI18n(); // Required for locale reactivity
   
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -212,7 +212,7 @@ export default function ChauffeursPage() {
 
       {/* Modal */}
       <Modal
-        isOpen={isModalOpen}
+        open={isModalOpen}
         onClose={handleCloseModal}
         title={editingDriver ? 'Modifier le chauffeur' : 'Nouveau chauffeur'}
         size="md"
@@ -308,7 +308,7 @@ export default function ChauffeursPage() {
       </Modal>
 
       <ConfirmDialog
-        isOpen={deleteId !== null}
+        open={deleteId !== null}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Supprimer le chauffeur"

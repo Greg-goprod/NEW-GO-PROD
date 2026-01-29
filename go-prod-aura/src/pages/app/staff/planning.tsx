@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Plus, Clock, Users, MapPin, Edit2, Trash2, Copy } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Calendar, Plus, Clock, Users, Edit2, Trash2 } from 'lucide-react';
+import { Button } from '@/components/aura/Button';
 import { PageHeader } from '@/components/aura/PageHeader';
 import { Modal } from '@/components/aura/Modal';
 import { Input } from '@/components/ui/Input';
@@ -13,10 +13,12 @@ import { useToast } from '@/components/aura/ToastProvider';
 import { supabase } from '@/lib/supabaseClient';
 import { getCurrentCompanyId } from '@/lib/tenant';
 import { fetchShiftsByEvent, createShift, updateShift, deleteShift } from '@/api/staffShiftsApi';
+import { useStaffLookups } from '@/hooks/useStaffLookups';
 import type { StaffShiftWithRelations, StaffShiftInput } from '@/types/staff';
 
 type ShiftFormData = {
   event_id: string;
+  department_id: string;
   title: string;
   description: string;
   shift_date: Date | null;
@@ -30,6 +32,7 @@ type ShiftFormData = {
 
 const emptyFormData: ShiftFormData = {
   event_id: '',
+  department_id: '',
   title: '',
   description: '',
   shift_date: null,
@@ -69,6 +72,7 @@ export default function StaffPlanningPage() {
   }>({ open: false, shift: null });
 
   const { success, error: toastError } = useToast();
+  const { departments } = useStaffLookups();
 
   // Charger company_id
   useEffect(() => {
@@ -143,6 +147,7 @@ export default function StaffPlanningPage() {
     setEditingShift(shift);
     setFormData({
       event_id: shift.event_id,
+      department_id: shift.department_id,
       title: shift.title,
       description: shift.description || '',
       shift_date: shift.shift_date ? new Date(shift.shift_date) : null,
@@ -168,6 +173,7 @@ export default function StaffPlanningPage() {
     const errors: Record<string, string> = {};
 
     if (!formData.event_id) errors.event_id = 'Événement requis';
+    if (!formData.department_id) errors.department_id = 'Département requis';
     if (!formData.title.trim()) errors.title = 'Titre requis';
     if (!formData.shift_date) errors.shift_date = 'Date requise';
     if (!formData.start_time) errors.start_time = 'Heure de début requise';
@@ -187,6 +193,7 @@ export default function StaffPlanningPage() {
     try {
       const input: StaffShiftInput = {
         event_id: formData.event_id,
+        department_id: formData.department_id,
         title: formData.title,
         description: formData.description,
         shift_date: formData.shift_date!,
@@ -382,6 +389,18 @@ export default function StaffPlanningPage() {
             ]}
             error={formErrors.event_id}
             disabled={!!editingShift}
+          />
+
+          {/* Département */}
+          <Select
+            label="Département"
+            value={formData.department_id}
+            onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
+            options={[
+              { value: '', label: 'Sélectionner un département' },
+              ...(departments || []).map((dept) => ({ value: dept.id, label: dept.name })),
+            ]}
+            error={formErrors.department_id}
           />
 
           {/* Titre */}

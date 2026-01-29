@@ -16,7 +16,7 @@ import { Modal } from '@/components/aura/Modal';
 import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
 
 export default function VehiculesPage() {
-  const { t } = useI18n();
+  useI18n(); // Required for locale reactivity
   const { currentEvent } = useCurrentEvent();
   
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -205,7 +205,7 @@ export default function VehiculesPage() {
       )}
 
       <Modal
-        isOpen={isModalOpen}
+        open={isModalOpen}
         onClose={handleCloseModal}
         title={editingVehicle ? 'Modifier le véhicule' : 'Nouveau véhicule'}
         size="md"
@@ -292,7 +292,7 @@ export default function VehiculesPage() {
       </Modal>
 
       <ConfirmDialog
-        isOpen={deleteId !== null}
+        open={deleteId !== null}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Supprimer le véhicule"

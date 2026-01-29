@@ -42,7 +42,7 @@ function getMinutePosition(index: number, centerSize: number) {
  * @deprecated Préférer TimePickerPopup pour usage en formulaire.
  * @see {@link TimePickerPopup}
  */
-export function TimePickerCircular24({ value, onChange, placeholder, className, onClose }: TimePickerProps) {
+export function TimePickerCircular24({ value, onChange, className, onClose }: TimePickerProps) {
   const [mode, setMode] = React.useState<'hours' | 'minutes'>('hours')
   const [internal, setInternal] = React.useState<string | null>(value ?? null)
 
@@ -137,7 +137,6 @@ export function TimePickerCircular24({ value, onChange, placeholder, className, 
                 // Cercle INTÉRIEUR : 0-11 (00h-11h/minuit-midi)
                 const inner = hour < 12  // 0-11 = intérieur, 12-23 = extérieur
                 // Position sur le cadran : 12 en haut (index 0)
-                const displayHour = hour === 0 ? 12 : hour  // Afficher 12 pour minuit
                 const actualHour = hour % 12  // Position angulaire (0-11)
                 const pos = getHourPosition(actualHour, inner, centerSize)
                 const selected = hours === hour

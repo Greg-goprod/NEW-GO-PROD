@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Modal } from "../../../components/aura/Modal";
 import { Button } from "../../../components/aura/Button";
-import { Input } from "../../../components/aura/Input";
 import { useToast } from "../../../components/aura/ToastProvider";
 
 export interface RejectOfferModalProps {
@@ -13,7 +12,7 @@ export interface RejectOfferModalProps {
 export function RejectOfferModal({ open, onClose, onReject }: RejectOfferModalProps) {
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { error: toastError } = useToast();
 
   const handleReject = async () => {
     if (!reason.trim()) {

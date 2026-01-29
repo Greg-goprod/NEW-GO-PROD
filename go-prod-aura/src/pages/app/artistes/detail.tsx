@@ -1,4 +1,4 @@
-import { User, ArrowLeft, Music, TrendingUp, Calendar, Mail, Phone, MapPin, Briefcase, Globe } from "lucide-react";
+import { User, ArrowLeft, Music, TrendingUp, Calendar, Mail, Phone } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";

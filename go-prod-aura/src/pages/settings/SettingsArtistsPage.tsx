@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { Users, DollarSign, Eye, Upload } from 'lucide-react';
+import { useState } from 'react';
+import { DollarSign, Eye, Upload } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/aura/Card';
 import { Button } from '@/components/aura/Button';
-import { Input } from '@/components/aura/Input';
 import { Badge } from '@/components/aura/Badge';
 import { useToast } from '@/components/aura/ToastProvider';
 

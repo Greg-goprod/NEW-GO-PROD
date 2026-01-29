@@ -8,7 +8,7 @@
  * Design identique à SendContractForSignatureModal
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Send, FileText, Plus, X, Mail, Eye, User, Users, Building2 } from "lucide-react";
 import { Modal } from "@/components/aura/Modal";
 import { Button } from "@/components/aura/Button";
@@ -175,9 +175,6 @@ export function SendContractToArtistModal({
         }
 
         // Charger les contacts avec rôle "Administration/contrats" dans cette agence
-        // Le rôle ID pour "Administration/contrats" doit être trouvé
-        const ADMIN_CONTRACTS_ROLE_ID = "0b15f85f-7e8b-4c2e-b123-3b8c4d5e6f7a"; // À vérifier
-        
         // D'abord, trouver le rôle "Administration/contrats" ou similaire
         const { data: roleData } = await supabase
           .from("crm_contact_roles")
@@ -186,8 +183,6 @@ export function SendContractToArtistModal({
           .limit(5);
         
         console.log("[SendContractToArtist] Rôles trouvés:", roleData);
-        
-        const adminRoleIds = roleData?.map(r => r.id) || [];
 
         // Charger les contacts de l'agence (ceux qui ont cette entreprise dans leur link)
         const { data: contactsLinked, error: contactsError } = await supabase
@@ -225,14 +220,12 @@ export function SendContractToArtistModal({
             // Vérifier si le contact a un rôle admin/contrats
             const roles = contact.crm_contact_role_links || [];
             let roleName = "";
-            let isAdminRole = false;
 
             for (const roleLink of roles) {
               const rName = roleLink.crm_contact_roles?.name || "";
               if (rName.toLowerCase().includes("admin") || 
                   rName.toLowerCase().includes("contrat") ||
                   rName.toLowerCase().includes("finance")) {
-                isAdminRole = true;
                 roleName = rName;
                 break;
               }

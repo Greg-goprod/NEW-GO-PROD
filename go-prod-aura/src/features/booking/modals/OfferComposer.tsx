@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from "react";
-import { FileText, Eye, Send, DollarSign, User, Plus, FileDown, MessageSquare } from "lucide-react";
+import { FileText, Eye, Send, DollarSign, User, FileDown, MessageSquare } from "lucide-react";
 import { DraggableModal } from "../../../components/aura/DraggableModal";
 import { Button } from "../../../components/aura/Button";
 import { useToast } from "../../../components/aura/ToastProvider";
@@ -9,7 +9,7 @@ import { DatePickerPopup } from "../../../components/ui/pickers/DatePickerPopup"
 import { TimePickerPopup } from "../../../components/ui/pickers/TimePickerPopup";
 import { supabase } from "../../../lib/supabaseClient";
 import { generateOfferPdfAndUpload } from "../pdf/pdfFill";
-import { generateOfferWordAndUpload, downloadGeneratedWord, type OfferWordInput } from "../word/wordFill";
+import { generateOfferWordAndUpload, type OfferWordInput } from "../word/wordFill";
 import { createOffer, updateOffer, createSignedOfferPdfUrl } from "../bookingApi";
 import {
   listOfferClauses,
@@ -37,23 +37,23 @@ export interface Offer {
   id: string;
   event_id: string;
   company_id: string;
-  artist_id: string;
-  stage_id: string;
-  agency_contact_id?: string;
-  artist_name: string;
-  stage_name: string;
-  date_time: string;
-  performance_time: string;
-  duration: number | null;
+  artist_id?: string | null;
+  stage_id?: string | null;
+  agency_contact_id?: string | null;
+  artist_name?: string | null;
+  stage_name?: string | null;
+  date_time?: string | null;
+  performance_time?: string | null;
+  duration?: number | null;
   duration_minutes?: number | null;
-  currency: string | null;
-  amount_net: number | null;
-  amount_gross: number | null;
-  amount_is_net: boolean;
-  amount_gross_is_subject_to_withholding?: boolean;
-  withholding_note?: string;
-  amount_display: number | null;
-  agency_commission_pct: number | null;
+  currency?: string | null;
+  amount_net?: number | null;
+  amount_gross?: number | null;
+  amount_is_net?: boolean | null;
+  amount_gross_is_subject_to_withholding?: boolean | null;
+  withholding_note?: string | null;
+  amount_display?: number | null;
+  agency_commission_pct?: number | null;
   
   // Frais additionnels
   prod_fee_amount?: number | null;
@@ -69,15 +69,16 @@ export interface Offer {
   technical_fee_amount?: number | null;
   technical_fee_currency?: string | null;
   
-  ready_to_send_at: string | null;
+  ready_to_send_at?: string | null;
   status: string;
-  validity_date: string | null;
-  pdf_storage_path: string | null;
-  original_offer_id: string | null;
-  version: number;
-  terms_json?: any;
-  rejection_reason: string | null;
-  updated_at: string;
+  validity_date?: string | null;
+  pdf_storage_path?: string | null;
+  word_storage_path?: string | null;
+  original_offer_id?: string | null;
+  version?: number | null;
+  terms_json?: any | null;
+  rejection_reason?: string | null;
+  updated_at?: string;
 }
 
 export interface OfferComposerProps {
@@ -462,21 +463,21 @@ export function OfferComposer({
       console.log("[OfferComposer] MODE ÉDITION - Chargement des données de l'offre:", editingOffer.id);
       console.log("[OfferComposer] MODE ÉDITION - agency_contact_id depuis editingOffer:", editingOffer.agency_contact_id, "booking_agency_id:", (editingOffer as any).booking_agency_id);
       setFormData({
-        artist_id: editingOffer.artist_id,
-        stage_id: editingOffer.stage_id,
+        artist_id: editingOffer.artist_id ?? "",
+        stage_id: editingOffer.stage_id ?? "",
         agency_contact_id: editingOffer.agency_contact_id || "",
         booking_agency_id: (editingOffer as any).booking_agency_id || "",
         date_time: editingOffer.date_time ? editingOffer.date_time.split("T")[0] : "",
         performance_time: editingOffer.performance_time ? editingOffer.performance_time.slice(0, 5) : "14:00",
         duration: editingOffer.duration || editingOffer.duration_minutes || 60,
         currency: (editingOffer.currency || "EUR") as CurrencyCode,
-        amount_net: editingOffer.amount_net,
-        amount_gross: editingOffer.amount_gross,
-        amount_is_net: editingOffer.amount_is_net,
+        amount_net: editingOffer.amount_net ?? null,
+        amount_gross: editingOffer.amount_gross ?? null,
+        amount_is_net: editingOffer.amount_is_net ?? false,
         amount_gross_is_subject_to_withholding: editingOffer.amount_gross_is_subject_to_withholding || false,
         withholding_note: editingOffer.withholding_note || "",
-        amount_display: editingOffer.amount_display,
-        agency_commission_pct: editingOffer.agency_commission_pct,
+        amount_display: editingOffer.amount_display ?? null,
+        agency_commission_pct: editingOffer.agency_commission_pct ?? null,
         validity_date: editingOffer.validity_date || "",
         // Notes
         notes_date: (editingOffer as any).notes_date || "",
@@ -1174,161 +1175,6 @@ export function OfferComposer({
       throw error;
     }
   }
-  
-  // =============================================================================
-  // GÉNÉRATION DU PDF
-  // =============================================================================
-  const handleGeneratePdf = async () => {
-    if (!validateForm()) {
-      toastError("Veuillez remplir tous les champs obligatoires avant de générer le PDF");
-      return;
-    }
-    
-    setGeneratingPdf(true);
-    try {
-      // 1. S'assurer que l'offre est sauvegardée d'abord
-      let offerId = editingOffer?.id;
-      
-      if (!offerId) {
-        // Sauvegarder l'offre en draft d'abord
-        toastSuccess("Sauvegarde de l'offre...");
-        
-        const selectedArtist = artists.find(a => a.id === formData.artist_id);
-        const selectedStage = stages.find(s => s.id === formData.stage_id);
-        
-        const payload: any = {
-          company_id: companyId,
-          event_id: eventId,
-          artist_id: formData.artist_id || null,
-          stage_id: formData.stage_id || null,
-          artist_name: selectedArtist?.name || prefilledData?.artist_name || "",
-          stage_name: selectedStage?.name || prefilledData?.stage_name || "",
-          status: "draft",
-          currency: formData.currency,
-          amount_net: formData.amount_net,
-          amount_gross: formData.amount_gross,
-          amount_is_net: formData.amount_is_net,
-          amount_display: formData.amount_is_net ? formData.amount_net : formData.amount_gross,
-          agency_commission_pct: formData.agency_commission_pct,
-          date_time: formData.date_time ? new Date(formData.date_time).toISOString() : null,
-          performance_time: formData.performance_time || null,
-          duration: formData.duration,
-          validity_date: formData.validity_date || null,
-          agency_contact_id: formData.agency_contact_id || null,
-          booking_agency_id: formData.booking_agency_id || null,
-          prod_fee_amount: prodFeeAmount ?? 0,
-          backline_fee_amount: backlineFeeAmount ?? 0,
-          buyout_hotel_amount: buyoutHotelAmount ?? 0,
-          buyout_meal_amount: buyoutMealAmount ?? 0,
-          flight_contribution_amount: flightContributionAmount ?? 0,
-          technical_fee_amount: technicalFeeAmount ?? 0,
-          amount_gross_is_subject_to_withholding: formData.amount_gross_is_subject_to_withholding,
-          withholding_note: formData.withholding_note || null,
-          // Notes
-          notes_date: formData.notes_date || null,
-          notes_financial: formData.notes_financial || null,
-          note_general: formData.note_general || null,
-          terms_json: {
-            selectedClauseIds: exclusivityClausesSelected,
-          },
-        };
-        
-        const newOffer = await createOffer(payload);
-        offerId = newOffer.id;
-        
-        // Sauvegarder les extras
-        await saveOfferExtras(offerId, selectedExtras);
-      }
-      
-      // 2. Récupérer le nom de l'événement
-      const { data: eventData } = await supabase
-        .from("events")
-        .select("name")
-        .eq("id", eventId)
-        .single();
-      
-      const eventName = eventData?.name || "Événement";
-      
-      // 3. Construire le résumé des extras
-      const extrasEntries = Object.entries(selectedExtras);
-      const extrasSummary = extrasEntries.length > 0
-        ? extrasEntries.map(([extraId, chargedTo]) => {
-            const extra = bookingExtras.find(e => e.id === extraId);
-            const payer = chargedTo === "artist" ? "Artiste" : "Festival";
-            return `${extra?.title || "Extra"} — ${payer}`;
-          }).join("\n")
-        : "";
-      
-      // 4. Construire le résumé des clauses
-      const clausesSummary = exclusivityClausesSelected.length > 0
-        ? exclusivityClauses
-            .filter(c => exclusivityClausesSelected.includes(c.id))
-            .map(c => c.name)
-            .join("\n")
-        : "";
-      
-      // 5. Préparer les données pour le PDF
-      const selectedArtist = artists.find(a => a.id === formData.artist_id);
-      const selectedStage = stages.find(s => s.id === formData.stage_id);
-      
-      const pdfInput = {
-        event_name: eventName,
-        artist_name: selectedArtist?.name || prefilledData?.artist_name || "",
-        stage_name: selectedStage?.name || prefilledData?.stage_name || "",
-        performance_date: formData.date_time || prefilledData?.event_day_date || "",
-        performance_time: formData.performance_time || "",
-        duration: formData.duration || null,
-        currency: formData.currency || null,
-        amount_net: formData.amount_net,
-        amount_gross: formData.amount_gross,
-        amount_display: formData.amount_is_net ? formData.amount_net : formData.amount_gross,
-        amount_is_net: formData.amount_is_net,
-        notes: null,
-        prod_fee_amount: prodFeeAmount || null,
-        backline_fee_amount: backlineFeeAmount || null,
-        buyout_hotel_amount: buyoutHotelAmount || null,
-        buyout_meal_amount: buyoutMealAmount || null,
-        flight_contribution_amount: flightContributionAmount || null,
-        technical_fee_amount: technicalFeeAmount || null,
-        extras_summary: extrasSummary,
-        clauses_summary: clausesSummary,
-        offer_id: offerId!,
-        event_id: eventId,
-        company_id: companyId,
-        validity_date: formData.validity_date || null,
-        agency_commission_pct: formData.agency_commission_pct || null,
-      };
-      
-      // 6. Générer et uploader le PDF
-      toastSuccess("Génération du PDF en cours...");
-      const { storagePath } = await generateOfferPdfAndUpload(pdfInput);
-      
-      // 7. Mettre à jour l'offre avec le chemin du PDF
-      await updateOffer(offerId!, {
-        pdf_storage_path: storagePath,
-      });
-      
-      // 8. Créer une URL signée pour télécharger/afficher le PDF
-      const signedUrl = await createSignedOfferPdfUrl(storagePath);
-      
-      if (signedUrl) {
-        // Ouvrir le PDF dans un nouvel onglet
-        window.open(signedUrl, "_blank");
-        toastSuccess("PDF généré avec succès !");
-      } else {
-        toastSuccess("PDF généré et sauvegardé !");
-      }
-      
-      // Rafraîchir la liste
-      onSuccess();
-      
-    } catch (error: any) {
-      console.error("Erreur génération PDF:", error);
-      toastError(error?.message || "Erreur de génération PDF");
-    } finally {
-      setGeneratingPdf(false);
-    }
-  };
   
   // =============================================================================
   // GÉNÉRATION COMPLÈTE (WORD + PDF)
