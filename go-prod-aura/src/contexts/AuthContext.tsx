@@ -152,11 +152,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         setSession(session);
         setUser(session?.user ?? null);
+        // Arrêter le loading dès qu'on sait si session existe ou non
+        setLoading(false);
         
+        // Charger le profil en arrière-plan (non bloquant)
         if (session?.user) {
           fetchProfile(session.user.id);
-        } else {
-          setLoading(false);
         }
       })
       .catch((err) => {
@@ -176,18 +177,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(null);
           setUser(null);
           setProfile(null);
-          setLoading(false);
           return;
         }
         
         setSession(session);
         setUser(session?.user ?? null);
         
+        // Charger le profil en arrière-plan (non bloquant)
         if (session?.user) {
-          await fetchProfile(session.user.id);
+          fetchProfile(session.user.id);
         } else {
           setProfile(null);
-          setLoading(false);
         }
       }
     );
@@ -229,9 +229,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('[Auth] Exception fetching profile:', err);
       setProfile(null);
       clearCompanyIdCache();
-    } finally {
-      console.log('[Auth] fetchProfile completed, setting loading to false');
-      setLoading(false);
     }
   }
 
