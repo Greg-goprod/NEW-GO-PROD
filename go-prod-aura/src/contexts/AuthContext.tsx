@@ -17,7 +17,7 @@ const DEV_PROFILE = {
   company_id: '06f6c960-3f90-41cb-b0d7-46937eaf90a8',
 };
 
-const AUTH_TIMEOUT_MS = 5000;
+const AUTH_TIMEOUT_MS = 15000; // 15 secondes pour les connexions lentes
 
 // ============================================================================
 // TYPES
@@ -199,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function fetchProfile(userId: string) {
+    console.log('[Auth] Fetching profile for user:', userId);
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -211,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         clearCompanyIdCache();
       } else {
+        console.log('[Auth] Profile loaded:', data?.email, 'company_id:', data?.company_id);
         setProfile(data);
         // Mettre à jour le cache du company_id pour le tenant
         setCompanyIdCache(data?.company_id ?? null);
@@ -218,7 +220,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error('[Auth] Exception fetching profile:', err);
       setProfile(null);
+      clearCompanyIdCache();
     } finally {
+      console.log('[Auth] fetchProfile completed, setting loading to false');
       setLoading(false);
     }
   }
