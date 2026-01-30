@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback, type ReactNode } from 'react';
 import { supabase, isAuthError, tryRefreshSession } from '@/lib/supabaseClient';
+import { setCompanyIdCache, clearCompanyIdCache } from '@/lib/tenant';
 import type { Session, User } from '@supabase/supabase-js';
 
 // ============================================================================
@@ -208,8 +209,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error('[Auth] Error fetching profile:', error);
         setProfile(null);
+        clearCompanyIdCache();
       } else {
         setProfile(data);
+        // Mettre à jour le cache du company_id pour le tenant
+        setCompanyIdCache(data?.company_id ?? null);
       }
     } catch (err) {
       console.error('[Auth] Exception fetching profile:', err);
@@ -229,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setUser(null);
     setProfile(null);
+    clearCompanyIdCache();
   }
 
   return (

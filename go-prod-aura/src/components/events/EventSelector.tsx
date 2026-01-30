@@ -5,29 +5,19 @@ import { useCurrentEvent } from '@/hooks/useCurrentEvent';
 import { listEvents } from '@/api/eventsApi';
 import type { EventWithCounts } from '@/api/eventsApi';
 import { EventForm } from '@/features/settings/events/EventForm';
-import { getCurrentCompanyId } from '@/lib/tenant';
-import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function EventSelector() {
   const [events, setEvents] = useState<EventWithCounts[]>([]);
   const [loading, setLoading] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const { error: toastError } = useToast();
+  const { profile } = useAuth();
   
   const { eventId, setCurrentEvent } = useCurrentEvent();
 
-  // Récupérer le company_id au montage
-  useEffect(() => {
-    (async () => {
-      try {
-        const cid = await getCurrentCompanyId(supabase);
-        setCompanyId(cid);
-      } catch (e) {
-        console.error('❌ Erreur récupération company_id dans EventSelector:', e);
-      }
-    })();
-  }, []);
+  // Récupérer le company_id depuis le profil utilisateur
+  const companyId = profile?.company_id ?? null;
 
   // Charger la liste des évènements
   const loadEvents = useCallback(async () => {
@@ -105,12 +95,12 @@ export function EventSelector() {
   };
 
 
-  // Si pas de companyId
+  // Si pas de companyId (profil non chargé ou utilisateur sans organisation)
   if (!companyId) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-        <Calendar className="w-4 h-4 text-gray-500" />
-        <span className="text-sm text-gray-500">Sélectionnez une organisation</span>
+      <div className="flex items-center gap-2 px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+        <Calendar className="w-4 h-4 text-yellow-500" />
+        <span className="text-sm text-yellow-400">Chargement de votre organisation...</span>
       </div>
     );
   }
