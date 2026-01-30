@@ -2,7 +2,7 @@ import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 import { saveAs } from "file-saver";
 import { supabase } from "@/lib/supabaseClient";
-import { normalizeName, formatIsoDate } from "@/services/date";
+import { normalizeName, formatIsoDate, sanitizeForStorage } from "@/services/date";
 import { fetchOfferSettings, type OfferSettings } from "../offerSettingsApi";
 
 // =============================================================================
@@ -450,9 +450,10 @@ export async function generateOfferWordAndUpload(
     throw new Error("Impossible de generer le document Word");
   }
 
-  // Construire le nom du fichier: OFFRE - nom evenement - nom artiste - date performance
-  const cleanEvent = normalizeName(input.event_name || "EVENT");
-  const cleanArtist = normalizeName(input.artist_name || "ARTIST");
+  // Construire le nom du fichier: OFFRE_nom_evenement_nom_artiste_date_performance
+  // Utiliser sanitizeForStorage pour les chemins Supabase (pas d'espaces, pas d'accents)
+  const cleanEvent = sanitizeForStorage(input.event_name || "EVENT");
+  const cleanArtist = sanitizeForStorage(input.artist_name || "ARTIST");
   
   // Formater la date de performance (YYYY-MM-DD -> DD-MM-YYYY)
   let dateStr = "";
@@ -463,7 +464,7 @@ export async function generateOfferWordAndUpload(
     }
   }
   
-  const base = `OFFRE - ${cleanEvent} - ${cleanArtist}${dateStr ? ` - ${dateStr}` : ""}`;
+  const base = `OFFRE_${cleanEvent}_${cleanArtist}${dateStr ? `_${dateStr}` : ""}`;
   const wordFileName = `${base}.docx`;
   const basePath = `${input.company_id}/${input.event_id}/${input.offer_id}`;
   const wordPath = `${basePath}/${wordFileName}`;
