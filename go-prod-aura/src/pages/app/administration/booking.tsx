@@ -467,8 +467,12 @@ export default function AdminBookingPage() {
         };
       });
 
-    // Ne plus filtrer les statuts - afficher toutes les offres
-    return [...performanceRows, ...unmatchedOffers];
+    // Filtrer les offres acceptées et rejetées (elles sont affichées dans leurs sections respectives)
+    const allRows = [...performanceRows, ...unmatchedOffers];
+    return allRows.filter((row) => {
+      const status = (row as any).status || (row as any).booking_status;
+      return status !== "accepted" && status !== "rejected";
+    });
   }, [offers, performances, computeRealDate]);
 
   async function handleMove(offerId: string, newStatus: OfferStatus | "draft_and_todo") {
@@ -833,7 +837,7 @@ ${data.sender.name}
         <>
           <Card>
             <CardHeader>
-              <div className="font-semibold text-gray-900 dark:text-gray-100">Vue Liste des Offres</div>
+              <div className="font-semibold text-gray-900 dark:text-gray-100">OFFRES EN COURS</div>
             </CardHeader>
             <CardBody>
               {loading ? (
@@ -906,11 +910,11 @@ ${data.sender.name}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900 dark:text-gray-100">Offres</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">OFFRES ACCEPTÉES</span>
                 <Badge color="lightgreen">{acceptedOffers.length}</Badge>
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                Offres validées et clôturées
+                OFFRES ACCEPTÉES PAR LES ARTISTES
               </div>
             </CardHeader>
             <CardBody>
@@ -977,11 +981,11 @@ ${data.sender.name}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900 dark:text-gray-100">Performances et offres rejetées</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">PERFORMANCES ET OFFRES REJETÉES</span>
                 <Badge color="framboise">{rejectedOffers.length}</Badge>
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                Artistes refusés ou non retenus
+                ARTISTES REFUSÉS OU NON RETENUS
               </div>
             </CardHeader>
             <CardBody>

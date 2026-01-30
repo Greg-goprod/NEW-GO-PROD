@@ -42,7 +42,7 @@ interface ArtistBudget {
   total_technical_fee: Record<string, number>;
   total_all_fees: Record<string, number>; // Total incluant tout (cachet + commission + frais)
   total_in_chf: number; // Total converti en CHF
-  withholding_tax_results: ArtistTaxResult[]; // Résultats du calcul d'impôt à la source par performance
+  withholding_tax_results: Record<string, ArtistTaxResult>; // Résultats du calcul d'impôt à la source par performance (clé = performance ID)
   total_withholding_tax_chf: number; // Total de l'impôt à la source en CHF
 }
 
@@ -62,13 +62,18 @@ interface ExchangeRateAPIResponse {
 }
 
 // Fonctions utilitaires (hors composant pour éviter recréation)
+// Formater avec apostrophe comme séparateur de milliers (format suisse)
+const formatWithApostrophe = (amount: number) => {
+  return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+};
+
 const formatCurrency = (amount: number, currency: string) => {
-  return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${currency}`;
+  return `${formatWithApostrophe(amount)} ${currency}`;
 };
 
 // Formater un montant sans la devise
 const formatAmount = (amount: number) => {
-  return amount.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return formatWithApostrophe(amount);
 };
 
 const calculateCommissionAmount = (feeAmount: number | null, commissionPercentage: number | null): number => {
@@ -84,8 +89,15 @@ export default function BudgetArtistiquePage() {
   const { success: toastSuccess, error: toastError } = useToast();
   
   const [loading, setLoading] = useState(false);
-  const [demoMode, setDemoMode] = useState(!hasEvent);
+  const [demoMode, setDemoMode] = useState(false);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  
+  // Mettre à jour demoMode quand hasEvent change
+  useEffect(() => {
+    if (hasEvent) {
+      setDemoMode(false);
+    }
+  }, [hasEvent]);
   
   // Données
   const [days, setDays] = useState<EventDay[]>([]);
@@ -179,9 +191,14 @@ export default function BudgetArtistiquePage() {
 
   // Charger les données
   const loadData = async () => {
-    if (!hasEvent || demoMode) {
+    if (demoMode) {
       setDays([]);
       setPerformances([]);
+      return;
+    }
+    
+    // Ne pas effacer les données si pas d'event (peut être temporaire au rechargement)
+    if (!hasEvent || !eventId) {
       return;
     }
 
@@ -202,13 +219,15 @@ export default function BudgetArtistiquePage() {
   };
 
   useEffect(() => {
-    loadData();
-  }, [eventId, hasEvent, demoMode]);
+    if (eventId) {
+      loadData();
+    }
+  }, [eventId, demoMode]);
 
   // Rafraîchir les données quand la page redevient visible
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && hasEvent && !demoMode) {
+      if (document.visibilityState === 'visible' && eventId && !demoMode) {
         console.log('📊 Page Budget visible - Rafraîchissement des données...');
         loadData();
       }
@@ -219,7 +238,7 @@ export default function BudgetArtistiquePage() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [hasEvent, demoMode]);
+  }, [eventId, demoMode]);
 
   // Gérer l'édition d'une performance (finances uniquement)
   const handleEditFinances = (performance: Performance) => {
@@ -304,7 +323,7 @@ export default function BudgetArtistiquePage() {
           total_technical_fee: {},
           total_all_fees: {},
           total_in_chf: 0,
-          withholding_tax_results: [],
+          withholding_tax_results: {},
           total_withholding_tax_chf: 0,
         };
       }
@@ -363,10 +382,15 @@ export default function BudgetArtistiquePage() {
       budget.total_in_chf = convertAllToCHF(budget.total_all_fees);
       
       // Calcul de l'impôt à la source pour chaque performance
-      budget.withholding_tax_results = [];
+      budget.withholding_tax_results = {};
       let totalTaxInCHF = 0;
       
       budget.performances.forEach((perf) => {
+        // Ignorer si l'artiste n'est pas soumis à l'impôt à la source (ex: artistes suisses)
+        if (perf.subject_to_withholding_tax === false) {
+          return;
+        }
+        
         // On ne calcule l'impôt que si un cachet est renseigné
         if (perf.fee_amount && perf.fee_amount > 0 && perf.fee_currency) {
           // Convertir le montant en CHF pour le calcul
@@ -389,11 +413,11 @@ export default function BudgetArtistiquePage() {
               nbDays: nbDays,
             });
             
-            // On stocke le résultat avec le montant net = montant offert
-            budget.withholding_tax_results.push({
+            // On stocke le résultat avec l'ID de la performance comme clé
+            budget.withholding_tax_results[perf.id] = {
               ...taxResult,
               netAmount: feeInCHF, // Forcer le montant net = montant offert
-            });
+            };
             totalTaxInCHF += taxResult.taxAmount;
             
           } else {
@@ -405,7 +429,8 @@ export default function BudgetArtistiquePage() {
               nbDays: nbDays,
             });
             
-            budget.withholding_tax_results.push(taxResult);
+            // On stocke le résultat avec l'ID de la performance comme clé
+            budget.withholding_tax_results[perf.id] = taxResult;
             totalTaxInCHF += taxResult.taxAmount;
           }
         }
@@ -605,12 +630,12 @@ export default function BudgetArtistiquePage() {
 
     // Calculer les totaux Net/Brut (montants offerts) et les impôts par budget
     artistsBudgets.forEach(budget => {
-      let taxResultIndex = 0;
       budget.performances.forEach((perf) => {
         // On ne traite que les performances avec un cachet
         if (perf.fee_amount && perf.fee_amount > 0 && perf.fee_currency) {
           const feeInCHF = convertToCHF(perf.fee_amount, perf.fee_currency);
-          const taxResult = budget.withholding_tax_results[taxResultIndex];
+          // Accéder au taxResult via l'ID de la performance
+          const taxResult = budget.withholding_tax_results[perf.id];
           const isNet = perf.fee_is_net ?? false;
           
           if (isNet) {
@@ -625,10 +650,6 @@ export default function BudgetArtistiquePage() {
             if (taxResult) {
               totalWithholdingTaxOnBrut += taxResult.taxAmount;
             }
-          }
-          
-          if (taxResult) {
-            taxResultIndex++;
           }
         }
       });
@@ -964,7 +985,7 @@ export default function BudgetArtistiquePage() {
                     <div className="w-20 text-right">Tech</div>
                     <div className="flex-1 min-w-[100px] text-right bg-violet-100/50 dark:bg-violet-900/30 px-2 py-1 rounded">Total</div>
                     <div className="flex-1 min-w-[90px] text-right">Impots</div>
-                    <div className="flex-1 min-w-[100px] text-right bg-green-100/50 dark:bg-green-900/30 px-2 py-1 rounded">Total CHF</div>
+                    <div className="flex-1 min-w-[100px] text-right bg-green-100/50 dark:bg-green-900/30 px-2 py-1 rounded">Total HT</div>
                     <div className="w-16 text-center">Actions</div>
                   </div>
 
@@ -980,13 +1001,8 @@ export default function BudgetArtistiquePage() {
                       const commissionAmount = calculateCommissionAmount(perf.fee_amount, perf.commission_percentage);
                       
                       // Calculer l'impot pour cette performance
-                      let taxResult = null;
-                      if (budget && budget.withholding_tax_results.length > 0) {
-                        const perfIndex = budget.performances.findIndex(p => p.id === perf.id);
-                        if (perfIndex >= 0 && perfIndex < budget.withholding_tax_results.length) {
-                          taxResult = budget.withholding_tax_results[perfIndex];
-                        }
-                      }
+                      // Accéder au taxResult via l'ID de la performance
+                      const taxResult = budget?.withholding_tax_results[perf.id] || null;
 
                       // Calculer le total pour cette performance
                       let perfTotal = 0;
@@ -1107,7 +1123,7 @@ export default function BudgetArtistiquePage() {
                           {/* Impots */}
                           <div className="flex-1 min-w-[90px] text-right">
                             {taxResult ? (
-                              <span className="text-sm text-gray-700 dark:text-gray-300" title={`Taux: ${(taxResult.taxRate * 100).toFixed(0)}%`}>
+                              <span className="text-xs italic text-gray-500 dark:text-gray-400" title={`Taux: ${(taxResult.taxRate * 100).toFixed(0)}%`}>
                                 {formatCurrency(taxResult.taxAmount, 'CHF')}
                               </span>
                             ) : (
@@ -1164,6 +1180,7 @@ export default function BudgetArtistiquePage() {
             fee_currency: selectedPerformance.fee_currency ?? undefined,
             commission_percentage: selectedPerformance.commission_percentage,
             fee_is_net: selectedPerformance.fee_is_net ?? undefined,
+            subject_to_withholding_tax: selectedPerformance.subject_to_withholding_tax ?? true,
             booking_status: selectedPerformance.booking_status,
             notes: selectedPerformance.notes ?? undefined,
             prod_fee_amount: selectedPerformance.prod_fee_amount,

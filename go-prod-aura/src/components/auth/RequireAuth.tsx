@@ -20,7 +20,10 @@ export function RequireAuth({ children }: RequireAuthProps) {
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-500 mx-auto"></div>
-          <p className="mt-4 text-gray-400">Chargement...</p>
+          <p className="mt-4 text-gray-400">Vérification de la session...</p>
+          <p className="mt-2 text-gray-500 text-sm">
+            Si cette page reste affichée, <a href="/auth/signin" className="text-violet-400 hover:underline">cliquez ici pour vous connecter</a>
+          </p>
         </div>
       </div>
     );

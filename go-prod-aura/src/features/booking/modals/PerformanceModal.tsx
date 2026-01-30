@@ -40,6 +40,7 @@ export interface PerformanceModalProps {
     fee_currency?: string;
     commission_percentage?: number | null;
     fee_is_net?: boolean;
+    subject_to_withholding_tax?: boolean;
     booking_status?: BookingStatus;
     notes?: string;
     // Frais additionnels
@@ -100,6 +101,7 @@ export function PerformanceModal({
     fee_currency: "EUR",
     commission_percentage: null as number | null,
     fee_is_net: false, // false = brut, true = net
+    subject_to_withholding_tax: true, // Par défaut soumis à l'impôt (sauf artistes suisses)
     booking_status: "idee" as BookingStatus,
     notes: "",
     // Frais additionnels - par défaut 0
@@ -165,6 +167,7 @@ export function PerformanceModal({
           fee_currency: initialData.fee_currency || "EUR",
           commission_percentage: initialData.commission_percentage ?? null,
           fee_is_net: initialData.fee_is_net ?? false,
+          subject_to_withholding_tax: initialData.subject_to_withholding_tax ?? true,
           booking_status: initialData.booking_status || "idee",
           notes: initialData.notes || "",
           // Frais additionnels - utiliser 0 par défaut au lieu de null
@@ -272,6 +275,7 @@ export function PerformanceModal({
           fee_currency: formData.fee_currency,
           commission_percentage: formData.commission_percentage,
           fee_is_net: formData.fee_is_net,
+          subject_to_withholding_tax: formData.subject_to_withholding_tax,
           booking_status: formData.booking_status,
           notes: formData.notes || null,
           // Frais additionnels
@@ -306,6 +310,7 @@ export function PerformanceModal({
           fee_currency: formData.fee_currency,
           commission_percentage: formData.commission_percentage,
           fee_is_net: formData.fee_is_net,
+          subject_to_withholding_tax: formData.subject_to_withholding_tax,
           booking_status: formData.booking_status,
           notes: formData.notes || null,
           created_for_event_id: initialData?.eventId,
@@ -446,6 +451,7 @@ export function PerformanceModal({
         fee_currency: "EUR",
         commission_percentage: null,
         fee_is_net: false,
+        subject_to_withholding_tax: true,
         booking_status: "idee",
         notes: "",
         // Frais additionnels - par défaut 0
@@ -806,6 +812,26 @@ export function PerformanceModal({
                     </label>
                   </div>
                 </div>
+              </div>
+
+              {/* Impôt à la source */}
+              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.subject_to_withholding_tax}
+                    onChange={(e) => setFormData(prev => ({ ...prev, subject_to_withholding_tax: e.target.checked }))}
+                    className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 mr-3"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Soumis à l'impôt à la source
+                    </span>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                      Décochez si l'artiste est suisse (non soumis à l'impôt à la source)
+                    </p>
+                  </div>
+                </label>
               </div>
 
               {/* Frais additionnels */}

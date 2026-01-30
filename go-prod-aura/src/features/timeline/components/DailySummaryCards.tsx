@@ -120,6 +120,11 @@ export function DailySummaryCards({
       // Calculer les impôts à la source pour ce jour
       let totalWithholdingTaxCHF = 0;
       dayPerformances.forEach(perf => {
+        // Ignorer si l'artiste n'est pas soumis à l'impôt à la source (ex: artistes suisses)
+        if (perf.subject_to_withholding_tax === false) {
+          return;
+        }
+        
         if (perf.fee_amount && perf.fee_amount > 0 && perf.fee_currency) {
           // Convertir en CHF
           const feeInCHF = convertToCHF(perf.fee_amount, perf.fee_currency);
@@ -150,9 +155,9 @@ export function DailySummaryCards({
     });
   }, [days, performances, convertToCHF]);
 
-  // Helper pour formater les montants
+  // Helper pour formater les montants avec apostrophe comme séparateur de milliers
   const formatCurrency = (amount: number) => {
-    return amount.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
   };
 
   // Préparer 9 colonnes : 7 jours + 2 colonnes pour totaux

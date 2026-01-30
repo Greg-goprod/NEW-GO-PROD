@@ -43,6 +43,7 @@ export interface Performance {
   fee_currency: string | null;
   commission_percentage: number | null;
   fee_is_net?: boolean | null;
+  subject_to_withholding_tax?: boolean | null;
   booking_status: BookingStatus;
   rejection_reason?: string | null;
   rejection_date?: string | null;
@@ -69,6 +70,7 @@ export interface PerformanceCreate {
   fee_currency?: string | null;
   commission_percentage?: number | null;
   fee_is_net?: boolean | null;
+  subject_to_withholding_tax?: boolean | null;
   booking_status?: BookingStatus;
   notes?: string | null;
   is_confirmed?: boolean;
@@ -94,6 +96,7 @@ export interface PerformanceUpdate {
   fee_currency?: string | null;
   commission_percentage?: number | null;
   fee_is_net?: boolean | null;
+  subject_to_withholding_tax?: boolean | null;
   booking_status?: BookingStatus | null;
   rejection_reason?: string | null;
   rejection_date?: string | null;
@@ -241,7 +244,8 @@ export async function fetchPerformances(eventId?: string): Promise<Performance[]
     .from("artist_performances")
     .select(`
       id, artist_id, event_day_id, event_stage_id, performance_time, duration, 
-      fee_amount, fee_currency, commission_percentage, fee_is_net, booking_status, rejection_reason, rejection_date,
+      fee_amount, fee_currency, commission_percentage, fee_is_net, subject_to_withholding_tax,
+      booking_status, rejection_reason, rejection_date,
       notes, is_confirmed, confirmed_at,
       prod_fee_amount, backline_fee_amount, buyout_hotel_amount, buyout_meal_amount,
       flight_contribution_amount, technical_fee_amount,
@@ -271,6 +275,7 @@ export async function fetchPerformances(eventId?: string): Promise<Performance[]
     fee_currency: p.fee_currency,
     commission_percentage: p.commission_percentage,
     fee_is_net: p.fee_is_net,
+    subject_to_withholding_tax: p.subject_to_withholding_tax,
     booking_status: p.booking_status,
     rejection_reason: p.rejection_reason,
     rejection_date: p.rejection_date,
@@ -344,6 +349,7 @@ export async function createPerformance(input: PerformanceCreate): Promise<Perfo
       fee_currency: input.fee_currency,
       commission_percentage: input.commission_percentage,
       fee_is_net: input.fee_is_net,
+      subject_to_withholding_tax: input.subject_to_withholding_tax ?? true, // Par défaut soumis
       booking_status: input.booking_status || "idee",
       notes: input.notes,
       is_confirmed: input.is_confirmed || false,
@@ -359,7 +365,8 @@ export async function createPerformance(input: PerformanceCreate): Promise<Perfo
     })
     .select(`
       id, artist_id, event_day_id, event_stage_id, performance_time, duration, 
-      fee_amount, fee_currency, commission_percentage, fee_is_net, booking_status, rejection_reason, rejection_date,
+      fee_amount, fee_currency, commission_percentage, fee_is_net, subject_to_withholding_tax,
+      booking_status, rejection_reason, rejection_date,
       notes, is_confirmed, confirmed_at,
       prod_fee_amount, backline_fee_amount, buyout_hotel_amount, buyout_meal_amount,
       flight_contribution_amount, technical_fee_amount,
@@ -386,6 +393,7 @@ export async function createPerformance(input: PerformanceCreate): Promise<Perfo
     fee_currency: data.fee_currency,
     commission_percentage: data.commission_percentage,
     fee_is_net: data.fee_is_net,
+    subject_to_withholding_tax: data.subject_to_withholding_tax,
     booking_status: data.booking_status,
     rejection_reason: data.rejection_reason,
     rejection_date: data.rejection_date,
@@ -428,6 +436,7 @@ export async function updatePerformance(input: PerformanceUpdate): Promise<Perfo
   if (input.fee_currency !== undefined) updateData.fee_currency = input.fee_currency;
   if (input.commission_percentage !== undefined) updateData.commission_percentage = input.commission_percentage;
   if (input.fee_is_net !== undefined) updateData.fee_is_net = input.fee_is_net;
+  if (input.subject_to_withholding_tax !== undefined) updateData.subject_to_withholding_tax = input.subject_to_withholding_tax;
   if (input.booking_status !== undefined) updateData.booking_status = input.booking_status;
   if (input.rejection_reason !== undefined) updateData.rejection_reason = input.rejection_reason;
   if (input.rejection_date !== undefined) updateData.rejection_date = input.rejection_date;
@@ -451,7 +460,8 @@ export async function updatePerformance(input: PerformanceUpdate): Promise<Perfo
     .eq("id", input.id)
     .select(`
       id, artist_id, event_day_id, event_stage_id, performance_time, duration, 
-      fee_amount, fee_currency, commission_percentage, fee_is_net, booking_status, rejection_reason, rejection_date,
+      fee_amount, fee_currency, commission_percentage, fee_is_net, subject_to_withholding_tax,
+      booking_status, rejection_reason, rejection_date,
       notes, is_confirmed, confirmed_at,
       prod_fee_amount, backline_fee_amount, buyout_hotel_amount, buyout_meal_amount,
       flight_contribution_amount, technical_fee_amount,
@@ -478,6 +488,7 @@ export async function updatePerformance(input: PerformanceUpdate): Promise<Perfo
     fee_currency: data.fee_currency,
     commission_percentage: data.commission_percentage,
     fee_is_net: data.fee_is_net,
+    subject_to_withholding_tax: data.subject_to_withholding_tax,
     booking_status: data.booking_status,
     rejection_reason: data.rejection_reason,
     rejection_date: data.rejection_date,

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -17,6 +17,9 @@ const DEV_PROFILE = {
   avatar_url: null,
   company_id: '06f6c960-3f90-41cb-b0d7-46937eaf90a8', // Venoge Festival
 };
+
+// Timeout pour éviter le blocage infini (5 secondes)
+const AUTH_TIMEOUT_MS = 5000;
 
 // ============================================================================
 // TYPES
@@ -48,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(BYPASS ? DEV_PROFILE : null);
   const [loading, setLoading] = useState(!BYPASS);
+  const initRef = useRef(false);
 
   useEffect(() => {
     if (BYPASS) {
@@ -55,22 +59,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
+    // Prevent double initialization in strict mode
+    if (initRef.current) return;
+    initRef.current = true;
+
+    // Timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.warn('[Auth] Session check timed out, redirecting to login');
         setLoading(false);
       }
-    });
+    }, AUTH_TIMEOUT_MS);
+
+    // Get initial session
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) {
+          console.error('[Auth] getSession error:', error);
+          setLoading(false);
+          return;
+        }
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          fetchProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error('[Auth] getSession exception:', err);
+        setLoading(false);
+      });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        console.log('[Auth] Auth state changed:', event);
         setSession(session);
         setUser(session?.user ?? null);
+        
         if (session?.user) {
           await fetchProfile(session.user.id);
         } else {
@@ -80,7 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function fetchProfile(userId: string) {
@@ -93,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('[Auth] Error fetching profile:', error);
+        // Don't block on profile error, user is still authenticated
         setProfile(null);
       } else {
         setProfile(data);
@@ -110,7 +144,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('[Auth] Bypass mode - signOut ignored');
       return;
     }
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('[Auth] signOut error:', err);
+    }
     setSession(null);
     setUser(null);
     setProfile(null);

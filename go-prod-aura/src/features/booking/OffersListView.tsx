@@ -151,7 +151,14 @@ export function OffersListView({
       "eminence": "violet",
     };
     const badgeColor = badgeColorMap[config.color] || "gray";
-    return <Badge color={badgeColor}>{config.label}</Badge>;
+    // Largeur fixe basée sur le texte le plus long ("Revue management")
+    return (
+      <div className="w-[120px]">
+        <Badge color={badgeColor} className="w-full justify-center text-center">
+          {config.label}
+        </Badge>
+      </div>
+    );
   };
 
   // Si pas de jours ET pas d'offres, afficher le message vide
@@ -211,6 +218,11 @@ export function OffersListView({
                     </span>
                   </div>
 
+                  {/* Statut */}
+                  <div className="flex-shrink-0">
+                    {getStatusBadge(statusDisplay)}
+                  </div>
+
                   {/* Artiste & Scene */}
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-gray-900 dark:text-gray-100 truncate">
@@ -219,11 +231,6 @@ export function OffersListView({
                     <div className="text-xs text-gray-500 dark:text-gray-400">
                       {stageDisplay}
                     </div>
-                  </div>
-
-                  {/* Statut */}
-                  <div className="flex-shrink-0">
-                    {getStatusBadge(statusDisplay)}
                   </div>
 
                   {/* Actions */}

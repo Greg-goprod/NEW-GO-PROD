@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { FileText, Eye, Send, DollarSign, User, FileDown, MessageSquare } from "lucide-react";
 import { DraggableModal } from "../../../components/aura/DraggableModal";
 import { Button } from "../../../components/aura/Button";
@@ -25,8 +25,13 @@ const getDurationMode = (duration?: number | null): "standard" | "custom" =>
 import {
   fetchArtists,
   fetchEventStages,
+  createPerformance,
+  updatePerformance,
   type Artist,
   type EventStage,
+  type BookingStatus,
+  type Performance,
+  type PerformanceUpdate,
 } from "../../timeline/timelineApi";
 
 // =============================================================================
@@ -51,6 +56,7 @@ export interface Offer {
   amount_gross?: number | null;
   amount_is_net?: boolean | null;
   amount_gross_is_subject_to_withholding?: boolean | null;
+  subject_to_withholding_tax?: boolean | null;
   withholding_note?: string | null;
   amount_display?: number | null;
   agency_commission_pct?: number | null;
@@ -176,6 +182,7 @@ export function OfferComposer({
     amount_gross: null as number | null,
     amount_is_net: true,
     amount_gross_is_subject_to_withholding: false,
+    subject_to_withholding_tax: true, // Par défaut soumis à l'impôt (sauf artistes suisses)
     withholding_note: "",
     amount_display: null as number | null,
     agency_commission_pct: null as number | null,
@@ -187,6 +194,7 @@ export function OfferComposer({
   });
   const [durationMode, setDurationMode] = useState<"standard" | "custom">("standard");
   const [linkedPerformanceId, setLinkedPerformanceId] = useState<string | null>(null);
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
   
   // =============================================================================
   // ÉTATS - Frais additionnels (6 types × 2 champs = 12 états)
@@ -475,6 +483,7 @@ export function OfferComposer({
         amount_gross: editingOffer.amount_gross ?? null,
         amount_is_net: editingOffer.amount_is_net ?? false,
         amount_gross_is_subject_to_withholding: editingOffer.amount_gross_is_subject_to_withholding || false,
+        subject_to_withholding_tax: editingOffer.subject_to_withholding_tax ?? true,
         withholding_note: editingOffer.withholding_note || "",
         amount_display: editingOffer.amount_display ?? null,
         agency_commission_pct: editingOffer.agency_commission_pct ?? null,
@@ -628,6 +637,7 @@ export function OfferComposer({
         amount_gross: !isNet ? amountValue : null,
         amount_is_net: isNet,
         amount_gross_is_subject_to_withholding: !isNet || prefilledData.amount_gross_is_subject_to_withholding || false,
+        subject_to_withholding_tax: prefilledData.amount_gross_is_subject_to_withholding ?? true, // Par défaut soumis
         withholding_note: prefilledData.withholding_note || "",
         amount_display: amountValue,
         agency_commission_pct: prefilledData.commission_percentage ?? null,
@@ -840,6 +850,16 @@ export function OfferComposer({
     if (!formData.currency) newErrors.currency = "Devise requise";
     
     setErrors(newErrors);
+    const firstErrorKey = Object.keys(newErrors)[0];
+    if (firstErrorKey) {
+      const el = fieldRefs.current[firstErrorKey];
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        if ("focus" in el) {
+          (el as HTMLElement).focus();
+        }
+      }
+    }
     return Object.keys(newErrors).length === 0;
   };
   
@@ -959,6 +979,7 @@ export function OfferComposer({
         amount_gross: formData.amount_is_net ? null : formData.amount_gross,
         amount_is_net: formData.amount_is_net,
         amount_gross_is_subject_to_withholding: formData.amount_gross_is_subject_to_withholding,
+        subject_to_withholding_tax: formData.subject_to_withholding_tax,
         withholding_note: formData.withholding_note || null,
         amount_display: amountDisplay,
         agency_commission_pct: formData.agency_commission_pct,
@@ -1033,7 +1054,7 @@ export function OfferComposer({
       await saveOfferExtras(offerId, selectedExtras);
       
       // Mettre à jour la performance liée (horaires + finances)
-      await syncLinkedPerformance();
+      await syncLinkedPerformance(status);
       
       // Mise à jour statut si ready_to_send
       if (status === "ready_to_send") {
@@ -1060,72 +1081,168 @@ export function OfferComposer({
   // =============================================================================
   // SYNCHRONISATION DE LA PERFORMANCE LIÉE (HORAIRES + FINANCIER)
   // =============================================================================
-  async function syncLinkedPerformance(): Promise<void> {
+  async function syncLinkedPerformance(offerStatus: "draft" | "ready_to_send"): Promise<void> {
     try {
       const feeAmount = formData.amount_is_net ? formData.amount_net : formData.amount_gross;
-      if (!formData.artist_id || !eventId) return;
+      if (!formData.artist_id || !eventId || !companyId) return;
 
-      let performanceId = linkedPerformanceId;
+      const normalizedPerfTime = isTBC || !formData.performance_time
+        ? "00:00"
+        : formData.performance_time;
+      const bookingStatus: BookingStatus = offerStatus === "ready_to_send" ? "offre_envoyee" : "offre_a_faire";
 
-      if (!performanceId) {
-        const { data: existingPerf } = await supabase
+      const preferedPerformanceIds = [
+        linkedPerformanceId,
+        prefilledData?.performance_id || null,
+      ].filter((id): id is string => Boolean(id));
+
+      let performanceId: string | null = null;
+      let existingPerfData: { event_day_id: string | null; event_stage_id: string | null } | null = null;
+
+      const fetchPerformanceById = async (perfId: string) => {
+        const { data, error } = await supabase
           .from("artist_performances")
-          .select("id")
-          .eq("artist_id", formData.artist_id)
-          .eq("event_id", eventId)
+          .select("id, event_day_id, event_stage_id")
+          .eq("id", perfId)
           .maybeSingle();
-        performanceId = existingPerf?.id || null;
+        if (error && error.code !== "PGRST116") throw error;
+        return data || null;
+      };
+
+      for (const candidate of preferedPerformanceIds) {
+        const data = await fetchPerformanceById(candidate);
+        if (data) {
+          performanceId = data.id;
+          existingPerfData = { event_day_id: data.event_day_id, event_stage_id: data.event_stage_id };
+          break;
+        }
       }
 
       if (!performanceId) {
-        console.warn("[PERF] Aucune performance liée, synchronisation ignorée");
+        const { data, error } = await supabase
+          .from("artist_performances")
+          .select("id, event_day_id, event_stage_id")
+          .eq("artist_id", formData.artist_id)
+          .eq("event_id", eventId)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error && error.code !== "PGRST116") throw error;
+        if (data?.id) {
+          performanceId = data.id;
+          existingPerfData = { event_day_id: data.event_day_id, event_stage_id: data.event_stage_id };
+        }
+      }
+
+      const resolveEventDayId = async (): Promise<string | null> => {
+        const targetDate =
+          formData.date_time ||
+          prefilledData?.event_day_date ||
+          null;
+        if (targetDate) {
+          const { data, error } = await supabase
+            .from("event_days")
+            .select("id")
+            .eq("event_id", eventId)
+            .eq("date", targetDate)
+            .maybeSingle();
+          if (error && error.code !== "PGRST116") throw error;
+          if (data?.id) return data.id;
+        }
+        return existingPerfData?.event_day_id || null;
+      };
+
+      let eventDayId = await resolveEventDayId();
+      if (!eventDayId) {
+        const { data } = await supabase
+          .from("event_days")
+          .select("id")
+          .eq("event_id", eventId)
+          .order("date", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        eventDayId = data?.id || null;
+      }
+
+      const stageForPerformance =
+        formData.stage_id ||
+        existingPerfData?.event_stage_id ||
+        stages[0]?.id ||
+        null;
+
+      if (!stageForPerformance) {
+        toastError("Impossible d'identifier une scène pour la performance liée");
         return;
       }
 
-      const updates: Record<string, any> = {
-        fee_amount: feeAmount,
+      if (!performanceId) {
+        if (!eventDayId) {
+          toastError("Aucun jour d'événement ne correspond à la date sélectionnée.");
+          return;
+        }
+
+        const createdPerformance: Performance = await createPerformance({
+          event_day_id: eventDayId,
+          event_stage_id: stageForPerformance,
+          artist_id: formData.artist_id,
+          performance_time: normalizedPerfTime,
+          duration: formData.duration || 60,
+          fee_amount: feeAmount || 0,
+          fee_currency: formData.currency,
+          commission_percentage: formData.agency_commission_pct ?? null,
+          fee_is_net: formData.amount_is_net,
+          subject_to_withholding_tax: formData.subject_to_withholding_tax,
+          booking_status: bookingStatus,
+          prod_fee_amount: prodFeeAmount ?? null,
+          backline_fee_amount: backlineFeeAmount ?? null,
+          buyout_hotel_amount: buyoutHotelAmount ?? null,
+          buyout_meal_amount: buyoutMealAmount ?? null,
+          flight_contribution_amount: flightContributionAmount ?? null,
+          technical_fee_amount: technicalFeeAmount ?? null,
+        });
+
+        performanceId = createdPerformance.id;
+        existingPerfData = {
+          event_day_id: createdPerformance.event_day_id,
+          event_stage_id: createdPerformance.stage_id,
+        };
+        setLinkedPerformanceId(createdPerformance.id);
+      }
+
+      if (!performanceId) return;
+
+      const updatePayload: PerformanceUpdate = {
+        id: performanceId,
+        artist_id: formData.artist_id,
+        event_stage_id: stageForPerformance,
+        performance_time: normalizedPerfTime,
+        duration: formData.duration || 60,
+        fee_amount: feeAmount || 0,
         fee_currency: formData.currency,
+        commission_percentage: formData.agency_commission_pct ?? null,
         fee_is_net: formData.amount_is_net,
-        commission_percentage: formData.agency_commission_pct,
+        subject_to_withholding_tax: formData.subject_to_withholding_tax,
+        booking_status: bookingStatus,
         prod_fee_amount: prodFeeAmount ?? 0,
         backline_fee_amount: backlineFeeAmount ?? 0,
         buyout_hotel_amount: buyoutHotelAmount ?? 0,
         buyout_meal_amount: buyoutMealAmount ?? 0,
         flight_contribution_amount: flightContributionAmount ?? 0,
         technical_fee_amount: technicalFeeAmount ?? 0,
-        event_stage_id: formData.stage_id || null,
-        duration: formData.duration || null,
       };
 
-      if (!isTBC && formData.performance_time) {
-        updates.performance_time = formData.performance_time.length === 5
-          ? `${formData.performance_time}:00`
-          : formData.performance_time;
+      if (eventDayId) {
+        updatePayload.event_day_id = eventDayId;
       }
 
-      if (formData.date_time) {
-        const { data: day } = await supabase
-          .from("event_days")
-          .select("id")
-          .eq("event_id", eventId)
-          .eq("date", formData.date_time)
-          .maybeSingle();
-        if (day?.id) {
-          updates.event_day_id = day.id;
-        }
-      }
-
-      const { error } = await supabase
-        .from("artist_performances")
-        .update(updates)
-        .eq("id", performanceId);
-
-      if (error) throw error;
+      const updatedPerformance = await updatePerformance(updatePayload);
+      setLinkedPerformanceId(updatedPerformance.id);
 
       console.log("[PERF] Performance synchronisée");
       window.dispatchEvent(new CustomEvent("performance-updated"));
     } catch (error) {
       console.error("[PERF] Erreur synchronisation performance:", error);
+      toastError("Synchronisation Budget Artistique impossible. Merci de réessayer.");
     }
   }
   
@@ -1541,6 +1658,7 @@ export function OfferComposer({
         amount_gross: null,
         amount_is_net: true,
         amount_gross_is_subject_to_withholding: false,
+        subject_to_withholding_tax: true,
         withholding_note: "",
         amount_display: null,
         agency_commission_pct: null,
@@ -1863,6 +1981,7 @@ export function OfferComposer({
                 Devise <span className="text-red-500">*</span>
               </label>
               <select
+                ref={(el) => { fieldRefs.current.currency = el; }}
                 className={getFieldClassName("currency", "w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent")}
                 value={formData.currency}
                 onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value as CurrencyCode }))}
@@ -1883,6 +2002,7 @@ export function OfferComposer({
                 Montant <span className="text-red-500">*</span>
               </label>
               <input
+                ref={(el) => { fieldRefs.current.amount_display = el; }}
                 type="number"
                 step="0.01"
                 className={getFinancialFieldClassName('amount', activeAmountValue, "w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent")}
@@ -1914,6 +2034,26 @@ export function OfferComposer({
                 placeholder="0.00"
               />
             </div>
+          </div>
+
+          {/* IMPÔT À LA SOURCE */}
+          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.subject_to_withholding_tax}
+                onChange={(e) => setFormData(prev => ({ ...prev, subject_to_withholding_tax: e.target.checked }))}
+                className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 mr-3"
+              />
+              <div>
+                <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  Soumis à l'impôt à la source
+                </span>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                  Décochez si l'artiste est suisse (non soumis à l'impôt à la source)
+                </p>
+              </div>
+            </label>
           </div>
 
           {/* FRAIS ADDITIONNELS (6 types) */}
