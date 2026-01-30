@@ -964,14 +964,14 @@ export function OfferComposer({
       // Cela permet au trigger DB de synchroniser automatiquement
       const resolvedPerformanceId = await resolveOrCreatePerformance(status);
       
-      // Construction payload
+      // Construction payload - SANS les données financières (source unique = artist_performances)
       console.log("[OfferComposer] Sauvegarde - agency_contact_id:", formData.agency_contact_id, "booking_agency_id:", formData.booking_agency_id, "performance_id:", resolvedPerformanceId);
       const payload: any = {
         event_id: eventId,
         company_id: companyId,
         artist_id: formData.artist_id,
         stage_id: formData.stage_id,
-        performance_id: resolvedPerformanceId, // Lien vers artist_performances pour le trigger
+        performance_id: resolvedPerformanceId, // Lien vers artist_performances (SOURCE UNIQUE des finances)
         agency_contact_id: formData.agency_contact_id || null,
         booking_agency_id: formData.booking_agency_id || null,
         artist_name: artistName,
@@ -980,31 +980,8 @@ export function OfferComposer({
         performance_time: isTBC ? "TBC" : formData.performance_time,
         duration: formData.duration,
         duration_minutes: formData.duration,
-        currency: formData.currency,
-        amount_net: formData.amount_is_net ? formData.amount_net : null,
-        amount_gross: formData.amount_is_net ? null : formData.amount_gross,
-        amount_is_net: formData.amount_is_net,
-        amount_gross_is_subject_to_withholding: formData.amount_gross_is_subject_to_withholding,
-        subject_to_withholding_tax: formData.subject_to_withholding_tax,
-        withholding_note: formData.withholding_note || null,
-        amount_display: amountDisplay,
-        agency_commission_pct: formData.agency_commission_pct,
         validity_date: formData.validity_date,
         status,
-        
-        // Frais additionnels (0 par défaut si non renseigné)
-        prod_fee_amount: prodFeeAmount ?? 0,
-        prod_fee_currency: formData.currency,
-        backline_fee_amount: backlineFeeAmount ?? 0,
-        backline_fee_currency: formData.currency,
-        buyout_hotel_amount: buyoutHotelAmount ?? 0,
-        buyout_hotel_currency: formData.currency,
-        buyout_meal_amount: buyoutMealAmount ?? 0,
-        buyout_meal_currency: formData.currency,
-        flight_contribution_amount: flightContributionAmount ?? 0,
-        flight_contribution_currency: formData.currency,
-        technical_fee_amount: technicalFeeAmount ?? 0,
-        technical_fee_currency: formData.currency,
         
         // Notes
         notes_date: formData.notes_date || null,
@@ -1015,6 +992,10 @@ export function OfferComposer({
         terms_json: {
           selectedClauseIds: exclusivityClausesSelected,
         },
+        
+        // NOTE: Les données financières ne sont PAS écrites dans offers
+        // Elles sont stockées uniquement dans artist_performances (via resolveOrCreatePerformance)
+        // et lues via jointure dans fn_list_offers et generateOfferPdfOnStatusChange
       };
       
       let offerId: string;
@@ -1059,8 +1040,8 @@ export function OfferComposer({
       // Sauvegarder les extras
       await saveOfferExtras(offerId, selectedExtras);
       
-      // Mettre à jour la performance liée (horaires + finances)
-      await syncLinkedPerformance(status);
+      // NOTE: Les données financières sont déjà écrites dans artist_performances
+      // via resolveOrCreatePerformance() - pas besoin de synchronisation supplémentaire
       
       // Mise à jour statut si ready_to_send
       if (status === "ready_to_send") {
@@ -1086,8 +1067,8 @@ export function OfferComposer({
   
   // =============================================================================
   // RESOLUTION OU CREATION DE LA PERFORMANCE LIEE
-  // Note: Le trigger DB sync_performance_from_offer() synchronise automatiquement
-  // les données financières de offers vers artist_performances
+  // Note: artist_performances est la SOURCE UNIQUE des données financières
+  // Cette fonction écrit les finances dans artist_performances directement
   // =============================================================================
   async function resolveOrCreatePerformance(offerStatus: "draft" | "ready_to_send"): Promise<string | null> {
     try {
@@ -1097,6 +1078,11 @@ export function OfferComposer({
         ? "00:00"
         : formData.performance_time;
       const bookingStatus: BookingStatus = offerStatus === "ready_to_send" ? "offre_envoyee" : "offre_a_faire";
+      
+      // Calculer le montant (net ou brut selon le mode)
+      const feeAmount = formData.amount_is_net 
+        ? (formData.amount_net ?? formData.amount_display) 
+        : (formData.amount_gross ?? formData.amount_display);
 
       // 1. Chercher une performance existante par ID connu
       const preferedPerformanceIds = [
@@ -1141,9 +1127,9 @@ export function OfferComposer({
         }
       }
 
-      // 3. Si toujours pas trouvée, créer une nouvelle performance
+      // 3. Si toujours pas trouvée, créer une nouvelle performance avec toutes les finances
       if (!performanceId) {
-        console.log("[PERF] Aucune performance trouvee, creation...");
+        console.log("[PERF] Aucune performance trouvee, creation avec finances...");
         
         // Résoudre event_day_id
         let eventDayId: string | null = null;
@@ -1179,7 +1165,7 @@ export function OfferComposer({
           return null;
         }
 
-        // Créer la performance (les données financières seront synchronisées par le trigger)
+        // Créer la performance avec TOUTES les données financières (SOURCE UNIQUE)
         const createdPerformance: Performance = await createPerformance({
           event_day_id: eventDayId,
           event_stage_id: stageForPerformance,
@@ -1187,20 +1173,60 @@ export function OfferComposer({
           performance_time: normalizedPerfTime,
           duration: formData.duration || 60,
           booking_status: bookingStatus,
-          // Note: Les données financières seront mises à jour par le trigger DB
-          // quand l'offre sera créée avec performance_id
+          // Données financières - SOURCE UNIQUE
+          fee_amount: feeAmount || 0,
+          fee_currency: formData.currency,
+          commission_percentage: formData.agency_commission_pct ?? null,
+          fee_is_net: formData.amount_is_net,
+          subject_to_withholding_tax: formData.subject_to_withholding_tax,
+          prod_fee_amount: prodFeeAmount ?? null,
+          backline_fee_amount: backlineFeeAmount ?? null,
+          buyout_hotel_amount: buyoutHotelAmount ?? null,
+          buyout_meal_amount: buyoutMealAmount ?? null,
+          flight_contribution_amount: flightContributionAmount ?? null,
+          technical_fee_amount: technicalFeeAmount ?? null,
         });
 
         performanceId = createdPerformance.id;
         setLinkedPerformanceId(createdPerformance.id);
-        console.log("[PERF] Performance creee:", performanceId);
+        console.log("[PERF] Performance creee avec finances:", performanceId);
+        
+        // Retourner directement, pas besoin de mettre à jour
+        return performanceId;
       }
 
+      // 4. Performance existante trouvée - mettre à jour les données financières
+      console.log("[PERF] Mise a jour des finances dans artist_performances:", performanceId);
+      
+      const stageForPerformance = formData.stage_id || existingPerfData?.event_stage_id || stages[0]?.id || null;
+      
+      await updatePerformance({
+        id: performanceId,
+        artist_id: formData.artist_id,
+        event_stage_id: stageForPerformance || undefined,
+        performance_time: normalizedPerfTime,
+        duration: formData.duration || 60,
+        booking_status: bookingStatus,
+        // Données financières - SOURCE UNIQUE
+        fee_amount: feeAmount || 0,
+        fee_currency: formData.currency,
+        commission_percentage: formData.agency_commission_pct ?? null,
+        fee_is_net: formData.amount_is_net,
+        subject_to_withholding_tax: formData.subject_to_withholding_tax,
+        prod_fee_amount: prodFeeAmount ?? 0,
+        backline_fee_amount: backlineFeeAmount ?? 0,
+        buyout_hotel_amount: buyoutHotelAmount ?? 0,
+        buyout_meal_amount: buyoutMealAmount ?? 0,
+        flight_contribution_amount: flightContributionAmount ?? 0,
+        technical_fee_amount: technicalFeeAmount ?? 0,
+      });
+
       // Mettre à jour linkedPerformanceId pour les prochaines sauvegardes
-      if (performanceId && performanceId !== linkedPerformanceId) {
+      if (performanceId !== linkedPerformanceId) {
         setLinkedPerformanceId(performanceId);
       }
 
+      window.dispatchEvent(new CustomEvent("performance-updated"));
       return performanceId;
     } catch (error) {
       console.error("[PERF] Erreur resolution/creation performance:", error);
@@ -1208,16 +1234,6 @@ export function OfferComposer({
     }
   }
   
-  // =============================================================================
-  // SYNCHRONISATION LEGACY (conservee pour compatibilite, mais le trigger DB fait le travail)
-  // =============================================================================
-  async function syncLinkedPerformance(_offerStatus: "draft" | "ready_to_send"): Promise<void> {
-    // NOTE: La synchronisation est maintenant geree par le trigger PostgreSQL
-    // sync_performance_from_offer() qui s'execute sur INSERT/UPDATE de offers
-    // Cette fonction est conservee pour emettre l'evenement de rafraichissement UI
-    console.log("[PERF] Synchronisation via trigger DB - emission evenement UI");
-    window.dispatchEvent(new CustomEvent("performance-updated"));
-  }
   
   // =============================================================================
   // SAUVEGARDE DES EXTRAS

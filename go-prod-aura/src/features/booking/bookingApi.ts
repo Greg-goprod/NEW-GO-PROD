@@ -106,15 +106,12 @@ export async function deleteOffer(offerId: string) {
 }
 
 export async function generateOfferPdfOnStatusChange(offerId: string) {
-  // 0) si déjà PDF, ne rien faire
+  // 0) Récupérer l'offre avec performance_id pour jointure
   const { data: existing, error: e1 } = await supabase
     .from("offers")
     .select(`
-      id, event_id, company_id, artist_id, stage_id,
+      id, event_id, company_id, artist_id, stage_id, performance_id,
       artist_name, stage_name,
-      amount_display, amount_net, amount_gross, currency, amount_is_net,
-      prod_fee_amount, backline_fee_amount, buyout_hotel_amount, buyout_meal_amount,
-      flight_contribution_amount, technical_fee_amount,
       notes, terms_json,
       pdf_storage_path, date_time, performance_time, duration
     `)
@@ -123,7 +120,43 @@ export async function generateOfferPdfOnStatusChange(offerId: string) {
   if (e1) throw e1;
   if (existing?.pdf_storage_path) return; // déjà généré
 
-  // 1) récupérer info événement + artiste
+  // 1) Récupérer les données financières depuis artist_performances (SOURCE UNIQUE)
+  let finances: any = {};
+  if (existing?.performance_id) {
+    const { data: perfData } = await supabase
+      .from("artist_performances")
+      .select(`
+        fee_amount, fee_currency, fee_is_net, commission_percentage,
+        prod_fee_amount, backline_fee_amount, buyout_hotel_amount, buyout_meal_amount,
+        flight_contribution_amount, technical_fee_amount,
+        performance_time, duration,
+        event_days ( date )
+      `)
+      .eq("id", existing.performance_id)
+      .single();
+    
+    if (perfData) {
+      finances = {
+        amount_display: perfData.fee_amount,
+        amount_net: perfData.fee_is_net ? perfData.fee_amount : null,
+        amount_gross: !perfData.fee_is_net ? perfData.fee_amount : null,
+        currency: perfData.fee_currency,
+        amount_is_net: perfData.fee_is_net,
+        agency_commission_pct: perfData.commission_percentage,
+        prod_fee_amount: perfData.prod_fee_amount,
+        backline_fee_amount: perfData.backline_fee_amount,
+        buyout_hotel_amount: perfData.buyout_hotel_amount,
+        buyout_meal_amount: perfData.buyout_meal_amount,
+        flight_contribution_amount: perfData.flight_contribution_amount,
+        technical_fee_amount: perfData.technical_fee_amount,
+        performance_time: perfData.performance_time,
+        duration: perfData.duration,
+        performance_date: (perfData.event_days as any)?.date || null,
+      };
+    }
+  }
+
+  // 2) Récupérer info événement + artiste
   let eventName = "Event";
   if (existing?.event_id) {
     const ev = await supabase.from("events").select("name").eq("id", existing.event_id).single();
@@ -135,51 +168,34 @@ export async function generateOfferPdfOnStatusChange(offerId: string) {
     artistName = ar.data?.name || artistName;
   }
 
-  // 2) durée/perf_time : si manquants, tenter via artist_performances
-  let perfTime = existing?.performance_time || null;
-  let perfDate = existing?.date_time || null;
-  let duration = existing?.duration || null;
-  if (!perfTime || !perfDate || !duration) {
-    const perf = await supabase.from("artist_performances").select(`
-      performance_time, duration,
-      event_days ( date )
-    `)
-      .eq("artist_id", existing?.artist_id || "")
-      .eq("event_stage_id", existing?.stage_id || "")
-      .limit(1).maybeSingle();
-    perfTime = perf.data?.performance_time || perfTime;
-    perfDate = (Array.isArray(perf.data?.event_days) && perf.data.event_days[0]?.date) || perfDate;
-    duration = perf.data?.duration || duration;
-  }
-
   const extrasSummary = await buildExtrasSummary(offerId);
   const clausesSummary = await buildClausesSummary(existing?.terms_json);
 
-  // 3) Construire payload et générer+uploader
+  // 3) Construire payload avec données de artist_performances en priorité
   const pdfPayload = {
     event_name: eventName,
     artist_name: artistName,
     stage_name: existing?.stage_name || "",
-    performance_date: perfDate || existing?.date_time || "",
-    performance_time: perfTime || "",
-    duration: duration || null,
-    currency: existing?.currency || null,
-    amount_display: existing?.amount_display || null,
-    amount_net: existing?.amount_net || null,
-    amount_gross: existing?.amount_gross || null,
+    performance_date: finances.performance_date || existing?.date_time || "",
+    performance_time: finances.performance_time || existing?.performance_time || "",
+    duration: finances.duration || existing?.duration || null,
+    currency: finances.currency || null,
+    amount_display: finances.amount_display || null,
+    amount_net: finances.amount_net || null,
+    amount_gross: finances.amount_gross || null,
     notes: existing?.notes || null,
-    prod_fee_amount: existing?.prod_fee_amount || null,
-    backline_fee_amount: existing?.backline_fee_amount || null,
-    buyout_hotel_amount: existing?.buyout_hotel_amount || null,
-    buyout_meal_amount: existing?.buyout_meal_amount || null,
-    flight_contribution_amount: existing?.flight_contribution_amount || null,
-    technical_fee_amount: existing?.technical_fee_amount || null,
+    prod_fee_amount: finances.prod_fee_amount || null,
+    backline_fee_amount: finances.backline_fee_amount || null,
+    buyout_hotel_amount: finances.buyout_hotel_amount || null,
+    buyout_meal_amount: finances.buyout_meal_amount || null,
+    flight_contribution_amount: finances.flight_contribution_amount || null,
+    technical_fee_amount: finances.technical_fee_amount || null,
     extras_summary: extrasSummary,
     clauses_summary: clausesSummary,
     offer_id: offerId,
     event_id: existing?.event_id,
     company_id: existing?.company_id,
-    amount_is_net: existing?.amount_is_net ?? null,
+    amount_is_net: finances.amount_is_net ?? null,
   } as any;
 
   const { storagePath } = await generateOfferPdfAndUpload(pdfPayload);
