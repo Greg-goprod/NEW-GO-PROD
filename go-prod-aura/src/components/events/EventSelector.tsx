@@ -46,6 +46,13 @@ export function EventSelector() {
         setCurrentEvent(null);
         toastError('L\'évènement sélectionné a été supprimé');
       }
+      
+      // Auto-sélectionner le premier événement si aucun n'est sélectionné
+      // et qu'il y a des événements disponibles
+      if (!eventId && eventsList.length > 0) {
+        console.log('🎯 Auto-sélection du premier événement:', eventsList[0].name);
+        setCurrentEvent(eventsList[0]);
+      }
     } catch (error) {
       console.error('❌ Erreur chargement évènements:', error);
       toastError('Erreur lors du chargement des évènements');
