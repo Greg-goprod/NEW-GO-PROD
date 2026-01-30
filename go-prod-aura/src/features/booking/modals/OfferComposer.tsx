@@ -44,6 +44,7 @@ export interface Offer {
   company_id: string;
   artist_id?: string | null;
   stage_id?: string | null;
+  performance_id?: string | null; // Lien vers artist_performances (trigger sync DB)
   agency_contact_id?: string | null;
   artist_name?: string | null;
   stage_name?: string | null;
@@ -959,13 +960,18 @@ export function OfferComposer({
       const artistName = artists.find(a => a.id === formData.artist_id)?.name || "";
       const stageName = stages.find(s => s.id === formData.stage_id)?.name || "";
       
+      // Trouver ou créer la performance liée AVANT de créer l'offre
+      // Cela permet au trigger DB de synchroniser automatiquement
+      const resolvedPerformanceId = await resolveOrCreatePerformance(status);
+      
       // Construction payload
-      console.log("[OfferComposer] Sauvegarde - agency_contact_id:", formData.agency_contact_id, "booking_agency_id:", formData.booking_agency_id);
+      console.log("[OfferComposer] Sauvegarde - agency_contact_id:", formData.agency_contact_id, "booking_agency_id:", formData.booking_agency_id, "performance_id:", resolvedPerformanceId);
       const payload: any = {
         event_id: eventId,
         company_id: companyId,
         artist_id: formData.artist_id,
         stage_id: formData.stage_id,
+        performance_id: resolvedPerformanceId, // Lien vers artist_performances pour le trigger
         agency_contact_id: formData.agency_contact_id || null,
         booking_agency_id: formData.booking_agency_id || null,
         artist_name: artistName,
@@ -1079,18 +1085,20 @@ export function OfferComposer({
   };
   
   // =============================================================================
-  // SYNCHRONISATION DE LA PERFORMANCE LIÉE (HORAIRES + FINANCIER)
+  // RESOLUTION OU CREATION DE LA PERFORMANCE LIEE
+  // Note: Le trigger DB sync_performance_from_offer() synchronise automatiquement
+  // les données financières de offers vers artist_performances
   // =============================================================================
-  async function syncLinkedPerformance(offerStatus: "draft" | "ready_to_send"): Promise<void> {
+  async function resolveOrCreatePerformance(offerStatus: "draft" | "ready_to_send"): Promise<string | null> {
     try {
-      const feeAmount = formData.amount_is_net ? formData.amount_net : formData.amount_gross;
-      if (!formData.artist_id || !eventId || !companyId) return;
+      if (!formData.artist_id || !eventId || !companyId) return null;
 
       const normalizedPerfTime = isTBC || !formData.performance_time
         ? "00:00"
         : formData.performance_time;
       const bookingStatus: BookingStatus = offerStatus === "ready_to_send" ? "offre_envoyee" : "offre_a_faire";
 
+      // 1. Chercher une performance existante par ID connu
       const preferedPerformanceIds = [
         linkedPerformanceId,
         prefilledData?.performance_id || null,
@@ -1099,26 +1107,24 @@ export function OfferComposer({
       let performanceId: string | null = null;
       let existingPerfData: { event_day_id: string | null; event_stage_id: string | null } | null = null;
 
-      const fetchPerformanceById = async (perfId: string) => {
+      for (const candidate of preferedPerformanceIds) {
         const { data, error } = await supabase
           .from("artist_performances")
           .select("id, event_day_id, event_stage_id")
-          .eq("id", perfId)
+          .eq("id", candidate)
           .maybeSingle();
         if (error && error.code !== "PGRST116") throw error;
-        return data || null;
-      };
-
-      for (const candidate of preferedPerformanceIds) {
-        const data = await fetchPerformanceById(candidate);
         if (data) {
           performanceId = data.id;
           existingPerfData = { event_day_id: data.event_day_id, event_stage_id: data.event_stage_id };
+          console.log("[PERF] Performance trouvee par ID:", performanceId);
           break;
         }
       }
 
+      // 2. Chercher par artist_id + event_id si pas trouvée
       if (!performanceId) {
+        console.log("[PERF] Recherche performance par artist_id + event_id:", { artist_id: formData.artist_id, event_id: eventId });
         const { data, error } = await supabase
           .from("artist_performances")
           .select("id, event_day_id, event_stage_id")
@@ -1129,121 +1135,88 @@ export function OfferComposer({
           .maybeSingle();
         if (error && error.code !== "PGRST116") throw error;
         if (data?.id) {
+          console.log("[PERF] Performance trouvee:", data.id);
           performanceId = data.id;
           existingPerfData = { event_day_id: data.event_day_id, event_stage_id: data.event_stage_id };
         }
       }
 
-      const resolveEventDayId = async (): Promise<string | null> => {
-        const targetDate =
-          formData.date_time ||
-          prefilledData?.event_day_date ||
-          null;
+      // 3. Si toujours pas trouvée, créer une nouvelle performance
+      if (!performanceId) {
+        console.log("[PERF] Aucune performance trouvee, creation...");
+        
+        // Résoudre event_day_id
+        let eventDayId: string | null = null;
+        const targetDate = formData.date_time || prefilledData?.event_day_date || null;
         if (targetDate) {
-          const { data, error } = await supabase
+          const { data } = await supabase
             .from("event_days")
             .select("id")
             .eq("event_id", eventId)
             .eq("date", targetDate)
             .maybeSingle();
-          if (error && error.code !== "PGRST116") throw error;
-          if (data?.id) return data.id;
+          eventDayId = data?.id || null;
         }
-        return existingPerfData?.event_day_id || null;
-      };
-
-      let eventDayId = await resolveEventDayId();
-      if (!eventDayId) {
-        const { data } = await supabase
-          .from("event_days")
-          .select("id")
-          .eq("event_id", eventId)
-          .order("date", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        eventDayId = data?.id || null;
-      }
-
-      const stageForPerformance =
-        formData.stage_id ||
-        existingPerfData?.event_stage_id ||
-        stages[0]?.id ||
-        null;
-
-      if (!stageForPerformance) {
-        toastError("Impossible d'identifier une scène pour la performance liée");
-        return;
-      }
-
-      if (!performanceId) {
         if (!eventDayId) {
-          toastError("Aucun jour d'événement ne correspond à la date sélectionnée.");
-          return;
+          const { data } = await supabase
+            .from("event_days")
+            .select("id")
+            .eq("event_id", eventId)
+            .order("date", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          eventDayId = data?.id || null;
         }
 
+        if (!eventDayId) {
+          console.warn("[PERF] Impossible de trouver un event_day_id");
+          return null;
+        }
+
+        const stageForPerformance = formData.stage_id || stages[0]?.id || null;
+        if (!stageForPerformance) {
+          console.warn("[PERF] Impossible de trouver une scene");
+          return null;
+        }
+
+        // Créer la performance (les données financières seront synchronisées par le trigger)
         const createdPerformance: Performance = await createPerformance({
           event_day_id: eventDayId,
           event_stage_id: stageForPerformance,
           artist_id: formData.artist_id,
           performance_time: normalizedPerfTime,
           duration: formData.duration || 60,
-          fee_amount: feeAmount || 0,
-          fee_currency: formData.currency,
-          commission_percentage: formData.agency_commission_pct ?? null,
-          fee_is_net: formData.amount_is_net,
-          subject_to_withholding_tax: formData.subject_to_withholding_tax,
           booking_status: bookingStatus,
-          prod_fee_amount: prodFeeAmount ?? null,
-          backline_fee_amount: backlineFeeAmount ?? null,
-          buyout_hotel_amount: buyoutHotelAmount ?? null,
-          buyout_meal_amount: buyoutMealAmount ?? null,
-          flight_contribution_amount: flightContributionAmount ?? null,
-          technical_fee_amount: technicalFeeAmount ?? null,
+          // Note: Les données financières seront mises à jour par le trigger DB
+          // quand l'offre sera créée avec performance_id
         });
 
         performanceId = createdPerformance.id;
-        existingPerfData = {
-          event_day_id: createdPerformance.event_day_id,
-          event_stage_id: createdPerformance.stage_id,
-        };
         setLinkedPerformanceId(createdPerformance.id);
+        console.log("[PERF] Performance creee:", performanceId);
       }
 
-      if (!performanceId) return;
-
-      const updatePayload: PerformanceUpdate = {
-        id: performanceId,
-        artist_id: formData.artist_id,
-        event_stage_id: stageForPerformance,
-        performance_time: normalizedPerfTime,
-        duration: formData.duration || 60,
-        fee_amount: feeAmount || 0,
-        fee_currency: formData.currency,
-        commission_percentage: formData.agency_commission_pct ?? null,
-        fee_is_net: formData.amount_is_net,
-        subject_to_withholding_tax: formData.subject_to_withholding_tax,
-        booking_status: bookingStatus,
-        prod_fee_amount: prodFeeAmount ?? 0,
-        backline_fee_amount: backlineFeeAmount ?? 0,
-        buyout_hotel_amount: buyoutHotelAmount ?? 0,
-        buyout_meal_amount: buyoutMealAmount ?? 0,
-        flight_contribution_amount: flightContributionAmount ?? 0,
-        technical_fee_amount: technicalFeeAmount ?? 0,
-      };
-
-      if (eventDayId) {
-        updatePayload.event_day_id = eventDayId;
+      // Mettre à jour linkedPerformanceId pour les prochaines sauvegardes
+      if (performanceId && performanceId !== linkedPerformanceId) {
+        setLinkedPerformanceId(performanceId);
       }
 
-      const updatedPerformance = await updatePerformance(updatePayload);
-      setLinkedPerformanceId(updatedPerformance.id);
-
-      console.log("[PERF] Performance synchronisée");
-      window.dispatchEvent(new CustomEvent("performance-updated"));
+      return performanceId;
     } catch (error) {
-      console.error("[PERF] Erreur synchronisation performance:", error);
-      toastError("Synchronisation Budget Artistique impossible. Merci de réessayer.");
+      console.error("[PERF] Erreur resolution/creation performance:", error);
+      return null;
     }
+  }
+  
+  // =============================================================================
+  // SYNCHRONISATION LEGACY (conservee pour compatibilite, mais le trigger DB fait le travail)
+  // =============================================================================
+  async function syncLinkedPerformance(_offerStatus: "draft" | "ready_to_send"): Promise<void> {
+    // NOTE: La synchronisation est maintenant geree par le trigger PostgreSQL
+    // sync_performance_from_offer() qui s'execute sur INSERT/UPDATE de offers
+    // Cette fonction est conservee pour emettre l'evenement de rafraichissement UI
+    console.log("[PERF] Synchronisation via trigger DB - emission evenement UI");
+    window.dispatchEvent(new CustomEvent("performance-updated"));
   }
   
   // =============================================================================
@@ -1940,23 +1913,9 @@ export function OfferComposer({
       ),
       content: (
         <div className="pt-4 space-y-4">
-          {/* Type de montant (XOR) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-              Type de montant <span className="text-red-500">*</span>
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.amount_is_net}
-                  onChange={(e) => handleToggleAmountIsNet(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 mr-2"
-                />
-                <span className="text-sm text-gray-900 dark:text-gray-100">
-                  Montant net de taxes (le montant saisi est net)
-                </span>
-              </label>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 gap-y-6 items-stretch">
+            {/* Type de montant (XOR) */}
+            <div className="space-y-2 flex flex-col justify-between h-full">
               <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
@@ -1968,13 +1927,44 @@ export function OfferComposer({
                   Montant brut, soumis à l'impôt à la source
                 </span>
               </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.amount_is_net}
+                  onChange={(e) => handleToggleAmountIsNet(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 mr-2"
+                />
+                <span className="text-sm text-gray-900 dark:text-gray-100">
+                  Montant net de taxes (le montant saisi est net)
+                </span>
+              </label>
+              {errors.amount_type && (
+                <span className="text-sm text-red-600 dark:text-red-400">{errors.amount_type}</span>
+              )}
             </div>
-            {errors.amount_type && (
-              <span className="text-sm text-red-600 dark:text-red-400">{errors.amount_type}</span>
-            )}
+
+            {/* IMPÔT À LA SOURCE */}
+            <div className="mt-0 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg h-full flex">
+              <label className="flex items-center cursor-pointer w-full">
+                <input
+                  type="checkbox"
+                  checked={formData.subject_to_withholding_tax}
+                  onChange={(e) => setFormData(prev => ({ ...prev, subject_to_withholding_tax: e.target.checked }))}
+                  className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 mr-3"
+                />
+                <div>
+                  <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    Soumis à l'impôt à la source
+                  </span>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                    Décochez si l'artiste est suisse (non soumis à l'impôt à la source)
+                  </p>
+                </div>
+              </label>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
             {/* Devise */}
             <div>
               <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
@@ -2034,26 +2024,6 @@ export function OfferComposer({
                 placeholder="0.00"
               />
             </div>
-          </div>
-
-          {/* IMPÔT À LA SOURCE */}
-          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-            <label className="flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.subject_to_withholding_tax}
-                onChange={(e) => setFormData(prev => ({ ...prev, subject_to_withholding_tax: e.target.checked }))}
-                className="w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 mr-3"
-              />
-              <div>
-                <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                  Soumis à l'impôt à la source
-                </span>
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                  Décochez si l'artiste est suisse (non soumis à l'impôt à la source)
-                </p>
-              </div>
-            </label>
           </div>
 
           {/* FRAIS ADDITIONNELS (6 types) */}
@@ -2206,57 +2176,47 @@ export function OfferComposer({
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
               Extras (qui paie ?)
             </h3>
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-gray-900">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      Extra
-                    </th>
-                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      Artist
-                    </th>
-                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                      Festival
-                    </th>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-100 dark:bg-gray-700">
+                  <th className="text-center px-3 py-2 font-medium text-gray-900 dark:text-gray-100 w-24">Artiste</th>
+                  <th className="text-center px-3 py-2 font-medium text-gray-900 dark:text-gray-100 w-24">Festival</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-900 dark:text-gray-100">Extra</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {bookingExtras.map((extra) => (
+                  <tr key={extra.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-3 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedExtras[extra.id] === "artist"}
+                        onChange={(e) =>
+                          handleExtraAssignment(extra.id, e.target.checked ? "artist" : null)
+                        }
+                        className="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedExtras[extra.id] === "festival"}
+                        onChange={(e) =>
+                          handleExtraAssignment(extra.id, e.target.checked ? "festival" : null)
+                        }
+                        className="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className="text-gray-900 dark:text-gray-100">{extra.title}</span>
+                      {extra.body && (
+                        <span className="block text-xs text-gray-500 dark:text-gray-400">{extra.body}</span>
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {bookingExtras.map(extra => (
-                    <tr key={extra.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td className="px-4 py-2 text-gray-900 dark:text-gray-100">
-                        {extra.title}
-                        {extra.body && (
-                          <span className="block text-xs text-gray-500 dark:text-gray-400">
-                            {extra.body}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedExtras[extra.id] === "artist"}
-                          onChange={(e) => 
-                            handleExtraAssignment(extra.id, e.target.checked ? "artist" : null)
-                          }
-                          className="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                        />
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedExtras[extra.id] === "festival"}
-                          onChange={(e) => 
-                            handleExtraAssignment(extra.id, e.target.checked ? "festival" : null)
-                          }
-                          className="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {/* CLAUSES D'EXCLUSIVITÉ */}
@@ -2264,7 +2224,7 @@ export function OfferComposer({
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
               Clauses d'exclusivité
             </h3>
-            <div className="space-y-2 max-h-64 overflow-y-auto p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
               {exclusivityClauses.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">Aucune clause disponible</p>
               ) : (

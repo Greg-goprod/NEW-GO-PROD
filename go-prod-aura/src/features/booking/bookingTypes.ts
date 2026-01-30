@@ -6,6 +6,7 @@ export interface Offer {
   event_id: string;
   artist_id: string | null;
   stage_id: string | null;
+  performance_id?: string | null; // Lien vers artist_performances (trigger sync DB)
   status: OfferStatus;
 
   artist_name?: string | null;
