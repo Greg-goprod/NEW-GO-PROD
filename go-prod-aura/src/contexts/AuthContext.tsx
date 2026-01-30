@@ -1,12 +1,10 @@
-import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { createContext, useContext, useEffect, useState, useRef, useCallback, type ReactNode } from 'react';
+import { supabase, isAuthError, tryRefreshSession } from '@/lib/supabaseClient';
 import type { Session, User } from '@supabase/supabase-js';
 
 // ============================================================================
 // AUTH BYPASS - Pour le développement local
 // ============================================================================
-// En mode DEV, le bypass est activé par défaut sauf si VITE_AUTH_BYPASS=false
-// En mode PROD, le bypass est désactivé sauf si VITE_AUTH_BYPASS=true
 const BYPASS = import.meta.env.VITE_AUTH_BYPASS === 'true' || 
   (import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS !== 'false');
 
@@ -15,10 +13,9 @@ const DEV_PROFILE = {
   full_name: 'Dev User',
   email: 'dev@localhost',
   avatar_url: null,
-  company_id: '06f6c960-3f90-41cb-b0d7-46937eaf90a8', // Venoge Festival
+  company_id: '06f6c960-3f90-41cb-b0d7-46937eaf90a8',
 };
 
-// Timeout pour éviter le blocage infini (5 secondes)
 const AUTH_TIMEOUT_MS = 5000;
 
 // ============================================================================
@@ -39,6 +36,10 @@ interface AuthContextValue {
   loading: boolean;
   bypass: boolean;
   signOut: () => Promise<void>;
+  /** Vérifie si la session est valide, tente un refresh si nécessaire */
+  checkSession: () => Promise<boolean>;
+  /** Handler pour les erreurs API - redirige vers login si erreur auth */
+  handleApiError: (error: unknown) => Promise<boolean>;
 }
 
 // ============================================================================
@@ -53,25 +54,93 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(!BYPASS);
   const initRef = useRef(false);
 
+  // Vérifie et rafraîchit la session si nécessaire
+  const checkSession = useCallback(async (): Promise<boolean> => {
+    if (BYPASS) return true;
+    
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      if (!currentSession) {
+        // Pas de session, tenter un refresh
+        const refreshed = await tryRefreshSession();
+        if (!refreshed) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          return false;
+        }
+        // Re-fetch session après refresh
+        const { data: { session: newSession } } = await supabase.auth.getSession();
+        if (newSession) {
+          setSession(newSession);
+          setUser(newSession.user);
+          return true;
+        }
+        return false;
+      }
+      
+      // Vérifier si le token expire bientôt (dans les 5 minutes)
+      const expiresAt = currentSession.expires_at;
+      if (expiresAt) {
+        const expiresIn = expiresAt * 1000 - Date.now();
+        if (expiresIn < 5 * 60 * 1000) {
+          // Token expire bientôt, le rafraîchir
+          await tryRefreshSession();
+        }
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('[Auth] checkSession error:', err);
+      return false;
+    }
+  }, []);
+
+  // Handler pour les erreurs API
+  const handleApiError = useCallback(async (error: unknown): Promise<boolean> => {
+    if (BYPASS) return false;
+    
+    if (isAuthError(error)) {
+      console.warn('[Auth] API auth error detected, attempting session refresh...');
+      
+      // Tenter de rafraîchir la session
+      const refreshed = await tryRefreshSession();
+      
+      if (!refreshed) {
+        // Session invalide, déconnecter l'utilisateur
+        console.warn('[Auth] Session refresh failed, signing out...');
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        
+        // Rediriger vers login (sans reload pour garder le state si possible)
+        window.location.href = '/auth/signin?reason=session_expired';
+        return true; // Erreur gérée
+      }
+      
+      return false; // Session rafraîchie, réessayer l'appel
+    }
+    
+    return false; // Pas une erreur d'auth
+  }, []);
+
   useEffect(() => {
     if (BYPASS) {
-      console.log('[Auth] Bypass mode active - skipping real auth');
+      console.log('[Auth] Bypass mode active');
       return;
     }
 
-    // Prevent double initialization in strict mode
     if (initRef.current) return;
     initRef.current = true;
 
-    // Timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
       if (loading) {
-        console.warn('[Auth] Session check timed out, redirecting to login');
+        console.warn('[Auth] Session check timed out');
         setLoading(false);
       }
     }, AUTH_TIMEOUT_MS);
 
-    // Get initial session
     supabase.auth.getSession()
       .then(({ data: { session }, error }) => {
         if (error) {
@@ -94,10 +163,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('[Auth] Auth state changed:', event);
+        
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('[Auth] Token was refreshed');
+        }
+        
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -126,7 +207,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('[Auth] Error fetching profile:', error);
-        // Don't block on profile error, user is still authenticated
         setProfile(null);
       } else {
         setProfile(data);
@@ -140,10 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
-    if (BYPASS) {
-      console.log('[Auth] Bypass mode - signOut ignored');
-      return;
-    }
+    if (BYPASS) return;
     try {
       await supabase.auth.signOut();
     } catch (err) {
@@ -163,6 +240,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         bypass: BYPASS,
         signOut,
+        checkSession,
+        handleApiError,
       }}
     >
       {children}

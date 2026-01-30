@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/aura/Button';
 import { Input } from '@/components/aura/Input';
@@ -8,15 +8,31 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function SignInPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { bypass } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { bypass, session } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionExpiredMsg, setSessionExpiredMsg] = useState(false);
 
   // Destination après login
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/app';
+
+  // Si déjà connecté, rediriger
+  useEffect(() => {
+    if (session && !bypass) {
+      navigate(from, { replace: true });
+    }
+  }, [session, bypass, navigate, from]);
+
+  // Vérifier si session expirée
+  useEffect(() => {
+    if (searchParams.get('reason') === 'session_expired') {
+      setSessionExpiredMsg(true);
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +72,12 @@ export default function SignInPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          {sessionExpiredMsg && (
+            <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4 text-yellow-400 text-sm">
+              Votre session a expiré. Veuillez vous reconnecter.
+            </div>
+          )}
+          
           {error && (
             <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 text-red-400 text-sm">
               {error}
