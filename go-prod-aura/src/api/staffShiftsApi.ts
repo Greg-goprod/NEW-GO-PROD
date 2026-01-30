@@ -21,7 +21,10 @@ export async function fetchShifts(): Promise<StaffShiftWithRelations[]> {
     .from('staff_shifts')
     .select(`
       *,
-      event:events(id, name, start_date, end_date, status)
+      event:events(id, name, start_date, end_date, status),
+      department:staff_departments(*),
+      sector:staff_sectors(*),
+      category:staff_categories(*)
     `)
     .order('shift_date', { ascending: true })
     .order('start_time', { ascending: true });
@@ -39,7 +42,10 @@ export async function fetchShiftsByEvent(eventId: string): Promise<StaffShiftWit
     .from('staff_shifts')
     .select(`
       *,
-      event:events(id, name, start_date, end_date, status)
+      event:events(id, name, start_date, end_date, status),
+      department:staff_departments(*),
+      sector:staff_sectors(*),
+      category:staff_categories(*)
     `)
     .eq('event_id', eventId)
     .order('shift_date', { ascending: true })
@@ -58,7 +64,10 @@ export async function fetchShiftById(id: string): Promise<StaffShiftWithRelation
     .from('staff_shifts')
     .select(`
       *,
-      event:events(id, name, start_date, end_date, status)
+      event:events(id, name, start_date, end_date, status),
+      department:staff_departments(*),
+      sector:staff_sectors(*),
+      category:staff_categories(*)
     `)
     .eq('id', id)
     .single();
@@ -76,8 +85,13 @@ export async function createShift(input: StaffShiftInput): Promise<StaffShift> {
     .from('staff_shifts')
     .insert({
       event_id: input.event_id,
+      department_id: input.department_id,
+      sector_id: input.sector_id || null,
+      category_id: input.category_id || null,
       title: input.title,
       description: input.description || null,
+      location: input.location || null,
+      color: input.color || '#713DFF',
       shift_date: input.shift_date.toISOString().split('T')[0],
       start_time: input.start_time,
       end_time: input.end_time,
@@ -105,8 +119,13 @@ export async function updateShift(
 ): Promise<StaffShift> {
   const updateData: any = {};
 
+  if (input.department_id !== undefined) updateData.department_id = input.department_id;
+  if (input.sector_id !== undefined) updateData.sector_id = input.sector_id;
+  if (input.category_id !== undefined) updateData.category_id = input.category_id;
   if (input.title !== undefined) updateData.title = input.title;
   if (input.description !== undefined) updateData.description = input.description;
+  if (input.location !== undefined) updateData.location = input.location;
+  if (input.color !== undefined) updateData.color = input.color;
   if (input.shift_date !== undefined) {
     updateData.shift_date = input.shift_date.toISOString().split('T')[0];
   }
@@ -195,13 +214,13 @@ export async function fetchVolunteerAssignments(
 export async function createShiftAssignment(
   input: StaffShiftAssignmentInput
 ): Promise<StaffShiftAssignment> {
-  // 1. Créer l'affectation
+  // 1. Creer l'affectation
   const { data, error } = await supabase
     .from('staff_shift_assignments')
     .insert({
       shift_id: input.shift_id,
       volunteer_id: input.volunteer_id,
-      status: input.status || 'pending',
+      status: input.status || 'assigned',
       notes: input.notes || null,
     })
     .select()
@@ -209,7 +228,7 @@ export async function createShiftAssignment(
 
   if (error) throw error;
 
-  // 2. Incrémenter places_filled si le statut est 'confirmed'
+  // 2. Incrementer places_filled si le statut est 'confirmed'
   if (data.status === 'confirmed') {
     await incrementShiftPlacesFilled(input.shift_id);
   }

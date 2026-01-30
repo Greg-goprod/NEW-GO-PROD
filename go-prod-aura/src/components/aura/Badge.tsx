@@ -14,7 +14,8 @@ export const Badge: React.FC<{
   color?: "gray"|"blue"|"green"|"yellow"|"red"|"violet"|"taupe"|"eminence"|"lightgreen"|"mandarine"|"saphir"|"menthe"|"framboise"|"violet-aura"; 
   children: React.ReactNode;
   className?: string;
-}> = ({ color="gray", children, className="" }) => {
+  equalWidth?: boolean;
+}> = ({ color="gray", children, className="", equalWidth = true }) => {
   const map: Record<string,string> = {
     gray:"bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
     blue:"bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
@@ -33,5 +34,6 @@ export const Badge: React.FC<{
     menthe:"bg-[#34C75920] text-[#248A3D] dark:bg-[#34C75930] dark:text-[#34C759]",  // Vert - Accepté
     framboise:"bg-[#FF3B5C20] text-[#CC2244] dark:bg-[#FF3B5C30] dark:text-[#FF6B7F]",  // Rouge - Rejeté
   };
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${map[color] || map.gray} ${className}`.trim()}>{children}</span>;
+  const baseWidth = equalWidth ? "min-w-[140px] justify-center whitespace-nowrap" : "";
+  return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${baseWidth} ${map[color] || map.gray} ${className}`.trim()}>{children}</span>;
 };

@@ -57,7 +57,41 @@ export interface StaffSectorWithDepartment extends StaffSector {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bénévoles
+// Categories de staff (Chauffeurs, Securite, Technique, etc.)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface StaffCategory {
+  id: string;
+  company_id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  icon: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Qualifications (structure flexible JSONB)
+export interface StaffQualifications {
+  // Permis de conduire
+  permis_b?: boolean;
+  permis_c?: boolean;
+  permis_d?: boolean;
+  // Securite
+  ssiap?: 1 | 2 | 3;
+  cqp_aps?: boolean;
+  // Technique
+  habilitation_electrique?: string; // BR, B1V, etc.
+  caces?: string[];
+  // Autres
+  secouriste?: boolean;
+  [key: string]: unknown; // Extensible
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Staff / Bénévoles
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface StaffVolunteer {
@@ -68,8 +102,20 @@ export interface StaffVolunteer {
   email: string;
   phone: string | null;
   status_id: string;
+  category_id: string | null;
   department_ids: string[];
   sector_ids: string[];
+  // Competences et qualifications
+  skills: string[];
+  qualifications: StaffQualifications | null;
+  // Champs chauffeurs
+  license_number: string | null;
+  license_expiry: string | null;
+  license_types: string[];
+  // Tarification
+  hourly_rate: number | null;
+  currency: string;
+  // Notes
   notes_internal: string | null;
   notes_public: string | null;
   is_active: boolean;
@@ -79,6 +125,7 @@ export interface StaffVolunteer {
 
 export interface StaffVolunteerWithRelations extends StaffVolunteer {
   status: StaffVolunteerStatus;
+  category: StaffCategory | null;
   departments: StaffDepartment[];
   sectors: StaffSectorWithDepartment[];
 }
@@ -89,8 +136,18 @@ export interface StaffVolunteerInput {
   email: string;
   phone?: string | null;
   status_id: string;
+  category_id?: string | null;
   department_ids?: string[];
   sector_ids?: string[];
+  skills?: string[];
+  qualifications?: StaffQualifications | null;
+  // Champs chauffeurs
+  license_number?: string | null;
+  license_expiry?: string | null;
+  license_types?: string[];
+  // Tarification
+  hourly_rate?: number | null;
+  currency?: string;
   notes_internal?: string | null;
   notes_public?: string | null;
   is_active?: boolean;
@@ -106,8 +163,11 @@ export interface StaffShift {
   event_id: string;
   department_id: string;
   sector_id: string | null;
+  category_id: string | null;
   title: string;
   description: string | null;
+  location: string | null;
+  color: string;
   shift_date: string;
   start_time: string;
   end_time: string;
@@ -125,6 +185,7 @@ export interface StaffShiftWithRelations extends StaffShift {
   event: EventReference;
   department: StaffDepartment;
   sector: StaffSector | null;
+  category: StaffCategory | null;
   assignments?: StaffShiftAssignment[];
 }
 
@@ -132,8 +193,11 @@ export interface StaffShiftInput {
   event_id: string;
   department_id: string;
   sector_id?: string | null;
+  category_id?: string | null;
   title: string;
   description?: string | null;
+  location?: string | null;
+  color?: string;
   shift_date: Date;
   start_time: string;
   end_time: string;
@@ -148,13 +212,24 @@ export interface StaffShiftInput {
 // Affectations de shifts
 // ─────────────────────────────────────────────────────────────────────────────
 
+export type StaffAssignmentStatus = 
+  | 'assigned'    // Assigne, en attente confirmation
+  | 'confirmed'   // Confirme par le staff
+  | 'declined'    // Decline
+  | 'cancelled'   // Annule
+  | 'no_show'     // Absent
+  | 'completed';  // Termine
+
 export interface StaffShiftAssignment {
   id: string;
   shift_id: string;
   volunteer_id: string;
   assigned_at: string;
   assigned_by: string | null;
-  status: 'pending' | 'confirmed' | 'cancelled';
+  status: StaffAssignmentStatus;
+  actual_start: string | null;
+  actual_end: string | null;
+  confirmed_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -168,7 +243,7 @@ export interface StaffShiftAssignmentWithRelations extends StaffShiftAssignment 
 export interface StaffShiftAssignmentInput {
   shift_id: string;
   volunteer_id: string;
-  status?: 'pending' | 'confirmed' | 'cancelled';
+  status?: StaffAssignmentStatus;
   notes?: string | null;
 }
 

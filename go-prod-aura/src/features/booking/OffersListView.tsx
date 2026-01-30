@@ -153,7 +153,7 @@ export function OffersListView({
     const badgeColor = badgeColorMap[config.color] || "gray";
     // Largeur fixe basée sur le texte le plus long ("Revue management")
     return (
-      <div className="w-[120px]">
+      <div className="w-[140px] flex-shrink-0">
         <Badge color={badgeColor} className="w-full justify-center text-center">
           {config.label}
         </Badge>

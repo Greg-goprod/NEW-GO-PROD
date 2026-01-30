@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Award, UsersRound, Plus, Edit2, Trash2, GripVertical } from 'lucide-react';
+import { Users, Award, UsersRound, Plus, Edit2, Trash2, GripVertical, Tags, Car, Shield, Wrench, UtensilsCrossed, Heart, Package, Sparkles } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '@/components/aura/Card';
 import { Button } from '@/components/aura/Button';
 import { Input } from '@/components/aura/Input';
@@ -8,20 +8,48 @@ import { ConfirmDialog } from '@/components/aura/ConfirmDialog';
 import { useStaffLookups } from '@/hooks/useStaffLookups';
 import type {
   StaffVolunteerStatus,
+  StaffCategory,
   StaffDepartment,
   StaffSectorWithDepartment,
 } from '@/types/staff';
+
+// Icones disponibles pour les categories
+const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  Car,
+  Shield,
+  Wrench,
+  UtensilsCrossed,
+  Heart,
+  Package,
+  Users,
+  Sparkles,
+};
+
+const ICON_OPTIONS = [
+  { value: 'Car', label: 'Voiture' },
+  { value: 'Shield', label: 'Securite' },
+  { value: 'Wrench', label: 'Technique' },
+  { value: 'UtensilsCrossed', label: 'Restauration' },
+  { value: 'Heart', label: 'Coeur' },
+  { value: 'Package', label: 'Logistique' },
+  { value: 'Users', label: 'Personnes' },
+  { value: 'Sparkles', label: 'Etoiles' },
+];
 
 export default function SettingsStaffPage() {
   const { success, error: toastError } = useToast();
   const {
     statuses,
+    categories,
     departments,
     sectors,
     loading,
     createStatus,
     updateStatus,
     deleteStatus,
+    createCategory,
+    updateCategory,
+    deleteCategory,
     createDepartment,
     updateDepartment,
     deleteDepartment,
@@ -34,6 +62,11 @@ export default function SettingsStaffPage() {
   const [showAddStatusForm, setShowAddStatusForm] = useState(false);
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
   const [statusForm, setStatusForm] = useState({ name: '', color: '#10b981' });
+
+  // États pour les categories
+  const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', color: '#713DFF', icon: 'Users' });
 
   // États pour les départements
   const [showAddDepartmentForm, setShowAddDepartmentForm] = useState(false);
@@ -126,6 +159,53 @@ export default function SettingsStaffPage() {
   };
 
   // ───────────────────────────────────────────────────────────────────────────
+  // Handlers Categories
+  // ───────────────────────────────────────────────────────────────────────────
+  
+  const handleEditCategory = (category: StaffCategory) => {
+    setEditingCategoryId(category.id);
+    setCategoryForm({ 
+      name: category.name, 
+      description: category.description || '', 
+      color: category.color || '#713DFF',
+      icon: category.icon || 'Users'
+    });
+  };
+
+  const handleSaveCategory = async () => {
+    if (!categoryForm.name.trim()) {
+      toastError('Le nom est requis');
+      return;
+    }
+
+    try {
+      if (editingCategoryId) {
+        await updateCategory(editingCategoryId, {
+          name: categoryForm.name,
+          description: categoryForm.description || null,
+          color: categoryForm.color,
+          icon: categoryForm.icon,
+        });
+        success('Categorie mise a jour');
+      } else {
+        await createCategory(categoryForm.name, categoryForm.description, categoryForm.color, categoryForm.icon);
+        success('Categorie creee');
+      }
+      setEditingCategoryId(null);
+      setShowAddCategoryForm(false);
+      setCategoryForm({ name: '', description: '', color: '#713DFF', icon: 'Users' });
+    } catch (err: any) {
+      toastError(err.message || 'Erreur lors de la sauvegarde');
+    }
+  };
+
+  const handleCancelEditCategory = () => {
+    setEditingCategoryId(null);
+    setShowAddCategoryForm(false);
+    setCategoryForm({ name: '', description: '', color: '#713DFF', icon: 'Users' });
+  };
+
+  // ───────────────────────────────────────────────────────────────────────────
   // Handlers Secteurs
   // ───────────────────────────────────────────────────────────────────────────
   
@@ -187,7 +267,7 @@ export default function SettingsStaffPage() {
           <p style={{ color: 'var(--text-secondary)' }}>Chargement...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {/* Statuts */}
           <Card>
             <CardHeader>
@@ -278,15 +358,125 @@ export default function SettingsStaffPage() {
             </CardBody>
           </Card>
 
+          {/* Categories */}
+          <Card>
+            <CardHeader>
+              <div>
+                <div className="flex items-center gap-2">
+                  <Tags className="w-5 h-5 text-violet-400" />
+                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Categories</h3>
+                </div>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Types de staff (Chauffeurs, Securite...)</p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setShowAddCategoryForm(!showAddCategoryForm)}
+              >
+                <Plus size={16} />
+              </Button>
+            </CardHeader>
+            <CardBody>
+              <div className="space-y-1">
+                {showAddCategoryForm && (
+                  <div className="flex flex-col gap-2 p-2 rounded-lg border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
+                    <Input
+                      value={categoryForm.name}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                      placeholder="Nom..."
+                      className="text-sm"
+                      autoFocus
+                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={categoryForm.color}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, color: e.target.value })}
+                        className="w-8 h-8 rounded border cursor-pointer"
+                        style={{ borderColor: 'var(--border-default)' }}
+                      />
+                      <select
+                        value={categoryForm.icon}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, icon: e.target.value })}
+                        className="input text-sm flex-1"
+                      >
+                        {ICON_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button size="sm" variant="primary" onClick={handleSaveCategory}>OK</Button>
+                      <Button size="sm" variant="ghost" onClick={handleCancelEditCategory}>X</Button>
+                    </div>
+                  </div>
+                )}
+
+                {!categories || categories.length === 0 ? (
+                  <p className="text-xs py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                    Aucune categorie
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {categories?.map((category) => {
+                      const IconComponent = CATEGORY_ICONS[category.icon || 'Users'] || Users;
+                      return (
+                        <div key={category.id} className="flex items-center gap-2 p-2 rounded-lg border" style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-default)' }}>
+                          <GripVertical className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                          {editingCategoryId === category.id ? (
+                            <>
+                              <Input
+                                value={categoryForm.name}
+                                onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                                className="flex-1 text-sm"
+                                autoFocus
+                              />
+                              <input
+                                type="color"
+                                value={categoryForm.color}
+                                onChange={(e) => setCategoryForm({ ...categoryForm, color: e.target.value })}
+                                className="w-6 h-6 rounded border cursor-pointer"
+                                style={{ borderColor: 'var(--border-default)' }}
+                              />
+                              <Button size="sm" variant="ghost" onClick={handleSaveCategory}>OK</Button>
+                            </>
+                          ) : (
+                            <>
+                              <div
+                                className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
+                                style={{ backgroundColor: category.color + '20' }}
+                              >
+                                <IconComponent className="w-3.5 h-3.5" style={{ color: category.color }} />
+                              </div>
+                              <span className="flex-1 text-xs truncate" style={{ color: 'var(--text-primary)' }}>
+                                {category.name}
+                              </span>
+                              <Button size="sm" variant="ghost" className="p-1" onClick={() => handleEditCategory(category)}>
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="p-1 text-red-500 hover:text-red-600" onClick={() => setDeleteConfirm({ type: 'category', id: category.id, name: category.name })}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
+
           {/* Départements */}
           <Card>
             <CardHeader>
               <div>
                 <div className="flex items-center gap-2">
                   <UsersRound className="w-5 h-5 text-violet-400" />
-                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Départements</h3>
+                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Departements</h3>
                 </div>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Départements des bénévoles</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Departements des benevoles</p>
               </div>
               <Button
                 size="sm"
@@ -455,13 +645,16 @@ export default function SettingsStaffPage() {
           try {
             if (deleteConfirm.type === 'status') {
               await deleteStatus(deleteConfirm.id);
-              success('Statut supprimé');
+              success('Statut supprime');
+            } else if (deleteConfirm.type === 'category') {
+              await deleteCategory(deleteConfirm.id);
+              success('Categorie supprimee');
             } else if (deleteConfirm.type === 'department') {
               await deleteDepartment(deleteConfirm.id);
-              success('Département supprimé');
+              success('Departement supprime');
             } else if (deleteConfirm.type === 'sector') {
               await deleteSector(deleteConfirm.id);
-              success('Secteur supprimé');
+              success('Secteur supprime');
             }
             
             setDeleteConfirm(null);
@@ -470,7 +663,7 @@ export default function SettingsStaffPage() {
           }
         }}
         title="Confirmer la suppression"
-        message={`Êtes-vous sûr de vouloir supprimer "${deleteConfirm?.name}" ?`}
+        message={`Etes-vous sur de vouloir supprimer "${deleteConfirm?.name}" ?`}
         confirmText="Supprimer"
         variant="danger"
       />

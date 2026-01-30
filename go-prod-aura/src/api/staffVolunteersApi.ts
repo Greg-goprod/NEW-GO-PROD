@@ -6,7 +6,7 @@ import type {
 } from '@/types/staff';
 
 /**
- * Récupérer tous les bénévoles
+ * Recuperer tous les benevoles/staff
  */
 export async function fetchVolunteers(): Promise<StaffVolunteerWithRelations[]> {
   const { data, error } = await supabase
@@ -14,6 +14,7 @@ export async function fetchVolunteers(): Promise<StaffVolunteerWithRelations[]> 
     .select(`
       *,
       status:staff_volunteer_statuses!staff_volunteers_status_id_fkey(*),
+      category:staff_categories(*),
       departments:staff_departments(*),
       sectors:staff_sectors(*, department:staff_departments(*))
     `)
@@ -25,7 +26,7 @@ export async function fetchVolunteers(): Promise<StaffVolunteerWithRelations[]> 
 }
 
 /**
- * Récupérer un bénévole par ID
+ * Recuperer un benevole/staff par ID
  */
 export async function fetchVolunteerById(id: string): Promise<StaffVolunteerWithRelations> {
   const { data, error} = await supabase
@@ -33,6 +34,7 @@ export async function fetchVolunteerById(id: string): Promise<StaffVolunteerWith
     .select(`
       *,
       status:staff_volunteer_statuses!staff_volunteers_status_id_fkey(*),
+      category:staff_categories(*),
       departments:staff_departments(*),
       sectors:staff_sectors(*, department:staff_departments(*))
     `)
@@ -44,7 +46,7 @@ export async function fetchVolunteerById(id: string): Promise<StaffVolunteerWith
 }
 
 /**
- * Créer un bénévole
+ * Creer un benevole/staff
  */
 export async function createVolunteer(input: StaffVolunteerInput): Promise<StaffVolunteer> {
   const { data, error } = await supabase
@@ -55,8 +57,16 @@ export async function createVolunteer(input: StaffVolunteerInput): Promise<Staff
       email: input.email,
       phone: input.phone || null,
       status_id: input.status_id,
+      category_id: input.category_id || null,
       department_ids: input.department_ids || [],
       sector_ids: input.sector_ids || [],
+      skills: input.skills || [],
+      qualifications: input.qualifications || null,
+      license_number: input.license_number || null,
+      license_expiry: input.license_expiry || null,
+      license_types: input.license_types || [],
+      hourly_rate: input.hourly_rate || null,
+      currency: input.currency || 'CHF',
       notes_internal: input.notes_internal || null,
       notes_public: input.notes_public || null,
       is_active: input.is_active !== undefined ? input.is_active : true,
@@ -69,7 +79,7 @@ export async function createVolunteer(input: StaffVolunteerInput): Promise<Staff
 }
 
 /**
- * Mettre à jour un bénévole
+ * Mettre a jour un benevole/staff
  */
 export async function updateVolunteer(
   id: string,
@@ -82,8 +92,16 @@ export async function updateVolunteer(
   if (input.email !== undefined) updateData.email = input.email;
   if (input.phone !== undefined) updateData.phone = input.phone;
   if (input.status_id !== undefined) updateData.status_id = input.status_id;
+  if (input.category_id !== undefined) updateData.category_id = input.category_id;
   if (input.department_ids !== undefined) updateData.department_ids = input.department_ids;
   if (input.sector_ids !== undefined) updateData.sector_ids = input.sector_ids;
+  if (input.skills !== undefined) updateData.skills = input.skills;
+  if (input.qualifications !== undefined) updateData.qualifications = input.qualifications;
+  if (input.license_number !== undefined) updateData.license_number = input.license_number;
+  if (input.license_expiry !== undefined) updateData.license_expiry = input.license_expiry;
+  if (input.license_types !== undefined) updateData.license_types = input.license_types;
+  if (input.hourly_rate !== undefined) updateData.hourly_rate = input.hourly_rate;
+  if (input.currency !== undefined) updateData.currency = input.currency;
   if (input.notes_internal !== undefined) updateData.notes_internal = input.notes_internal;
   if (input.notes_public !== undefined) updateData.notes_public = input.notes_public;
   if (input.is_active !== undefined) updateData.is_active = input.is_active;
@@ -112,11 +130,12 @@ export async function deleteVolunteer(id: string): Promise<void> {
 }
 
 /**
- * Recherche multi-critères
+ * Recherche multi-criteres
  */
 export async function searchVolunteers(filters: {
   search?: string;
   status_id?: string;
+  category_id?: string;
   department_ids?: string[];
   sector_ids?: string[];
   is_active?: boolean;
@@ -126,6 +145,7 @@ export async function searchVolunteers(filters: {
     .select(`
       *,
       status:staff_volunteer_statuses!staff_volunteers_status_id_fkey(*),
+      category:staff_categories(*),
       departments:staff_departments(*),
       sectors:staff_sectors(*, department:staff_departments(*))
     `);
@@ -142,7 +162,12 @@ export async function searchVolunteers(filters: {
     query = query.eq('status_id', filters.status_id);
   }
 
-  // Filtre par état actif/inactif
+  // Filtre par categorie
+  if (filters.category_id) {
+    query = query.eq('category_id', filters.category_id);
+  }
+
+  // Filtre par etat actif/inactif
   if (filters.is_active !== undefined) {
     query = query.eq('is_active', filters.is_active);
   }
