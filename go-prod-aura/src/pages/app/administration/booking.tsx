@@ -469,9 +469,20 @@ export default function AdminBookingPage() {
 
     // Filtrer les offres acceptées et rejetées (elles sont affichées dans leurs sections respectives)
     const allRows = [...performanceRows, ...unmatchedOffers];
-    return allRows.filter((row) => {
+    const filteredRows = allRows.filter((row) => {
       const status = (row as any).status || (row as any).booking_status;
       return status !== "accepted" && status !== "rejected";
+    });
+    
+    // Dédupliquer par artiste + scène + heure + jour pour éviter les doublons
+    const seen = new Set<string>();
+    return filteredRows.filter((row) => {
+      const key = `${(row as any).artist_id}__${(row as any).stage_id || ''}__${normalizeTime((row as any).performance_time)}__${(row as any).event_day_date || ''}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
     });
   }, [offers, performances, computeRealDate]);
 
