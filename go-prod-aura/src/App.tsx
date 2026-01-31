@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Suspense, lazy, useEffect } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { queryClient } from './lib/queryClient'
 import { ToastProvider } from './components/aura/ToastProvider'
 import { useEventStore } from './store/useEventStore'
 
@@ -123,6 +125,7 @@ export default function App() {
   }, [hydrateFromLocalStorage]);
 
   return (
+    <QueryClientProvider client={queryClient}>
     <AuthProvider>
     <ToastProvider>
       <Suspense fallback={<PageLoader />}>
@@ -251,5 +254,6 @@ export default function App() {
       </Suspense>
     </ToastProvider>
     </AuthProvider>
+    </QueryClientProvider>
   )
 }
