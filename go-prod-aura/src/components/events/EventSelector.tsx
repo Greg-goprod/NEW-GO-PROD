@@ -5,34 +5,16 @@ import { useCurrentEvent } from '@/hooks/useCurrentEvent';
 import { listEvents } from '@/api/eventsApi';
 import type { EventWithCounts } from '@/api/eventsApi';
 import { EventForm } from '@/features/settings/events/EventForm';
-import { useAuth } from '@/contexts/AuthContext';
-import { getCurrentCompanyId } from '@/lib/tenant';
+import { useCompanyId } from '@/hooks/useCompanyId';
 
 export function EventSelector() {
   const [events, setEvents] = useState<EventWithCounts[]>([]);
   const [loading, setLoading] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const { error: toastError } = useToast();
-  const { profile } = useAuth();
+  const { companyId } = useCompanyId();
   
   const { eventId, setCurrentEvent } = useCurrentEvent();
-
-  // Récupérer le company_id - priorité au profil, sinon cache/fallback
-  useEffect(() => {
-    if (profile?.company_id) {
-      setCompanyId(profile.company_id);
-    } else {
-      // Fallback: utiliser le cache tenant (synchrone si déjà chargé)
-      getCurrentCompanyId()
-        .then(cid => setCompanyId(cid))
-        .catch(() => {
-          // Dernier recours: localStorage
-          const cached = localStorage.getItem('company_id');
-          if (cached) setCompanyId(cached);
-        });
-    }
-  }, [profile?.company_id]);
 
   // Charger la liste des évènements
   const loadEvents = useCallback(async () => {

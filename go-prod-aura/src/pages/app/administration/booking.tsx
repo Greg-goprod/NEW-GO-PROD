@@ -25,7 +25,7 @@ import {
 // import { listOfferClauses } from "@/features/booking/advancedBookingApi";
 // import { generateContractPdfWithClauses } from "@/features/booking/pdfGenerator";
 import { sendOfferEmail } from "@/services/emailService";
-import { getCurrentCompanyId } from "@/lib/tenant";
+import { useCompanyId } from "@/hooks/useCompanyId";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchPerformances, fetchEventDays, type Performance, type EventDay } from "@/features/timeline/timelineApi";
 
@@ -153,7 +153,9 @@ export default function AdminBookingPage() {
   const { success: toastSuccess, error: toastError } = useToast();
   const navigate = useNavigate();
   
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  // Utiliser le hook pour le company_id (synchrone depuis localStorage)
+  const { companyId } = useCompanyId();
+  
   const [demoMode, setDemoMode] = useState(false);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [performances, setPerformances] = useState<Performance[]>([]);
@@ -189,25 +191,6 @@ export default function AdminBookingPage() {
       setDemoMode(true);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Récupération du company_id
-  useEffect(() => {
-    (async () => {
-      try {
-        const cid = await getCurrentCompanyId(supabase);
-        console.log("[COMPANY] Company ID récupéré:", cid);
-        setCompanyId(cid);
-      } catch (e) {
-        console.error('[ERROR] Erreur récupération company_id:', e);
-        // Fallback vers localStorage si getCurrentCompanyId échoue
-        const fallbackId = localStorage.getItem("company_id") || 
-                          localStorage.getItem("auth_company_id") || 
-                          "00000000-0000-0000-0000-000000000000";
-        console.log("[COMPANY] Company ID fallback:", fallbackId);
-        setCompanyId(fallbackId);
-      }
-    })();
-  }, []);
 
   // Fonction pour charger les offres
   const loadOffers = useCallback(async () => {
