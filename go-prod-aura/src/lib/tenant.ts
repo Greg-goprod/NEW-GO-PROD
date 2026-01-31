@@ -16,14 +16,22 @@ let cachedCompanyId: string | null = null;
  * 3. Entreprise de développement (dev bypass)
  */
 export async function getCurrentCompanyId(_supabase?: any): Promise<string> {
-  // Retourner le cache si disponible
+  // 1. Retourner le cache mémoire si disponible
   if (cachedCompanyId) {
     return cachedCompanyId;
   }
   
+  // 2. Vérifier localStorage (persisté par AuthContext)
+  const localStorageCompanyId = localStorage.getItem('company_id');
+  if (localStorageCompanyId) {
+    console.log("[Tenant] Company_id depuis localStorage:", localStorageCompanyId);
+    cachedCompanyId = localStorageCompanyId;
+    return localStorageCompanyId;
+  }
+  
   console.log("[Tenant] Récupération du company_id...");
   
-  // Vérifier si on est en mode bypass (développement)
+  // 3. Mode bypass (développement)
   const isBypass = import.meta.env.VITE_AUTH_BYPASS === 'true' || 
     (import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS !== 'false');
   
@@ -33,12 +41,12 @@ export async function getCurrentCompanyId(_supabase?: any): Promise<string> {
     return DEV_COMPANY_ID;
   }
   
-  // En production: récupérer le company_id depuis le profil de l'utilisateur
+  // 4. En production: récupérer depuis le profil Supabase
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session?.user) {
-      console.warn("[Tenant] Pas de session utilisateur, impossible de récupérer le company_id");
+      console.warn("[Tenant] Pas de session utilisateur");
       throw new Error("Utilisateur non connecté");
     }
     
@@ -49,21 +57,23 @@ export async function getCurrentCompanyId(_supabase?: any): Promise<string> {
       .single();
     
     if (error) {
-      console.error("[Tenant] Erreur lors de la récupération du profil:", error);
+      console.error("[Tenant] Erreur profil:", error);
       throw new Error("Impossible de récupérer le profil utilisateur");
     }
     
     if (!profile?.company_id) {
-      console.error("[Tenant] L'utilisateur n'a pas de company_id associé");
+      console.error("[Tenant] Pas de company_id dans le profil");
       throw new Error("Aucune organisation associée à cet utilisateur");
     }
     
-    console.log("[Tenant] Company_id récupéré depuis le profil:", profile.company_id);
+    console.log("[Tenant] Company_id depuis profil:", profile.company_id);
     cachedCompanyId = profile.company_id;
+    // Sauvegarder dans localStorage pour les prochains appels
+    localStorage.setItem('company_id', profile.company_id);
     return profile.company_id;
     
   } catch (error) {
-    console.error("[Tenant] Erreur critique:", error);
+    console.error("[Tenant] Erreur:", error);
     throw error;
   }
 }
