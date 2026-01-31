@@ -224,6 +224,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(data);
         // Mettre à jour le cache du company_id pour le tenant
         setCompanyIdCache(data?.company_id ?? null);
+        // Sauvegarder aussi dans localStorage pour persistence entre navigations
+        if (data?.company_id) {
+          localStorage.setItem('company_id', data.company_id);
+        }
       }
     } catch (err) {
       console.error('[Auth] Exception fetching profile:', err);
