@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/aura/Button';
 import { Input } from '@/components/aura/Input';
@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignInPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { bypass, session } = useAuth();
   
@@ -17,8 +16,8 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [sessionExpiredMsg, setSessionExpiredMsg] = useState(false);
 
-  // Destination après login
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/app';
+  // Destination après login - toujours aller vers select-event
+  const from = '/app/select-event';
 
   // Si déjà connecté, rediriger
   useEffect(() => {

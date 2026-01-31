@@ -143,7 +143,14 @@ export function SettingsEventsPage() {
 
       {/* Evenement actuel (si defini) */}
       {currentEvent && (
-        <Card className="p-6 border-2 border-[var(--primary)]">
+        <div 
+          className="rounded-xl p-6"
+          style={{ 
+            background: 'var(--color-bg-elevated)',
+            border: '2px solid var(--primary)',
+            boxShadow: 'var(--shadow-md)'
+          }}
+        >
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
               <div
@@ -189,7 +196,7 @@ export function SettingsEventsPage() {
               </Button>
             </div>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Liste des evenements */}

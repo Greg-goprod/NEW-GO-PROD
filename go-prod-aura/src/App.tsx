@@ -33,6 +33,9 @@ const SignInPage = lazy(() => import('./pages/auth/SignInPage'))
 const PublicLayout = lazy(() => import('./layouts/PublicLayout').then(m => ({ default: m.PublicLayout })))
 const LandingPage = lazy(() => import('./pages/public/LandingPage').then(m => ({ default: m.LandingPage })))
 
+// Select Event (page de sélection d'événement)
+const SelectEventPage = lazy(() => import('./pages/app/SelectEventPage'))
+
 // Dashboard
 const DashboardPage = lazy(() => import('./pages/app/dashboard'))
 
@@ -53,6 +56,7 @@ const SettingsPressePage = lazy(() => import('./pages/settings/SettingsPressePag
 const SettingsContactsPage = lazy(() => import('./pages/settings/SettingsContactsPage').then(m => ({ default: m.SettingsContactsPage })))
 const SettingsPermissionsPage = lazy(() => import('./pages/settings/SettingsPermissionsPage').then(m => ({ default: m.SettingsPermissionsPage })))
 const SettingsStaffPage = lazy(() => import('./pages/settings/SettingsStaffPage'))
+const SettingsEventsPage = lazy(() => import('./pages/settings/SettingsEventsPage').then(m => ({ default: m.SettingsEventsPage })))
 
 // Production
 const ProductionPage = lazy(() => import('./pages/app/production'))
@@ -123,8 +127,8 @@ export default function App() {
     <ToastProvider>
       <Suspense fallback={<PageLoader />}>
       <Routes>
-        {/* Redirect root to app */}
-        <Route path="/" element={<Navigate to="/app" replace />} />
+        {/* Redirect root to select-event */}
+        <Route path="/" element={<Navigate to="/app/select-event" replace />} />
 
         {/* Auth Routes */}
         <Route path="/auth/signin" element={<SignInPage />} />
@@ -133,6 +137,9 @@ export default function App() {
         <Route path="/landing" element={<PublicLayout />}>
           <Route index element={<LandingPage />} />
         </Route>
+
+        {/* Select Event - Page de sélection d'événement (sans sidebar) */}
+        <Route path="/app/select-event" element={<RequireAuth><SelectEventPage/></RequireAuth>}/>
 
         {/* Timeline - FULL WIDTH (sans sidebar) - Protected */}
         <Route path="/app/booking/timeline" element={<RequireAuth><LineupTimelinePage/></RequireAuth>}/>
@@ -205,6 +212,7 @@ export default function App() {
             <Route path="contacts" element={<SettingsContactsPage/>}/>
             <Route path="staff" element={<SettingsStaffPage/>}/>
             <Route path="permissions" element={<SettingsPermissionsPage/>}/>
+            <Route path="events" element={<SettingsEventsPage/>}/>
           </Route>
 
           {/* Presse */}

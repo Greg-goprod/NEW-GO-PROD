@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { Save, Plus, Trash2, MapPin, Info, AlertTriangle } from 'lucide-react';
+import { Save, Plus, Trash2, MapPin, Info, AlertTriangle, Settings } from 'lucide-react';
 import { Modal } from '@/components/aura/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -23,6 +23,10 @@ import {
 import {
   fetchStageTypes,
   fetchStageSpecificities,
+  createStageType,
+  createStageSpecificity,
+  deleteStageType,
+  deleteStageSpecificity,
   type StageType,
   type StageSpecificity,
 } from '@/api/stageEnumsApi';
@@ -55,9 +59,15 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeSection, setActiveSection] = useState<'info' | 'days' | 'stages'>('info');
+  const [activeSection, setActiveSection] = useState<'info' | 'stages' | 'config'>('info');
   const [stageTypes, setStageTypes] = useState<StageType[]>([]);
   const [stageSpecificities, setStageSpecificities] = useState<StageSpecificity[]>([]);
+  
+  // État pour l'ajout de types/spécificités
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newSpecName, setNewSpecName] = useState('');
+  const [addingType, setAddingType] = useState(false);
+  const [addingSpec, setAddingSpec] = useState(false);
 
   // État pour le warning de suppression de jours
   const [deleteDaysWarning, setDeleteDaysWarning] = useState<{
@@ -118,22 +128,80 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
   });
 
   // Charger les enums de scènes au montage du composant
-  useEffect(() => {
-    if (open && companyId) {
-      Promise.all([
+  const loadEnums = async () => {
+    if (!companyId) return;
+    try {
+      const [types, specs] = await Promise.all([
         fetchStageTypes(companyId),
         fetchStageSpecificities(companyId),
-      ])
-        .then(([types, specs]) => {
-          setStageTypes(types);
-          setStageSpecificities(specs);
-        })
-        .catch((err) => {
-          console.error('Erreur lors du chargement des enums de scènes:', err);
-          toastError('Impossible de charger les types de scènes');
-        });
+      ]);
+      setStageTypes(types);
+      setStageSpecificities(specs);
+    } catch (err) {
+      console.error('Erreur lors du chargement des enums de scènes:', err);
+      toastError('Impossible de charger les types de scènes');
     }
-  }, [open, companyId, toastError]);
+  };
+
+  useEffect(() => {
+    if (open && companyId) {
+      loadEnums();
+    }
+  }, [open, companyId]);
+
+  // Ajouter un type de scène
+  const handleAddType = async () => {
+    if (!newTypeName.trim() || !companyId) return;
+    setAddingType(true);
+    try {
+      await createStageType(companyId, newTypeName, newTypeName);
+      await loadEnums();
+      setNewTypeName('');
+      toastSuccess(`Type "${newTypeName}" créé`);
+    } catch (err) {
+      toastError('Erreur lors de la création du type');
+    } finally {
+      setAddingType(false);
+    }
+  };
+
+  // Supprimer un type de scène
+  const handleDeleteType = async (type: StageType) => {
+    try {
+      await deleteStageType(type.id);
+      await loadEnums();
+      toastSuccess(`Type "${type.label}" supprimé`);
+    } catch (err) {
+      toastError('Erreur lors de la suppression du type');
+    }
+  };
+
+  // Ajouter une spécificité
+  const handleAddSpec = async () => {
+    if (!newSpecName.trim() || !companyId) return;
+    setAddingSpec(true);
+    try {
+      await createStageSpecificity(companyId, newSpecName, newSpecName);
+      await loadEnums();
+      setNewSpecName('');
+      toastSuccess(`Spécificité "${newSpecName}" créée`);
+    } catch (err) {
+      toastError('Erreur lors de la création de la spécificité');
+    } finally {
+      setAddingSpec(false);
+    }
+  };
+
+  // Supprimer une spécificité
+  const handleDeleteSpec = async (spec: StageSpecificity) => {
+    try {
+      await deleteStageSpecificity(spec.id);
+      await loadEnums();
+      toastSuccess(`Spécificité "${spec.label}" supprimée`);
+    } catch (err) {
+      toastError('Erreur lors de la suppression de la spécificité');
+    }
+  };
 
   // Surveiller les changements de dates pour générer automatiquement les jours
   const watchedStartDate = watch('start_date');
@@ -495,7 +563,19 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
               }`}
             >
               <Info className="w-4 h-4 inline-block mr-2" />
-              Informations générales
+              Général
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection('config')}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                activeSection === 'config'
+                  ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <Settings className="w-4 h-4 inline-block mr-2" />
+              Types & Spécificités
             </button>
             <button
               type="button"
@@ -624,6 +704,116 @@ export function EventForm({ open, onClose, companyId, editingEventId }: EventFor
                 disabled={saving}
                 placeholder="Notes internes..."
               />
+            </div>
+          )}
+
+          {/* Section Configuration (Types & Spécificités) */}
+          {activeSection === 'config' && (
+            <div className="space-y-6">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Configurez les types et spécificités de scènes disponibles pour cet événement.
+                Ces options seront utilisables lors de la création des scènes.
+              </p>
+
+              {/* Types de scènes */}
+              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                  Types de scènes
+                </h4>
+                
+                {/* Liste des types existants */}
+                <div className="space-y-2 mb-3">
+                  {stageTypes.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">Aucun type défini</p>
+                  ) : (
+                    stageTypes.map((type) => (
+                      <div
+                        key={type.id}
+                        className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600"
+                      >
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{type.label}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteType(type)}
+                          className="text-red-500 hover:text-red-600 p-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                {/* Ajouter un type */}
+                <div className="flex gap-2">
+                  <Input
+                    value={newTypeName}
+                    onChange={(e) => setNewTypeName(e.target.value)}
+                    placeholder="Ex: Mainstage, Club, Acoustic..."
+                    disabled={addingType}
+                    className="flex-1"
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddType())}
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAddType}
+                    disabled={addingType || !newTypeName.trim()}
+                    className="px-3 py-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Spécificités de scènes */}
+              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                  Spécificités de scènes
+                </h4>
+                
+                {/* Liste des spécificités existantes */}
+                <div className="space-y-2 mb-3">
+                  {stageSpecificities.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">Aucune spécificité définie</p>
+                  ) : (
+                    stageSpecificities.map((spec) => (
+                      <div
+                        key={spec.id}
+                        className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600"
+                      >
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{spec.label}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSpec(spec)}
+                          className="text-red-500 hover:text-red-600 p-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                {/* Ajouter une spécificité */}
+                <div className="flex gap-2">
+                  <Input
+                    value={newSpecName}
+                    onChange={(e) => setNewSpecName(e.target.value)}
+                    placeholder="Ex: Couvert, Extérieur, VIP..."
+                    disabled={addingSpec}
+                    className="flex-1"
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSpec())}
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAddSpec}
+                    disabled={addingSpec || !newSpecName.trim()}
+                    className="px-3 py-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
