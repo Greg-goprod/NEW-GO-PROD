@@ -451,11 +451,7 @@ export function InvoicesByDay({
             return (
               <div
                 key={day.id}
-                className="rounded-2xl overflow-hidden shadow-sm"
-                style={{
-                  background: 'var(--color-bg-elevated)',
-                  border: '1px solid var(--color-border-violet, rgba(139, 92, 246, 0.2))',
-                }}
+                className="rounded-2xl border border-violet-100 dark:border-violet-800/50 bg-white dark:bg-gray-900 overflow-hidden shadow-sm"
               >
                 {/* Header du jour */}
                 <div 
@@ -486,7 +482,7 @@ export function InvoicesByDay({
                       Aucune facture pour ce jour
                     </div>
                   ) : (
-                    <div className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
                       {dayInvoices.map((invoice) => (
                         <InvoiceRowStyled
                           key={invoice.id}
@@ -509,11 +505,7 @@ export function InvoicesByDay({
           {/* Section pour les factures sans date assignee */}
           {invoicesWithoutDay.length > 0 && (
             <div
-              className="rounded-2xl overflow-hidden shadow-sm"
-              style={{
-                background: 'var(--color-bg-elevated)',
-                border: '1px solid var(--color-border)',
-              }}
+              className="rounded-2xl border border-violet-100 dark:border-violet-800/50 bg-white dark:bg-gray-900 overflow-hidden shadow-sm"
             >
               {/* Header */}
               <div 
@@ -535,7 +527,7 @@ export function InvoicesByDay({
               <ColumnHeaders />
 
               {/* Contenu */}
-              <div className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
                 {invoicesWithoutDay.map((invoice) => (
                   <InvoiceRowStyled
                     key={invoice.id}
@@ -555,11 +547,7 @@ export function InvoicesByDay({
       ) : (
         /* Affichage sans jours configures - toutes les factures dans un seul container */
         <div
-          className="rounded-2xl overflow-hidden shadow-sm"
-          style={{
-            background: 'var(--color-bg-elevated)',
-            border: '1px solid var(--color-border-violet, rgba(139, 92, 246, 0.2))',
-          }}
+          className="rounded-2xl border border-violet-100 dark:border-violet-800/50 bg-white dark:bg-gray-900 overflow-hidden shadow-sm"
         >
           {/* Header */}
           <div 
@@ -592,7 +580,7 @@ export function InvoicesByDay({
                   : 'Aucune facture ne correspond aux filtres'}
               </div>
             ) : (
-              <div className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
                 {filteredInvoices.map((invoice) => (
                   <InvoiceRowStyled
                     key={invoice.id}
