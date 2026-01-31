@@ -31,14 +31,21 @@ export const useEventStore = create<EventStore>()(
           localStorage.setItem(SELECTED_EVENT_ID_KEY, event.id);
           
           // Persister un snapshot minimal pour l'affichage immédiat
+          // IMPORTANT: inclure company_id pour éviter les appels async inutiles
           const snapshot = {
             id: event.id,
+            company_id: event.company_id,
             name: event.name,
             color_hex: event.color_hex,
             start_date: event.start_date,
             end_date: event.end_date,
           };
           localStorage.setItem(CURRENT_EVENT_SNAPSHOT_KEY, JSON.stringify(snapshot));
+          
+          // S'assurer que company_id est aussi en localStorage pour les hooks
+          if (event.company_id) {
+            localStorage.setItem('company_id', event.company_id);
+          }
           
           // Déclencher l'évènement global
           window.dispatchEvent(new CustomEvent('event-changed', {
@@ -68,10 +75,13 @@ export const useEventStore = create<EventStore>()(
           if (eventId && snapshotStr) {
             const snapshot = JSON.parse(snapshotStr);
             
+            // Récupérer company_id du snapshot ou de localStorage
+            const companyId = snapshot.company_id || localStorage.getItem('company_id') || '';
+            
             // Créer un EventCore minimal à partir du snapshot
             const eventCore: EventCore = {
               id: snapshot.id,
-              company_id: '', // Sera rempli par l'API
+              company_id: companyId,
               name: snapshot.name,
               slug: null,
               color_hex: snapshot.color_hex,
@@ -84,7 +94,7 @@ export const useEventStore = create<EventStore>()(
             };
             
             set({ currentEvent: eventCore });
-            console.log('🔄 Évènement restauré depuis localStorage:', eventCore.name);
+            console.log('🔄 Évènement restauré depuis localStorage:', eventCore.name, 'company:', companyId);
           } else {
             set({ currentEvent: null });
             console.log('🔄 Aucun évènement en localStorage');
