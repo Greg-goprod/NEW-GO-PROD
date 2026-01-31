@@ -126,7 +126,7 @@ type Props = {
   companyId: string;
   eventId?: string | null; // ID de l'événement dans lequel l'artiste est créé (pour tracking)
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (artistId?: string) => void;
 };
 
 export default function AddArtistModal({ companyId, eventId, onClose, onSaved }: Props) {
@@ -293,7 +293,7 @@ export default function AddArtistModal({ companyId, eventId, onClose, onSaved }:
 
       console.log("🎉 Ajout d'artiste terminé avec succès");
       setLoading(false);
-      onSaved();
+      onSaved(artistData?.id);
     } catch (error) {
       console.error("💥 Erreur lors de l'ajout de l'artiste:", error);
       setErr(error instanceof Error ? error.message : "Erreur lors de l'ajout de l'artiste");

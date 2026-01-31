@@ -31,7 +31,6 @@ import {
   type EventStage,
   type BookingStatus,
   type Performance,
-  type PerformanceUpdate,
 } from "../../timeline/timelineApi";
 
 // =============================================================================
@@ -217,7 +216,6 @@ export function OfferComposer({
   // =============================================================================
   // ÉTATS - Gestion heure TBC
   // =============================================================================
-  const [savedPerformanceTime, setSavedPerformanceTime] = useState<string>("20:00");
   const [isTBC, setIsTBC] = useState(false);
   
   // =============================================================================
@@ -343,6 +341,25 @@ export function OfferComposer({
     try {
       console.log(`[BUDGET] Chargement données pour artiste ${artistId}, event ${eventId}`);
       
+      // D'abord récupérer les IDs des jours de l'événement
+      const { data: eventDays, error: daysError } = await supabase
+        .from("event_days")
+        .select("id")
+        .eq("event_id", eventId);
+      
+      if (daysError) {
+        console.error("[BUDGET] Erreur récupération event_days:", daysError);
+        return;
+      }
+      
+      if (!eventDays || eventDays.length === 0) {
+        console.log("[BUDGET] Aucun jour trouvé pour l'événement");
+        return;
+      }
+      
+      const dayIds = eventDays.map(d => d.id);
+      
+      // Chercher une performance de cet artiste dans cet événement
       const { data, error } = await supabase
         .from("artist_performances")
         .select(`
@@ -359,7 +376,9 @@ export function OfferComposer({
           withholding_note
         `)
         .eq("artist_id", artistId)
-        .eq("event_id", eventId)
+        .in("event_day_id", dayIds)
+        .order("updated_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
       
       if (error) throw error;
@@ -611,6 +630,50 @@ export function OfferComposer({
         }
       };
       
+      // =============================================================================
+      // CHARGER LES DONNÉES FINANCIÈRES DEPUIS artist_performances (SOURCE UNIQUE)
+      // =============================================================================
+      const loadFinancialDataFromPerformance = async (performanceId: string) => {
+        console.log(`[FINANCES] Chargement données depuis performance ID: ${performanceId}`);
+        
+        try {
+          const { data, error } = await supabase
+            .from("artist_performances")
+            .select(`
+              fee_amount,
+              fee_currency,
+              fee_is_net,
+              commission_percentage,
+              subject_to_withholding_tax,
+              prod_fee_amount,
+              backline_fee_amount,
+              buyout_hotel_amount,
+              buyout_meal_amount,
+              flight_contribution_amount,
+              technical_fee_amount,
+              withholding_note
+            `)
+            .eq("id", performanceId)
+            .maybeSingle();
+          
+          if (error) {
+            console.error("[FINANCES] Erreur chargement:", error);
+            return null;
+          }
+          
+          if (data) {
+            console.log("[FINANCES] Données chargées depuis artist_performances:", data);
+            return data;
+          }
+          
+          console.log("[FINANCES] Aucune donnée trouvée pour performance:", performanceId);
+          return null;
+        } catch (err) {
+          console.error("[FINANCES] Erreur:", err);
+          return null;
+        }
+      };
+      
       // Charger les clauses d'exclusivité (en mode modification)
       if (isModificationMode && prefilledData.terms_json) {
         const termsJson = typeof prefilledData.terms_json === 'string' 
@@ -621,73 +684,164 @@ export function OfferComposer({
         }
       }
       
-      const amountValue = prefilledData.fee_amount ?? null;
-      const isNet = prefilledData.amount_is_net ?? true;
-      const budgetFields = new Set<string>();
-      
+      // Initialiser les données de base (non-financières)
       setFormData({
         artist_id: prefilledData.artist_id || "",
         stage_id: prefilledData.stage_id || "",
-        agency_contact_id: prefilledData.agency_contact_id || "", // Sera rempli par loadMainAgent() si vide
-        booking_agency_id: prefilledData.booking_agency_id || "", // Sera rempli par loadMainAgent() si vide
+        agency_contact_id: prefilledData.agency_contact_id || "",
+        booking_agency_id: prefilledData.booking_agency_id || "",
         date_time: prefilledData.event_day_date || prefilledData.date_time || "",
         performance_time: prefilledData.performance_time ? prefilledData.performance_time.slice(0, 5) : "14:00",
         duration: prefilledData.duration || 60,
-        currency: (prefilledData.fee_currency || "EUR") as CurrencyCode,
-        amount_net: isNet ? amountValue : null,
-        amount_gross: !isNet ? amountValue : null,
-        amount_is_net: isNet,
-        amount_gross_is_subject_to_withholding: !isNet || prefilledData.amount_gross_is_subject_to_withholding || false,
-        subject_to_withholding_tax: prefilledData.amount_gross_is_subject_to_withholding ?? true, // Par défaut soumis
-        withholding_note: prefilledData.withholding_note || "",
-        amount_display: amountValue,
-        agency_commission_pct: prefilledData.commission_percentage ?? null,
+        currency: "EUR",
+        amount_net: null,
+        amount_gross: null,
+        amount_is_net: true,
+        amount_gross_is_subject_to_withholding: false,
+        subject_to_withholding_tax: true,
+        withholding_note: "",
+        amount_display: null,
+        agency_commission_pct: null,
         validity_date: prefilledData.validity_date || "",
-        // Notes (en mode modification)
         notes_date: prefilledData.notes_date || "",
         notes_financial: prefilledData.notes_financial || "",
         note_general: prefilledData.note_general || "",
       });
       setDurationMode(getDurationMode(prefilledData.duration));
       setLinkedPerformanceId(prefilledData.performance_id || null);
-
-      if (amountValue !== null) budgetFields.add("amount");
-      if (prefilledData.fee_currency) budgetFields.add("currency");
-      if (prefilledData.commission_percentage !== null && prefilledData.commission_percentage !== undefined) {
-        budgetFields.add("commission");
-      }
-      if (prefilledData.withholding_note) {
-        budgetFields.add("withholding_note");
-      }
       
-      // Frais additionnels (0 par défaut si non renseigné)
-      const prodFee = prefilledData.prod_fee_amount ?? 0;
-      setProdFeeAmount(prodFee);
-      if (prodFee > 0) budgetFields.add("prod_fee_amount");
+      // Réinitialiser les frais additionnels
+      setProdFeeAmount(0);
+      setBacklineFeeAmount(0);
+      setBuyoutHotelAmount(0);
+      setBuyoutMealAmount(0);
+      setFlightContributionAmount(0);
+      setTechnicalFeeAmount(0);
+      setFieldsFromBudget(new Set());
       
-      const backlineFee = prefilledData.backline_fee_amount ?? 0;
-      setBacklineFeeAmount(backlineFee);
-      if (backlineFee > 0) budgetFields.add("backline_fee_amount");
-      
-      const buyoutHotel = prefilledData.buyout_hotel_amount ?? 0;
-      setBuyoutHotelAmount(buyoutHotel);
-      if (buyoutHotel > 0) budgetFields.add("buyout_hotel_amount");
-      
-      const buyoutMeal = prefilledData.buyout_meal_amount ?? 0;
-      setBuyoutMealAmount(buyoutMeal);
-      if (buyoutMeal > 0) budgetFields.add("buyout_meal_amount");
-      
-      const flightContrib = prefilledData.flight_contribution_amount ?? 0;
-      setFlightContributionAmount(flightContrib);
-      if (flightContrib > 0) budgetFields.add("flight_contribution_amount");
-      
-      const technicalFee = prefilledData.technical_fee_amount ?? 0;
-      setTechnicalFeeAmount(technicalFee);
-      if (technicalFee > 0) budgetFields.add("technical_fee_amount");
-      setFieldsFromBudget(budgetFields);
+      // CHARGER LES DONNÉES FINANCIÈRES DEPUIS LA SOURCE UNIQUE
+      const loadAndApplyFinancialData = async () => {
+        let financialData: any = null;
+        
+        // Si on a un performance_id, charger directement depuis artist_performances
+        if (prefilledData.performance_id) {
+          financialData = await loadFinancialDataFromPerformance(prefilledData.performance_id);
+        }
+        
+        if (financialData) {
+          // Appliquer les données financières chargées depuis la DB
+          const budgetFields = new Set<string>();
+          
+          if (financialData.fee_amount !== null && financialData.fee_amount !== undefined) {
+            const isNet = financialData.fee_is_net ?? true;
+            setFormData(prev => ({
+              ...prev,
+              currency: (financialData.fee_currency || "EUR") as CurrencyCode,
+              amount_net: isNet ? financialData.fee_amount : null,
+              amount_gross: !isNet ? financialData.fee_amount : null,
+              amount_is_net: isNet,
+              amount_display: financialData.fee_amount,
+              amount_gross_is_subject_to_withholding: financialData.subject_to_withholding_tax ?? true,
+              subject_to_withholding_tax: financialData.subject_to_withholding_tax ?? true,
+              withholding_note: financialData.withholding_note || "",
+              agency_commission_pct: financialData.commission_percentage ?? null,
+            }));
+            budgetFields.add("amount");
+            if (financialData.fee_currency) budgetFields.add("currency");
+            if (financialData.commission_percentage !== null) budgetFields.add("commission");
+            if (financialData.withholding_note) budgetFields.add("withholding_note");
+          }
+          
+          // Frais additionnels
+          if (financialData.prod_fee_amount > 0) {
+            setProdFeeAmount(financialData.prod_fee_amount);
+            budgetFields.add("prod_fee_amount");
+          }
+          if (financialData.backline_fee_amount > 0) {
+            setBacklineFeeAmount(financialData.backline_fee_amount);
+            budgetFields.add("backline_fee_amount");
+          }
+          if (financialData.buyout_hotel_amount > 0) {
+            setBuyoutHotelAmount(financialData.buyout_hotel_amount);
+            budgetFields.add("buyout_hotel_amount");
+          }
+          if (financialData.buyout_meal_amount > 0) {
+            setBuyoutMealAmount(financialData.buyout_meal_amount);
+            budgetFields.add("buyout_meal_amount");
+          }
+          if (financialData.flight_contribution_amount > 0) {
+            setFlightContributionAmount(financialData.flight_contribution_amount);
+            budgetFields.add("flight_contribution_amount");
+          }
+          if (financialData.technical_fee_amount > 0) {
+            setTechnicalFeeAmount(financialData.technical_fee_amount);
+            budgetFields.add("technical_fee_amount");
+          }
+          
+          setFieldsFromBudget(budgetFields);
+          
+          if (budgetFields.size > 0) {
+            toastSuccess("Données financières chargées depuis la performance");
+          }
+        } else if (isModificationMode) {
+          // En mode modification, utiliser les données de prefilledData (depuis l'offre)
+          const amountValue = prefilledData.fee_amount ?? null;
+          const isNet = prefilledData.amount_is_net ?? true;
+          const budgetFields = new Set<string>();
+          
+          setFormData(prev => ({
+            ...prev,
+            currency: (prefilledData.fee_currency || "EUR") as CurrencyCode,
+            amount_net: isNet ? amountValue : null,
+            amount_gross: !isNet ? amountValue : null,
+            amount_is_net: isNet,
+            amount_display: amountValue,
+            amount_gross_is_subject_to_withholding: prefilledData.amount_gross_is_subject_to_withholding ?? true,
+            subject_to_withholding_tax: prefilledData.amount_gross_is_subject_to_withholding ?? true,
+            withholding_note: prefilledData.withholding_note || "",
+            agency_commission_pct: prefilledData.commission_percentage ?? null,
+          }));
+          
+          if (amountValue !== null) budgetFields.add("amount");
+          if (prefilledData.fee_currency) budgetFields.add("currency");
+          if (prefilledData.commission_percentage !== null) budgetFields.add("commission");
+          if (prefilledData.withholding_note) budgetFields.add("withholding_note");
+          
+          // Frais additionnels depuis prefilledData
+          if ((prefilledData.prod_fee_amount ?? 0) > 0) {
+            setProdFeeAmount(prefilledData.prod_fee_amount!);
+            budgetFields.add("prod_fee_amount");
+          }
+          if ((prefilledData.backline_fee_amount ?? 0) > 0) {
+            setBacklineFeeAmount(prefilledData.backline_fee_amount!);
+            budgetFields.add("backline_fee_amount");
+          }
+          if ((prefilledData.buyout_hotel_amount ?? 0) > 0) {
+            setBuyoutHotelAmount(prefilledData.buyout_hotel_amount!);
+            budgetFields.add("buyout_hotel_amount");
+          }
+          if ((prefilledData.buyout_meal_amount ?? 0) > 0) {
+            setBuyoutMealAmount(prefilledData.buyout_meal_amount!);
+            budgetFields.add("buyout_meal_amount");
+          }
+          if ((prefilledData.flight_contribution_amount ?? 0) > 0) {
+            setFlightContributionAmount(prefilledData.flight_contribution_amount!);
+            budgetFields.add("flight_contribution_amount");
+          }
+          if ((prefilledData.technical_fee_amount ?? 0) > 0) {
+            setTechnicalFeeAmount(prefilledData.technical_fee_amount!);
+            budgetFields.add("technical_fee_amount");
+          }
+          
+          setFieldsFromBudget(budgetFields);
+        }
+      };
       
       // Charger le booking agent après setFormData
       loadMainAgent();
+      
+      // Charger les données financières depuis la source unique
+      loadAndApplyFinancialData();
       
       // Charger les extras de l'offre originale (en mode modification)
       loadOfferExtrasFromOriginal();
@@ -744,18 +898,11 @@ export function OfferComposer({
   
   // =============================================================================
   // GESTION BOUTON TBC
+  // TBC = flag pour afficher "TBC" sur l'offre au lieu de l'heure
+  // L'heure réelle reste toujours sauvegardée en base
   // =============================================================================
   const handleToggleTBC = () => {
-    if (isTBC) {
-      // Restaurer l'heure sauvegardée
-      setFormData(prev => ({ ...prev, performance_time: savedPerformanceTime }));
-      setIsTBC(false);
-    } else {
-      // Sauvegarder l'heure actuelle et passer en TBC
-      setSavedPerformanceTime(formData.performance_time);
-      setFormData(prev => ({ ...prev, performance_time: "TBC" }));
-      setIsTBC(true);
-    }
+    setIsTBC(prev => !prev);
   };
   
   // =============================================================================
@@ -940,21 +1087,14 @@ export function OfferComposer({
     
     setSaving(true);
     try {
-      // Construction date_time
+      // Construction date_time (toujours avec l'heure réelle, isTBC n'affecte que l'affichage sur l'offre)
       let dateTime = "";
       if (formData.date_time && formData.performance_time) {
-        if (isTBC || formData.performance_time === "TBC") {
-          dateTime = `${formData.date_time}T00:00:00`;
-        } else {
-          const timeFormatted = formData.performance_time.includes(":") 
-            ? formData.performance_time 
-            : `${formData.performance_time}:00`;
-          dateTime = `${formData.date_time}T${timeFormatted}:00`;
-        }
+        const timeFormatted = formData.performance_time.includes(":") 
+          ? formData.performance_time 
+          : `${formData.performance_time}:00`;
+        dateTime = `${formData.date_time}T${timeFormatted}:00`;
       }
-      
-      // Calcul montant display
-      const amountDisplay = formData.amount_is_net ? formData.amount_net : formData.amount_gross;
       
       // Récupérer noms pour cache
       const artistName = artists.find(a => a.id === formData.artist_id)?.name || "";
@@ -1074,9 +1214,7 @@ export function OfferComposer({
     try {
       if (!formData.artist_id || !eventId || !companyId) return null;
 
-      const normalizedPerfTime = isTBC || !formData.performance_time
-        ? "00:00"
-        : formData.performance_time;
+      const normalizedPerfTime = formData.performance_time || "00:00";
       const bookingStatus: BookingStatus = offerStatus === "ready_to_send" ? "offre_envoyee" : "offre_a_faire";
       
       // Calculer le montant (net ou brut selon le mode)
@@ -1108,22 +1246,33 @@ export function OfferComposer({
         }
       }
 
-      // 2. Chercher par artist_id + event_id si pas trouvée
+      // 2. Chercher par artist_id + event_day_id (via event_days) si pas trouvée
       if (!performanceId) {
-        console.log("[PERF] Recherche performance par artist_id + event_id:", { artist_id: formData.artist_id, event_id: eventId });
-        const { data, error } = await supabase
-          .from("artist_performances")
-          .select("id, event_day_id, event_stage_id")
-          .eq("artist_id", formData.artist_id)
-          .eq("event_id", eventId)
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (error && error.code !== "PGRST116") throw error;
-        if (data?.id) {
-          console.log("[PERF] Performance trouvee:", data.id);
-          performanceId = data.id;
-          existingPerfData = { event_day_id: data.event_day_id, event_stage_id: data.event_stage_id };
+        console.log("[PERF] Recherche performance par artist_id + event_days:", { artist_id: formData.artist_id, event_id: eventId });
+        
+        // D'abord récupérer les IDs des jours de l'événement
+        const { data: eventDaysData } = await supabase
+          .from("event_days")
+          .select("id")
+          .eq("event_id", eventId);
+        
+        if (eventDaysData && eventDaysData.length > 0) {
+          const dayIds = eventDaysData.map(d => d.id);
+          
+          const { data, error } = await supabase
+            .from("artist_performances")
+            .select("id, event_day_id, event_stage_id")
+            .eq("artist_id", formData.artist_id)
+            .in("event_day_id", dayIds)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (error && error.code !== "PGRST116") throw error;
+          if (data?.id) {
+            console.log("[PERF] Performance trouvee:", data.id);
+            performanceId = data.id;
+            existingPerfData = { event_day_id: data.event_day_id, event_stage_id: data.event_stage_id };
+          }
         }
       }
 
@@ -1800,10 +1949,9 @@ export function OfferComposer({
               </label>
               <div className="flex gap-2">
                 <TimePickerPopup
-                  value={isTBC ? null : formData.performance_time}
+                  value={formData.performance_time}
                   onChange={(time) => setFormData(prev => ({ ...prev, performance_time: time || "14:00" }))}
                   placeholder="Sélectionner une heure"
-                  disabled={isTBC}
                   className={getFieldClassName("performance_time", "flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent")}
                   size="default"
                 />

@@ -1036,9 +1036,6 @@ export default function BudgetArtistiquePage() {
                               <div className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                                 {perf.artist_name?.toUpperCase()}
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {perf.stage_name}
-                              </div>
                             </div>
                           </div>
 

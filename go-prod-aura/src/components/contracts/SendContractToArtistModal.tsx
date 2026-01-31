@@ -728,7 +728,10 @@ export function SendContractToArtistModal({
               Email du destinataire <span className="text-red-500">*</span>
             </label>
             <input
+              id="artist-contract-recipient"
+              name="artist-contract-recipient"
               type="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@agence.com"
@@ -737,45 +740,47 @@ export function SendContractToArtistModal({
           </div>
         )}
 
-        {/* CC */}
+        {/* CC - Isolé dans un form séparé pour avoir une autocomplétion indépendante */}
         <div>
           <label className="flex items-center gap-2 text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
             <Users className="w-4 h-4" />
             CC (Copie carbone)
           </label>
-          <div className="flex gap-2 items-center">
-            <input
-              id="artist-contract-email-cc-input"
-              name="cc-artist-contract-email"
-              type="email"
-              autoComplete="email"
-              value={ccInput}
-              onChange={(evt) => setCcInput(evt.target.value)}
-              onKeyDown={(evt) => evt.key === "Enter" && (evt.preventDefault(), addCcEmail())}
-              onBlur={() => addCcEmail(true)}
-              placeholder="Ajouter un email en copie..."
-              className="input flex-1"
-            />
-            <button
-              type="button"
-              onClick={() => addCcEmail()}
-              disabled={!ccInput.trim()}
-              className="h-[44px] w-[44px] flex items-center justify-center rounded-xl border transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:border-green-500"
-              style={{ 
-                background: 'var(--color-bg-surface)', 
-                borderColor: 'var(--color-border)',
-                color: 'var(--color-text-primary)'
-              }}
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
+          <form onSubmit={(e) => { e.preventDefault(); addCcEmail(); }}>
+            <div className="flex gap-2 items-center">
+              <input
+                id="cc-additional-artist"
+                name="cc-additional-artist"
+                type="email"
+                autoComplete="email"
+                value={ccInput}
+                onChange={(evt) => setCcInput(evt.target.value)}
+                onKeyDown={(evt) => evt.key === "Enter" && (evt.preventDefault(), addCcEmail())}
+                onBlur={() => addCcEmail(true)}
+                placeholder="Ajouter un email en copie..."
+                className="input flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => addCcEmail()}
+                disabled={!ccInput.trim()}
+                className="h-[44px] w-[44px] flex items-center justify-center rounded-xl border transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:border-green-500"
+                style={{ 
+                  background: 'var(--color-bg-surface)', 
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-text-primary)'
+                }}
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+          </form>
           {ccEmails.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3">
               {ccEmails.map((ccEmail) => (
                 <Badge key={ccEmail} color="blue" className="flex items-center gap-1">
                   {ccEmail}
-                  <button onClick={() => removeCcEmail(ccEmail)} className="ml-1 hover:text-red-500">
+                  <button type="button" onClick={() => removeCcEmail(ccEmail)} className="ml-1 hover:text-red-500">
                     <X className="w-3 h-3" />
                   </button>
                 </Badge>
@@ -793,8 +798,8 @@ export function SendContractToArtistModal({
           <form onSubmit={(e) => { e.preventDefault(); addBccEmail(); }}>
             <div className="flex gap-2 items-center">
               <input
-                id="artist-contract-email-bcc-input"
-                name="bcc-artist-contract-email"
+                id="bcc-hidden-artist"
+                name="bcc-hidden-artist"
                 type="email"
                 autoComplete="email"
                 value={bccInput}

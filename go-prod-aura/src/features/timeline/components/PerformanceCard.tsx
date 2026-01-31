@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Edit2, Trash2, Clock } from "lucide-react";
 import type { Performance, EventDay, EventStage } from "../timelineApi";
@@ -24,6 +25,9 @@ export function PerformanceCard({
   onOpenTimePicker,
   isInOverlay = false,
 }: PerformanceCardProps) {
+  // Ref pour détecter si un drag a été initié (pour éviter onClick après drag)
+  const wasDraggingRef = useRef(false);
+  
   // Ne pas appeler useDraggable si la carte est dans le DragOverlay
   const draggableHook = useDraggable({
     id: performance.id,
@@ -38,6 +42,11 @@ export function PerformanceCard({
   const { attributes, listeners, setNodeRef, transform, isDragging: isDraggingDnd } = isInOverlay 
     ? { attributes: {}, listeners: {}, setNodeRef: () => {}, transform: null, isDragging: false }
     : draggableHook;
+    
+  // Mettre à jour le ref quand le drag commence
+  if (isDraggingDnd && !wasDraggingRef.current) {
+    wasDraggingRef.current = true;
+  }
 
   // Couleurs AURA selon le statut
   // Idée: Gris | Offre à faire/Draft: Mandarine | Prêt à envoyer: Violet Aura | Envoyé: Saphir | Accepté: Menthe | Rejeté: Framboise
@@ -153,6 +162,16 @@ export function PerformanceCard({
       `}
       {...listeners}
       {...attributes}
+      onClick={(e) => {
+        // Si un drag a été initié, ne pas ouvrir le modal
+        if (wasDraggingRef.current) {
+          wasDraggingRef.current = false; // Reset pour le prochain clic
+          return;
+        }
+        // C'est un clic simple (pas un drag), ouvrir le modal d'édition
+        e.stopPropagation();
+        onEdit();
+      }}
       title={`${performance.artist_name} – ${performance.performance_time} → ${endTime}, Durée: ${performance.duration} min, Scène: ${stage.name}${performance.fee_amount ? `, Cachet: ${performance.fee_amount} ${performance.fee_currency || ''}` : ''}, Statut: ${performance.booking_status}`}
     >
       <div className="p-2 h-full flex flex-col">

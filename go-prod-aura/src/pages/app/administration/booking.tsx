@@ -427,6 +427,8 @@ export default function AdminBookingPage() {
         matchedOfferIds.add(linkedOffer.id);
         return {
           ...linkedOffer,
+          // IMPORTANT: Garder l'ID de la performance pour pouvoir charger les finances
+          performance_id: perf.id,
           artist_name: linkedOffer.artist_name || perf.artist_name,
           stage_name: linkedOffer.stage_name || perf.stage_name,
           performance_time: linkedOffer.performance_time || perf.performance_time,
@@ -435,12 +437,26 @@ export default function AdminBookingPage() {
           event_day_date: rawDate,
           real_date: realDate,
           event_day_id: perf.event_day_id,
+          // Donnees financieres de la performance (SOURCE UNIQUE)
+          fee_amount: perf.fee_amount,
+          fee_currency: perf.fee_currency,
+          fee_is_net: perf.fee_is_net,
+          commission_percentage: perf.commission_percentage,
+          subject_to_withholding_tax: perf.subject_to_withholding_tax,
+          prod_fee_amount: perf.prod_fee_amount,
+          backline_fee_amount: perf.backline_fee_amount,
+          buyout_hotel_amount: perf.buyout_hotel_amount,
+          buyout_meal_amount: perf.buyout_meal_amount,
+          flight_contribution_amount: perf.flight_contribution_amount,
+          technical_fee_amount: perf.technical_fee_amount,
         };
       }
 
       return {
         id: `perf_${perf.id}`,
         type: "performance",
+        // IMPORTANT: Garder l'ID de la performance pour pouvoir charger les finances
+        performance_id: perf.id,
         artist_id: perf.artist_id,
         artist_name: perf.artist_name,
         stage_id: perf.stage_id,
@@ -451,6 +467,18 @@ export default function AdminBookingPage() {
         event_day_date: rawDate,
         real_date: realDate,
         event_day_id: perf.event_day_id,
+        // Donnees financieres de la performance
+        fee_amount: perf.fee_amount,
+        fee_currency: perf.fee_currency,
+        fee_is_net: perf.fee_is_net,
+        commission_percentage: perf.commission_percentage,
+        subject_to_withholding_tax: perf.subject_to_withholding_tax,
+        prod_fee_amount: perf.prod_fee_amount,
+        backline_fee_amount: perf.backline_fee_amount,
+        buyout_hotel_amount: perf.buyout_hotel_amount,
+        buyout_meal_amount: perf.buyout_meal_amount,
+        flight_contribution_amount: perf.flight_contribution_amount,
+        technical_fee_amount: perf.technical_fee_amount,
       };
     });
 
@@ -620,10 +648,12 @@ export default function AdminBookingPage() {
       return;
     }
 
-    // Extraire l'ID de performance (enlever le prefixe "perf_" si present)
-    const performanceId = performanceData.id?.startsWith("perf_") 
-      ? performanceData.id.slice(5) 
-      : performanceData.id;
+    // Utiliser directement performance_id (ajoute dans offersListRows)
+    // Fallback: extraire depuis id si prefixe "perf_" present
+    const performanceId = performanceData.performance_id 
+      || (performanceData.id?.startsWith("perf_") ? performanceData.id.slice(5) : null);
+    
+    console.log("   - Performance ID extrait:", performanceId);
 
     // Preparer les donnees pre-remplies pour OfferComposer
     const prefilled = {
@@ -919,12 +949,12 @@ ${data.sender.name}
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="bg-green-50 dark:bg-green-900/20">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900 dark:text-gray-100">OFFRES ACCEPTÉES</span>
+                <span className="font-semibold text-green-800 dark:text-green-200">OFFRES ACCEPTÉES</span>
                 <Badge color="lightgreen">{acceptedOffers.length}</Badge>
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-green-600 dark:text-green-400">
                 OFFRES ACCEPTÉES PAR LES ARTISTES
               </div>
             </CardHeader>
@@ -990,12 +1020,12 @@ ${data.sender.name}
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="bg-red-50 dark:bg-red-900/20">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900 dark:text-gray-100">PERFORMANCES ET OFFRES REJETÉES</span>
+                <span className="font-semibold text-red-800 dark:text-red-200">PERFORMANCES ET OFFRES REJETÉES</span>
                 <Badge color="framboise">{rejectedOffers.length}</Badge>
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-red-600 dark:text-red-400">
                 ARTISTES REFUSÉS OU NON RETENUS
               </div>
             </CardHeader>
@@ -1013,9 +1043,6 @@ ${data.sender.name}
                       <tr className="border-b border-gray-200 dark:border-gray-700">
                         <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
                           Artiste
-                        </th>
-                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          Scène
                         </th>
                         <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-gray-100">
                           Montant
@@ -1043,14 +1070,9 @@ ${data.sender.name}
                             </div>
                           </td>
                           <td className="py-3 px-4">
-                            <div className="text-sm text-gray-600 dark:text-gray-400">
-                              {item.stage_name}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            {item.amount_display ? (
+                            {(item.amount_display || item.amount_gross) ? (
                               <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {item.amount_display} {item.currency}
+                                {Math.round(item.amount_display || item.amount_gross).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'")} {item.currency}
                               </div>
                             ) : (
                               <span className="text-sm text-gray-400">—</span>

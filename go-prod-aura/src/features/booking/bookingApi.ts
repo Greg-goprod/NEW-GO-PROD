@@ -272,6 +272,32 @@ export async function createOffer(payload: any): Promise<Offer> {
     .single();
     
   if (error) throw error;
+  
+  // Synchroniser l'heure avec la performance associée
+  if (payload.performance_time && data) {
+    const offer = data as Offer;
+    // Trouver la performance associée (même artiste, même scène)
+    const { data: performances } = await supabase
+      .from("artist_performances")
+      .select("id, performance_time")
+      .eq("artist_id", offer.artist_id)
+      .eq("event_stage_id", offer.stage_id);
+    
+    if (performances && performances.length > 0) {
+      const perfToUpdate = performances[0];
+      if (perfToUpdate.performance_time !== payload.performance_time) {
+        console.log("[bookingApi] Synchronisation heure performance (create):", perfToUpdate.id, "->", payload.performance_time);
+        await supabase
+          .from("artist_performances")
+          .update({ 
+            performance_time: payload.performance_time,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", perfToUpdate.id);
+      }
+    }
+  }
+  
   return data as Offer;
 }
 
@@ -289,6 +315,33 @@ export async function updateOffer(id: string, payload: any): Promise<Offer> {
     
   if (error) throw error;
   console.log("[bookingApi] updateOffer - résultat agency_contact_id:", data?.agency_contact_id);
+  
+  // Synchroniser l'heure avec la performance associée si performance_time a changé
+  if (payload.performance_time && data) {
+    const offer = data as Offer;
+    // Trouver la performance associée (même artiste, même scène, même événement)
+    const { data: performances } = await supabase
+      .from("artist_performances")
+      .select("id, performance_time")
+      .eq("artist_id", offer.artist_id)
+      .eq("event_stage_id", offer.stage_id);
+    
+    if (performances && performances.length > 0) {
+      // Mettre à jour la performance associée avec la nouvelle heure
+      const perfToUpdate = performances[0]; // Prendre la première performance correspondante
+      if (perfToUpdate.performance_time !== payload.performance_time) {
+        console.log("[bookingApi] Synchronisation heure performance:", perfToUpdate.id, "->", payload.performance_time);
+        await supabase
+          .from("artist_performances")
+          .update({ 
+            performance_time: payload.performance_time,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", perfToUpdate.id);
+      }
+    }
+  }
+  
   return data as Offer;
 }
 

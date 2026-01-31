@@ -138,6 +138,8 @@ export default function ContratsPage() {
   const [showSendToArtistModal, setShowSendToArtistModal] = useState(false);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [uploadingContractId, setUploadingContractId] = useState<string | null>(null);
+  const [dragOverContractId, setDragOverContractId] = useState<string | null>(null);
+  const [dragOverType, setDragOverType] = useState<'original' | 'annotated' | 'signed_festival' | 'signed_artist' | null>(null);
   
   // Ref pour les inputs file cachés
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -432,11 +434,16 @@ export default function ContratsPage() {
     try {
       setUploadingContractId(contract.id);
       
-      // Extraire le nom du fichier original (sans extension)
-      const originalFileName = file.name.replace(/\.pdf$/i, '');
+      // Extraire le nom du fichier original (sans extension) et le nettoyer
+      const originalFileName = file.name
+        .replace(/\.pdf$/i, '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Supprimer les accents
+        .replace(/[^a-zA-Z0-9_-]/g, '_'); // Remplacer les caractères spéciaux
       
       // Nom de l'événement sécurisé pour le nom de fichier
-      const safeEventName = (contract.event_name || 'Evenement').replace(/[^a-zA-Z0-9]/g, '_');
+      const safeEventName = (contract.event_name || 'Evenement')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '_');
       
       // Générer le nom de fichier : {nom_fichier_original}_{Evenement}_ANNOTE.pdf
       const timestamp = Date.now();
@@ -888,11 +895,19 @@ export default function ContratsPage() {
                       <div className="w-36 flex-shrink-0">
                         <span className={`
                           inline-block px-3 py-1.5 text-sm font-medium rounded-lg w-full text-center
-                          ${contract.virtual 
+                          ${contract.virtual || contract.status === 'to_receive'
                             ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' 
+                            : contract.status === 'review'
+                              ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400'
+                            : contract.status === 'internal_sign'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                            : contract.status === 'internal_signed'
+                              ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400'
+                            : contract.status === 'external_sign'
+                              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
                             : contract.status === 'finalized' 
                               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400'
+                              : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
                           }
                         `}>
                           {contract.virtual ? 'À recevoir' : 
@@ -908,14 +923,9 @@ export default function ContratsPage() {
                       
                       {/* Nom de l'artiste - juste après le statut */}
                       <div className="w-40 flex-shrink-0">
-                        <p className="font-medium text-gray-900 dark:text-white truncate">
+                        <p className="font-medium text-gray-900 dark:text-white truncate uppercase">
                           {contract.artist_name}
                         </p>
-                        {contract.stage_name && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                            {contract.stage_name}
-                          </p>
-                        )}
                       </div>
                       
                       {/* Badges de dates - en ligne horizontale, tous en gris sauf le dernier (signé artiste/finalisé) en vert */}
@@ -977,155 +987,254 @@ export default function ContratsPage() {
                         )}
                       </div>
                       
-                      {/* Actions - tous les boutons ont une largeur fixe de 180px */}
+                      {/* Actions - structure en 3 zones : secondaire | bouton principal (180px fixe) | icônes (56px fixe) */}
                       <div className="flex items-center gap-2">
-                        {/* Bouton Upload PDF - visible pour statut "À recevoir" */}
-                        {(contract.virtual || contract.status === 'to_receive') && (
-                          <button
-                            onClick={() => triggerFileUpload(contract)}
-                            disabled={uploadingContractId === contract.id}
-                            className={`
-                              min-w-[180px] px-3 py-1.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors
-                              ${uploadingContractId === contract.id
-                                ? 'bg-gray-100 text-gray-400 cursor-wait'
-                                : 'bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:hover:bg-violet-900/50'
-                              }
-                            `}
-                            title="Ajouter le PDF du contrat"
-                          >
-                            <Upload className="w-4 h-4" />
-                            {uploadingContractId === contract.id ? 'Upload...' : 'Ajouter PDF'}
-                          </button>
-                        )}
+                        {/* Zone secondaire - boutons optionnels à gauche, flex-1 pour pousser le reste à droite */}
+                        <div className="flex items-center gap-2 justify-end flex-1">
+                          {/* Bouton Annoter - visible pour statut "À réviser" */}
+                          {!contract.virtual && contract.status === 'review' && contract.original_file_url && (
+                            <button
+                              onClick={() => handleDownloadForAnnotation(contract)}
+                              className="w-[180px] px-3 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-1.5 transition-colors border border-violet-300 dark:border-violet-700 bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/30"
+                              title="Télécharger pour annoter avec Acrobat"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              Annoter
+                            </button>
+                          )}
+                          
+                          {/* Bouton Envoyer pour signature - visible pour statut "À signer festival" */}
+                          {!contract.virtual && contract.status === 'internal_sign' && (
+                            <button
+                              onClick={() => {
+                                setSelectedContract(contract);
+                                setShowSendForSignatureModal(true);
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-1.5 transition-colors bg-violet-600 dark:bg-violet-700 text-white hover:bg-violet-700 dark:hover:bg-violet-600"
+                              title="Envoyer le contrat pour signature interne"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              Envoyer pour signature
+                            </button>
+                          )}
+                          
+                          {/* Bouton Envoyer à l'artiste - visible pour statut "Signé festival" */}
+                          {!contract.virtual && contract.status === 'internal_signed' && (
+                            <button
+                              onClick={() => {
+                                setSelectedContract(contract);
+                                setShowSendToArtistModal(true);
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-1.5 transition-colors bg-violet-600 dark:bg-violet-700 text-white hover:bg-violet-700 dark:hover:bg-violet-600"
+                              title="Envoyer le contrat à l'artiste pour signature"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              Envoyer à l'artiste
+                            </button>
+                          )}
+                        </div>
                         
-                        {/* Bouton Modifier PDF - visible pour statut "À réviser" (si mauvais document) */}
-                        {!contract.virtual && contract.status === 'review' && contract.original_file_url && (
-                          <button
-                            onClick={() => triggerReplaceFileUpload(contract)}
-                            disabled={uploadingContractId === contract.id}
-                            className={`
-                              min-w-[180px] px-3 py-1.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors
-                              ${uploadingContractId === contract.id
-                                ? 'bg-gray-100 text-gray-400 cursor-wait'
-                                : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
-                              }
-                            `}
-                            title="Remplacer le PDF original (si mauvais document)"
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                            {uploadingContractId === contract.id ? 'Upload...' : 'Modifier PDF original'}
-                          </button>
-                        )}
+                        {/* Zone bouton principal - largeur fixe 180px */}
+                        <div className="w-[180px] flex-shrink-0">
+                          {/* Zone Upload PDF avec drag & drop - visible pour statut "À recevoir" */}
+                          {(contract.virtual || contract.status === 'to_receive') && (
+                            <div
+                              onClick={() => triggerFileUpload(contract)}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(contract.id);
+                                setDragOverType('original');
+                              }}
+                              onDragLeave={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(null);
+                                setDragOverType(null);
+                              }}
+                              onDrop={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(null);
+                                setDragOverType(null);
+                                const file = e.dataTransfer.files?.[0];
+                                if (file && file.type === 'application/pdf') {
+                                  setSelectedContract(contract);
+                                  await handleUploadContractPdf(contract, file);
+                                }
+                              }}
+                              className={`
+                                w-full px-3 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-all cursor-pointer border-2 border-dashed
+                                ${uploadingContractId === contract.id
+                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-wait border-gray-300 dark:border-gray-600'
+                                  : dragOverContractId === contract.id && dragOverType === 'original'
+                                    ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 border-violet-500 dark:border-violet-400 scale-105'
+                                    : 'border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/50'
+                                }
+                              `}
+                              title="Glisser-déposer ou cliquer pour ajouter le PDF"
+                            >
+                              <Upload className={`w-3.5 h-3.5 ${dragOverContractId === contract.id && dragOverType === 'original' ? 'animate-bounce' : ''}`} />
+                              {uploadingContractId === contract.id ? 'Upload...' : dragOverContractId === contract.id && dragOverType === 'original' ? 'Déposer ici' : 'Ajouter PDF'}
+                            </div>
+                          )}
+                          
+                          {/* Zone Uploader annoté avec drag & drop - visible pour statut "À réviser" */}
+                          {!contract.virtual && contract.status === 'review' && (
+                            <div
+                              onClick={() => triggerAnnotatedFileUpload(contract)}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(contract.id);
+                                setDragOverType('annotated');
+                              }}
+                              onDragLeave={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(null);
+                                setDragOverType(null);
+                              }}
+                              onDrop={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(null);
+                                setDragOverType(null);
+                                const file = e.dataTransfer.files?.[0];
+                                if (file && file.type === 'application/pdf') {
+                                  await handleUploadAnnotatedPdf(contract, file);
+                                }
+                              }}
+                              className={`
+                                w-full px-3 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-all cursor-pointer border-2 border-dashed
+                                ${uploadingContractId === contract.id
+                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-wait border-gray-300 dark:border-gray-600'
+                                  : dragOverContractId === contract.id && dragOverType === 'annotated'
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border-emerald-500 dark:border-emerald-400 scale-105'
+                                    : 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
+                                }
+                              `}
+                              title="Glisser-déposer ou cliquer pour uploader le PDF annoté"
+                            >
+                              <Upload className={`w-3.5 h-3.5 ${dragOverContractId === contract.id && dragOverType === 'annotated' ? 'animate-bounce' : ''}`} />
+                              {uploadingContractId === contract.id ? 'Upload...' : dragOverContractId === contract.id && dragOverType === 'annotated' ? 'Déposer ici' : 'Uploader annoté'}
+                            </div>
+                          )}
+                          
+                          {/* Zone Uploader signé avec drag & drop - visible pour statut "À signer festival" */}
+                          {!contract.virtual && contract.status === 'internal_sign' && (
+                            <div
+                              onClick={() => triggerSignedFestivalFileUpload(contract)}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(contract.id);
+                                setDragOverType('signed_festival');
+                              }}
+                              onDragLeave={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(null);
+                                setDragOverType(null);
+                              }}
+                              onDrop={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(null);
+                                setDragOverType(null);
+                                const file = e.dataTransfer.files?.[0];
+                                if (file && file.type === 'application/pdf') {
+                                  await handleUploadSignedFestivalPdf(contract, file);
+                                }
+                              }}
+                              className={`
+                                w-full px-3 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-all cursor-pointer border-2 border-dashed
+                                ${uploadingContractId === contract.id
+                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-wait border-gray-300 dark:border-gray-600'
+                                  : dragOverContractId === contract.id && dragOverType === 'signed_festival'
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border-emerald-500 dark:border-emerald-400 scale-105'
+                                    : 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
+                                }
+                              `}
+                              title="Glisser-déposer ou cliquer pour uploader le PDF signé"
+                            >
+                              <Upload className={`w-3.5 h-3.5 ${dragOverContractId === contract.id && dragOverType === 'signed_festival' ? 'animate-bounce' : ''}`} />
+                              {uploadingContractId === contract.id ? 'Upload...' : dragOverContractId === contract.id && dragOverType === 'signed_festival' ? 'Déposer ici' : 'Uploader signé'}
+                            </div>
+                          )}
+                          
+                          {/* Zone Uploader signé artiste avec drag & drop - visible pour statut "À signer artiste" */}
+                          {!contract.virtual && contract.status === 'external_sign' && (
+                            <div
+                              onClick={() => triggerSignedArtistFileUpload(contract)}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(contract.id);
+                                setDragOverType('signed_artist');
+                              }}
+                              onDragLeave={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(null);
+                                setDragOverType(null);
+                              }}
+                              onDrop={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setDragOverContractId(null);
+                                setDragOverType(null);
+                                const file = e.dataTransfer.files?.[0];
+                                if (file && file.type === 'application/pdf') {
+                                  await handleUploadSignedArtistPdf(contract, file);
+                                }
+                              }}
+                              className={`
+                                w-full px-3 py-1.5 text-xs font-medium rounded-md flex items-center justify-center gap-2 transition-all cursor-pointer border-2 border-dashed
+                                ${uploadingContractId === contract.id
+                                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-wait border-gray-300 dark:border-gray-600'
+                                  : dragOverContractId === contract.id && dragOverType === 'signed_artist'
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border-emerald-500 dark:border-emerald-400 scale-105'
+                                    : 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
+                                }
+                              `}
+                              title="Glisser-déposer ou cliquer pour uploader le PDF signé par l'artiste"
+                            >
+                              <Upload className={`w-3.5 h-3.5 ${dragOverContractId === contract.id && dragOverType === 'signed_artist' ? 'animate-bounce' : ''}`} />
+                              {uploadingContractId === contract.id ? 'Upload...' : dragOverContractId === contract.id && dragOverType === 'signed_artist' ? 'Déposer ici' : 'Uploader signé artiste'}
+                            </div>
+                          )}
+                        </div>
                         
-                        {/* Bouton Annoter - visible pour statut "À réviser" */}
-                        {!contract.virtual && contract.status === 'review' && contract.original_file_url && (
-                          <button
-                            onClick={() => handleDownloadForAnnotation(contract)}
-                            className="min-w-[180px] px-3 py-1.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:hover:bg-violet-900/50"
-                            title="Télécharger pour annoter avec Acrobat"
-                          >
-                            <Download className="w-4 h-4" />
-                            Annoter
-                          </button>
-                        )}
-                        
-                        {/* Bouton Uploader annoté - visible pour statut "À réviser" */}
-                        {!contract.virtual && contract.status === 'review' && (
-                          <button
-                            onClick={() => triggerAnnotatedFileUpload(contract)}
-                            disabled={uploadingContractId === contract.id}
-                            className={`
-                              min-w-[180px] px-3 py-1.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors
-                              ${uploadingContractId === contract.id
-                                ? 'bg-gray-100 text-gray-400 cursor-wait'
-                                : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
-                              }
-                            `}
-                            title="Uploader le PDF annoté"
-                          >
-                            <Upload className="w-4 h-4" />
-                            {uploadingContractId === contract.id ? 'Upload...' : 'Uploader annoté'}
-                          </button>
-                        )}
-                        
-                        {/* Bouton Envoyer pour signature - visible pour statut "À signer festival" */}
-                        {!contract.virtual && contract.status === 'internal_sign' && (
-                          <button
-                            onClick={() => {
-                              setSelectedContract(contract);
-                              setShowSendForSignatureModal(true);
-                            }}
-                            className="min-w-[180px] px-3 py-1.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
-                            title="Envoyer le contrat pour signature interne"
-                          >
-                            <Send className="w-4 h-4" />
-                            Envoyer pour signature
-                          </button>
-                        )}
-                        
-                        {/* Bouton Uploader signé - visible pour statut "À signer festival" (après envoi) */}
-                        {!contract.virtual && contract.status === 'internal_sign' && (
-                          <button
-                            onClick={() => triggerSignedFestivalFileUpload(contract)}
-                            disabled={uploadingContractId === contract.id}
-                            className={`
-                              min-w-[180px] px-3 py-1.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors
-                              ${uploadingContractId === contract.id
-                                ? 'bg-gray-100 text-gray-400 cursor-wait'
-                                : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
-                              }
-                            `}
-                            title="Uploader le contrat signé par le festival"
-                          >
-                            <Upload className="w-4 h-4" />
-                            {uploadingContractId === contract.id ? 'Upload...' : 'Uploader signé'}
-                          </button>
-                        )}
-                        
-                        {/* Bouton Envoyer à l'artiste - visible pour statut "Signé festival" */}
-                        {!contract.virtual && contract.status === 'internal_signed' && (
-                          <button
-                            onClick={() => {
-                              setSelectedContract(contract);
-                              setShowSendToArtistModal(true);
-                            }}
-                            className="min-w-[180px] px-3 py-1.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
-                            title="Envoyer le contrat à l'artiste pour signature"
-                          >
-                            <Send className="w-4 h-4" />
-                            Envoyer à l'artiste
-                          </button>
-                        )}
-                        
-                        {/* Bouton Uploader signé artiste - visible pour statut "À signer artiste" */}
-                        {!contract.virtual && contract.status === 'external_sign' && (
-                          <button
-                            onClick={() => triggerSignedArtistFileUpload(contract)}
-                            disabled={uploadingContractId === contract.id}
-                            className={`
-                              min-w-[180px] px-3 py-1.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-colors
-                              ${uploadingContractId === contract.id
-                                ? 'bg-gray-100 text-gray-400 cursor-wait'
-                                : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
-                              }
-                            `}
-                            title="Uploader le contrat signé par l'artiste"
-                          >
-                            <Upload className="w-4 h-4" />
-                            {uploadingContractId === contract.id ? 'Upload...' : 'Uploader signé artiste'}
-                          </button>
-                        )}
-                        
-                        {/* Bouton voir - visible si le contrat a un PDF */}
-                        {!contract.virtual && contract.original_file_url && (
-                          <button
-                            onClick={() => handleView(contract)}
-                            className="p-1.5 text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
-                            title="Voir le contrat"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </button>
-                        )}
+                        {/* Zone icônes - largeur fixe 56px (2 icônes de 28px) */}
+                        <div className="w-[56px] flex-shrink-0 flex items-center justify-end gap-1">
+                          {/* Icone Remplacer PDF - visible pour statut "À réviser" */}
+                          {!contract.virtual && contract.status === 'review' && contract.original_file_url && (
+                            <button
+                              onClick={() => triggerReplaceFileUpload(contract)}
+                              disabled={uploadingContractId === contract.id}
+                              className={`p-1.5 transition-colors ${
+                                uploadingContractId === contract.id
+                                  ? 'text-gray-300 dark:text-gray-600 cursor-wait'
+                                  : 'text-gray-400 hover:text-amber-600 dark:hover:text-amber-400'
+                              }`}
+                              title="Remplacer le PDF original"
+                            >
+                              <RefreshCw className={`w-4 h-4 ${uploadingContractId === contract.id ? 'animate-spin' : ''}`} />
+                            </button>
+                          )}
+                          
+                          {/* Bouton voir - visible si le contrat a un PDF */}
+                          {!contract.virtual && contract.original_file_url && (
+                            <button
+                              onClick={() => handleView(contract)}
+                              className="p-1.5 text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                              title="Voir le contrat"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ));

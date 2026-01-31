@@ -444,9 +444,9 @@ export default function SettingsStaffPage() {
                             <>
                               <div
                                 className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
-                                style={{ backgroundColor: category.color + '20' }}
+                                style={{ backgroundColor: category.color + '20', color: category.color }}
                               >
-                                <IconComponent className="w-3.5 h-3.5" style={{ color: category.color }} />
+                                <IconComponent className="w-3.5 h-3.5" />
                               </div>
                               <span className="flex-1 text-xs truncate" style={{ color: 'var(--text-primary)' }}>
                                 {category.name}

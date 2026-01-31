@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal } from "../../../components/aura/Modal";
 import { Button } from "../../../components/aura/Button";
 import { TimePickerPopup } from "../../../components/ui/pickers/TimePickerPopup";
@@ -120,24 +120,48 @@ export function PerformanceModal({
   // Erreurs de validation
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Chargement des données initiales
+  // Chargement des données initiales - SEULEMENT quand le modal s'ouvre
+  // On utilise useRef pour eviter les rechargements quand initialData change de reference
+  const initialDataRef = React.useRef(initialData);
+  const hasLoadedRef = React.useRef(false);
+  
+  // Mettre a jour la ref quand initialData change (mais sans declencher de re-render)
+  React.useEffect(() => {
+    initialDataRef.current = initialData;
+  }, [initialData]);
+  
   useEffect(() => {
-    if (!open || !initialData) {
-      console.log("❌ Modal fermé ou pas de données initiales");
+    // Reset le flag quand le modal se ferme
+    if (!open) {
+      hasLoadedRef.current = false;
       return;
     }
+    
+    // Ne charger qu'une seule fois a l'ouverture
+    if (hasLoadedRef.current) {
+      return;
+    }
+    
+    const currentInitialData = initialDataRef.current;
+    
+    if (!currentInitialData) {
+      console.log("❌ Pas de données initiales");
+      return;
+    }
+    
+    hasLoadedRef.current = true;
     
     const loadData = async () => {
       setLoading(true);
       try {
         console.log("🔍 Chargement des données...");
-        console.log("   - companyId:", initialData.companyId);
-        console.log("   - eventId:", initialData.eventId);
+        console.log("   - companyId:", currentInitialData.companyId);
+        console.log("   - eventId:", currentInitialData.eventId);
         
         const [artistsData, daysData, stagesData] = await Promise.all([
-          fetchArtists(initialData.companyId),
-          fetchEventDays(initialData.eventId),
-          fetchEventStages(initialData.eventId),
+          fetchArtists(currentInitialData.companyId),
+          fetchEventDays(currentInitialData.eventId),
+          fetchEventStages(currentInitialData.eventId),
         ]);
         
         console.log("✅ Artistes chargés:", artistsData.length, artistsData);
@@ -150,37 +174,37 @@ export function PerformanceModal({
         
         // Préremplir le formulaire avec TOUTES les données de la performance
         console.log("📝 Pré-remplissage du formulaire avec initialData:");
-        console.log("   - event_day_id:", initialData.event_day_id);
-        console.log("   - event_stage_id:", initialData.event_stage_id);
-        console.log("   - performance_time:", initialData.performance_time);
-        console.log("   - duration:", initialData.duration);
+        console.log("   - event_day_id:", currentInitialData.event_day_id);
+        console.log("   - event_stage_id:", currentInitialData.event_stage_id);
+        console.log("   - performance_time:", currentInitialData.performance_time);
+        console.log("   - duration:", currentInitialData.duration);
         
         setFormData(prev => ({
           ...prev,
-          artist_id: initialData.artist_id || "",
-          event_day_id: initialData.event_day_id || "",
-          event_stage_id: initialData.event_stage_id || "",
-          performance_time: initialData.performance_time ? initialData.performance_time.slice(0, 5) : "14:00",
-          duration: initialData.duration || 60,
-          duration_type: initialData.duration && ![60, 75, 90, 105, 120].includes(initialData.duration) ? "custom" : "standard",
-          fee_amount: initialData.fee_amount ?? null,
-          fee_currency: initialData.fee_currency || "EUR",
-          commission_percentage: initialData.commission_percentage ?? null,
-          fee_is_net: initialData.fee_is_net ?? false,
-          subject_to_withholding_tax: initialData.subject_to_withholding_tax ?? true,
-          booking_status: initialData.booking_status || "idee",
-          notes: initialData.notes || "",
+          artist_id: currentInitialData.artist_id || "",
+          event_day_id: currentInitialData.event_day_id || "",
+          event_stage_id: currentInitialData.event_stage_id || "",
+          performance_time: currentInitialData.performance_time ? currentInitialData.performance_time.slice(0, 5) : "14:00",
+          duration: currentInitialData.duration || 60,
+          duration_type: currentInitialData.duration && ![60, 75, 90, 105, 120].includes(currentInitialData.duration) ? "custom" : "standard",
+          fee_amount: currentInitialData.fee_amount ?? null,
+          fee_currency: currentInitialData.fee_currency || "EUR",
+          commission_percentage: currentInitialData.commission_percentage ?? null,
+          fee_is_net: currentInitialData.fee_is_net ?? false,
+          subject_to_withholding_tax: currentInitialData.subject_to_withholding_tax ?? true,
+          booking_status: currentInitialData.booking_status || "idee",
+          notes: currentInitialData.notes || "",
           // Frais additionnels - utiliser 0 par défaut au lieu de null
-          prod_fee_amount: initialData.prod_fee_amount ?? 0,
-          backline_fee_amount: initialData.backline_fee_amount ?? 0,
-          buyout_hotel_amount: initialData.buyout_hotel_amount ?? 0,
-          buyout_meal_amount: initialData.buyout_meal_amount ?? 0,
-          flight_contribution_amount: initialData.flight_contribution_amount ?? 0,
-          technical_fee_amount: initialData.technical_fee_amount ?? 0,
+          prod_fee_amount: currentInitialData.prod_fee_amount ?? 0,
+          backline_fee_amount: currentInitialData.backline_fee_amount ?? 0,
+          buyout_hotel_amount: currentInitialData.buyout_hotel_amount ?? 0,
+          buyout_meal_amount: currentInitialData.buyout_meal_amount ?? 0,
+          flight_contribution_amount: currentInitialData.flight_contribution_amount ?? 0,
+          technical_fee_amount: currentInitialData.technical_fee_amount ?? 0,
         }));
         
         // Si édition, charger la performance existante
-        if (initialData.performanceId) {
+        if (currentInitialData.performanceId) {
           // TODO: Implémenter fetchPerformanceById si nécessaire
           // Pour l'instant, on utilise les données préremplies
         }
@@ -194,7 +218,7 @@ export function PerformanceModal({
     };
     
     loadData();
-  }, [open, initialData, toastError]);
+  }, [open, toastError]);
 
   // Validation du formulaire
   const validateForm = (): boolean => {
@@ -413,13 +437,20 @@ export function PerformanceModal({
   };
 
   // Gestion de l'ajout d'artiste via le modal complet
-  const handleArtistAdded = async () => {
+  const handleArtistAdded = async (newArtistId?: string) => {
     // Recharger la liste des artistes
     try {
       console.log("🔄 Rechargement de la liste des artistes...");
       const artistsData = await fetchArtists(initialData?.companyId);
       console.log("✅ Artistes rechargés:", artistsData.length, artistsData);
       setArtists(artistsData);
+      
+      // Sélectionner automatiquement le nouvel artiste créé
+      if (newArtistId) {
+        console.log("✅ Sélection automatique du nouvel artiste:", newArtistId);
+        setFormData(prev => ({ ...prev, artist_id: newArtistId }));
+      }
+      
       toastSuccess("Artiste ajouté avec succès");
     } catch (error) {
       console.error("❌ Erreur rechargement artistes:", error);
@@ -1036,9 +1067,9 @@ export function PerformanceModal({
           companyId={initialData.companyId}
           eventId={initialData.eventId}
           onClose={() => setShowAddArtistModal(false)}
-          onSaved={() => {
+          onSaved={(newArtistId) => {
             setShowAddArtistModal(false);
-            handleArtistAdded();
+            handleArtistAdded(newArtistId);
           }}
         />
       )}

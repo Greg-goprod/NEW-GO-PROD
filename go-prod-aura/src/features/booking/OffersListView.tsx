@@ -4,19 +4,6 @@ import { Badge } from "@/components/aura/Badge";
 import { getStatusConfig } from "./bookingStatuses";
 import { Send, Edit, CheckCircle, XCircle } from "lucide-react";
 
-// Couleurs AURA pour les statuts (hex)
-const STATUS_COLORS: Record<string, { bg: string; hover: string; text: string; border: string }> = {
-  idee: { bg: "#919399", hover: "#7a7c82", text: "#FFFFFF", border: "#919399" },
-  offre_a_faire: { bg: "#FF9500", hover: "#E68600", text: "#FFFFFF", border: "#FF9500" },
-  draft: { bg: "#FF9500", hover: "#E68600", text: "#FFFFFF", border: "#FF9500" },
-  ready_to_send: { bg: "#661B7D", hover: "#4D1460", text: "#FFFFFF", border: "#661B7D" },
-  sent: { bg: "#007AFF", hover: "#0062CC", text: "#FFFFFF", border: "#007AFF" },
-  accepted: { bg: "#34C759", hover: "#2AA147", text: "#FFFFFF", border: "#34C759" },
-  rejected: { bg: "#FF3B5C", hover: "#E6354F", text: "#FFFFFF", border: "#FF3B5C" },
-  offre_rejetee: { bg: "#FF3B5C", hover: "#E6354F", text: "#FFFFFF", border: "#FF3B5C" },
-  negotiating: { bg: "#8B5CF6", hover: "#7C3AED", text: "#FFFFFF", border: "#8B5CF6" },
-};
-
 interface EventDay {
   id: string;
   date: string;
@@ -199,17 +186,10 @@ export function OffersListView({
               const timeDisplay = normalizeTime(o.performance_time || o.date_time) || "—";
               const statusDisplay = o.status || o.booking_status || "—";
 
-              // Déterminer si l'offre est acceptée pour le style de fond
-              const isAccepted = statusDisplay === "accepted";
-              
               return (
                 <div
                   key={o.id}
-                  className={`px-5 py-3 flex items-center gap-4 transition-colors ${
-                    isAccepted 
-                      ? 'bg-green-50/70 hover:bg-green-100/70 dark:bg-green-900/20 dark:hover:bg-green-900/30' 
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
-                  }`}
+                  className="px-5 py-3 flex items-center gap-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
                 >
                   {/* Heure */}
                   <div className="w-14 flex-shrink-0">
@@ -239,13 +219,7 @@ export function OffersListView({
                     {o.type === "performance" && statusDisplay === "offre_a_faire" && onCreateOffer && (
                       <button 
                         onClick={() => onCreateOffer(o)}
-                        className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors"
-                        style={{
-                          backgroundColor: STATUS_COLORS.offre_a_faire.bg,
-                          color: STATUS_COLORS.offre_a_faire.text,
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.offre_a_faire.hover}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.offre_a_faire.bg}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors border border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/50"
                       >
                         Etablir offre
                       </button>
@@ -261,11 +235,11 @@ export function OffersListView({
                               title="Voir le PDF"
                             >
                               {/* Icone PDF */}
-                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M7 18H17V16H7V18Z" fill="#DC2626"/>
-                                <path d="M17 14H7V12H17V14Z" fill="#DC2626"/>
-                                <path d="M7 10H11V8H7V10Z" fill="#DC2626"/>
-                                <path fillRule="evenodd" clipRule="evenodd" d="M6 2C4.34315 2 3 3.34315 3 5V19C3 20.6569 4.34315 22 6 22H18C19.6569 22 21 20.6569 21 19V9C21 5.13401 17.866 2 14 2H6ZM6 4H13V9H19V19C19 19.5523 18.5523 20 18 20H6C5.44772 20 5 19.5523 5 19V5C5 4.44772 5.44772 4 6 4ZM15 4.10002C16.6113 4.4271 17.9413 5.52906 18.584 7H15V4.10002Z" fill="#DC2626"/>
+                              <svg className="w-4 h-4 text-red-500 dark:text-red-400" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M7 18H17V16H7V18Z"/>
+                                <path d="M17 14H7V12H17V14Z"/>
+                                <path d="M7 10H11V8H7V10Z"/>
+                                <path fillRule="evenodd" clipRule="evenodd" d="M6 2C4.34315 2 3 3.34315 3 5V19C3 20.6569 4.34315 22 6 22H18C19.6569 22 21 20.6569 21 19V9C21 5.13401 17.866 2 14 2H6ZM6 4H13V9H19V19C19 19.5523 18.5523 20 18 20H6C5.44772 20 5 19.5523 5 19V5C5 4.44772 5.44772 4 6 4ZM15 4.10002C16.6113 4.4271 17.9413 5.52906 18.584 7H15V4.10002Z"/>
                               </svg>
                             </button>
                           )}
@@ -276,9 +250,9 @@ export function OffersListView({
                               title="Telecharger le Word"
                             >
                               {/* Icone Word */}
-                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path fillRule="evenodd" clipRule="evenodd" d="M6 2C4.34315 2 3 3.34315 3 5V19C3 20.6569 4.34315 22 6 22H18C19.6569 22 21 20.6569 21 19V9C21 5.13401 17.866 2 14 2H6ZM6 4H13V9H19V19C19 19.5523 18.5523 20 18 20H6C5.44772 20 5 19.5523 5 19V5C5 4.44772 5.44772 4 6 4ZM15 4.10002C16.6113 4.4271 17.9413 5.52906 18.584 7H15V4.10002Z" fill="#2563EB"/>
-                                <path d="M8 12L9.5 18H10.5L12 14L13.5 18H14.5L16 12H14.5L13.75 15.5L12.5 12H11.5L10.25 15.5L9.5 12H8Z" fill="#2563EB"/>
+                              <svg className="w-4 h-4 text-blue-500 dark:text-blue-400" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <path fillRule="evenodd" clipRule="evenodd" d="M6 2C4.34315 2 3 3.34315 3 5V19C3 20.6569 4.34315 22 6 22H18C19.6569 22 21 20.6569 21 19V9C21 5.13401 17.866 2 14 2H6ZM6 4H13V9H19V19C19 19.5523 18.5523 20 18 20H6C5.44772 20 5 19.5523 5 19V5C5 4.44772 5.44772 4 6 4ZM15 4.10002C16.6113 4.4271 17.9413 5.52906 18.584 7H15V4.10002Z"/>
+                                <path d="M8 12L9.5 18H10.5L12 14L13.5 18H14.5L16 12H14.5L13.75 15.5L12.5 12H11.5L10.25 15.5L9.5 12H8Z"/>
                               </svg>
                             </button>
                           )}
@@ -286,12 +260,12 @@ export function OffersListView({
                         
                         {/* Version badge si > 1 */}
                         {o.version && o.version > 1 && (
-                          <span className="px-2.5 py-0.5 text-sm font-bold rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 mr-1">
+                          <span className="px-2 py-0.5 text-xs font-medium rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 mr-1">
                             V{o.version}
                           </span>
                         )}
                         
-                        {/* Bouton Modifier - masqué si accepté */}
+                        {/* Bouton Modifier - masqué si accepté - style outline violet */}
                         {statusDisplay !== "accepted" && (
                           <button 
                             onClick={() => onModify(o)}
@@ -300,68 +274,45 @@ export function OffersListView({
                                 ? "Modifier l'offre (crée une nouvelle version)"
                                 : "Modifier l'offre"
                             }
-                            className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1 hover:opacity-80"
-                            style={{
-                              backgroundColor: STATUS_COLORS[statusDisplay]?.bg || '#6B7280',
-                              color: STATUS_COLORS[statusDisplay]?.text || '#FFFFFF',
-                              border: `1px solid ${STATUS_COLORS[statusDisplay]?.border || '#6B7280'}`,
-                            }}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 border border-violet-300 dark:border-violet-700 bg-white dark:bg-gray-800 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/30"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-3.5 h-3.5" />
                             Modifier
                           </button>
                         )}
                         
-                        {/* Bouton Valider - vert (accepted) - UNIQUEMENT si statut = sent */}
+                        {/* Bouton Valider - style outline vert subtil */}
                         {statusDisplay === "sent" && onValidateOffer && (
                           <button 
                             onClick={() => onValidateOffer(o)}
                             title="Valider l'offre"
-                            className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1"
-                            style={{
-                              backgroundColor: STATUS_COLORS.accepted.bg,
-                              color: STATUS_COLORS.accepted.text,
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.accepted.hover}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.accepted.bg}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
                           >
-                            <CheckCircle className="w-4 h-4" />
+                            <CheckCircle className="w-3.5 h-3.5" />
                             Valider
                           </button>
                         )}
                         
-                        {/* Bouton Rejeter - rouge - UNIQUEMENT si statut = sent */}
+                        {/* Bouton Rejeter - style outline rouge subtil */}
                         {statusDisplay === "sent" && onRejectOffer && (
                           <button 
                             onClick={() => onRejectOffer(o)}
                             title="Rejeter l'offre"
-                            className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1"
-                            style={{
-                              backgroundColor: STATUS_COLORS.rejected.bg,
-                              color: STATUS_COLORS.rejected.text,
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.rejected.hover}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.rejected.bg}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 border border-red-300 dark:border-red-700 bg-white dark:bg-gray-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
                           >
-                            <XCircle className="w-4 h-4" />
+                            <XCircle className="w-3.5 h-3.5" />
                             Rejeter
                           </button>
                         )}
                         
-                        {/* Bouton Envoyer - couleur "Prêt à envoyer" (violet) - masqué si rejeté ou accepté */}
+                        {/* Bouton Envoyer - style filled violet (action principale) */}
                         {statusDisplay !== "rejected" && statusDisplay !== "accepted" && (
                           <button 
                             onClick={() => onSendOffer(o)}
                             title="Envoyer l'offre"
-                            className="px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1"
-                            style={{
-                              backgroundColor: STATUS_COLORS.ready_to_send.bg,
-                              color: STATUS_COLORS.ready_to_send.text,
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.ready_to_send.hover}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = STATUS_COLORS.ready_to_send.bg}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 bg-violet-600 dark:bg-violet-700 text-white hover:bg-violet-700 dark:hover:bg-violet-600"
                           >
-                            <Send className="w-4 h-4" />
+                            <Send className="w-3.5 h-3.5" />
                             Envoyer
                           </button>
                         )}
@@ -369,7 +320,7 @@ export function OffersListView({
                     ) : (
                       // Pour les performances sans statut offre_a_faire, afficher juste le label
                       statusDisplay !== "offre_a_faire" && (
-                        <span className="text-xs italic" style={{ color: STATUS_COLORS[statusDisplay]?.bg || '#9CA3AF' }}>
+                        <span className="text-xs italic text-gray-400 dark:text-gray-500">
                           Performance
                         </span>
                       )
